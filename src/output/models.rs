@@ -60,6 +60,7 @@ pub enum OutputArtifactDescendant {
     TestStepArtifact(TestStepArtifactSpec),
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub enum TestStepArtifactDescendant {
     #[serde(rename = "testStepStart")]

@@ -71,6 +71,7 @@ impl BufferWriter {
 #[derive(Debug, Clone)]
 pub struct StdoutWriter {}
 
+#[allow(clippy::new_without_default)]
 impl StdoutWriter {
     pub fn new() -> Self {
         StdoutWriter {}

@@ -20,6 +20,7 @@ pub struct SchemaVersion {
     minor: i8,
 }
 
+#[allow(clippy::new_without_default)]
 impl SchemaVersion {
     pub fn new() -> SchemaVersion {
         SchemaVersion {
@@ -275,6 +276,7 @@ pub struct TestRunEndBuilder {
     result: models::TestResult,
 }
 
+#[allow(clippy::new_without_default)]
 impl TestRunEndBuilder {
     pub fn new() -> TestRunEndBuilder {
         TestRunEndBuilder {
