@@ -15,6 +15,7 @@ pub use models::LogSeverity;
 pub use models::TestResult;
 pub use models::TestStatus;
 pub use models::ValidatorType;
+pub use models::SPEC_VERSION;
 pub use objects::*;
 pub use runner::*;
 pub use serde_json::Value;
