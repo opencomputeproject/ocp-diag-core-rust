@@ -1312,6 +1312,8 @@ mod tests {
 
     use anyhow::Result;
     use assert_json_diff::assert_json_include;
+    use futures::future::BoxFuture;
+    use futures::FutureExt;
     use serde_json::json;
     use tokio::sync::Mutex;
 
@@ -1319,26 +1321,84 @@ mod tests {
     use crate::output::models::*;
     use crate::output::objects::*;
 
-    #[tokio::test]
-    async fn test_testrun_start_and_end() -> Result<()> {
-        let expected = [
-            json!({"schemaVersion":{"major":2,"minor":0},"sequenceNumber":1}),
-            json!({"sequenceNumber":2,"testRunArtifact":{"testRunStart":{"dutInfo":{"dutInfoId":"dut_id","hardwareInfos":null,"metadata":null,"name":null,"platformInfos":null,"softwareInfos":null},"metadata":null,"name":"run_name","parameters":{},"version":"1.0"}}}),
-            json!({"sequenceNumber":3,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
-        ];
+    fn json_schema_version() -> serde_json::Value {
+        // seqno for schemaVersion is always 1
+        json!({
+            "schemaVersion": {
+                "major": models::SPEC_VERSION.0,
+                "minor": models::SPEC_VERSION.1
+            },
+            "sequenceNumber": 1
+        })
+    }
+
+    fn json_run_default_start() -> serde_json::Value {
+        // seqno for the default test run start is always 2
+        json!({
+            "testRunArtifact": {
+                "testRunStart": {
+                    "dutInfo": {
+                        "dutInfoId": "dut_id"
+                    },
+                    "name": "run_name",
+                    "parameters": {},
+                    "version": "1.0"
+                }
+            },
+            "sequenceNumber": 2
+        })
+    }
+
+    fn json_run_pass(seqno: i32) -> serde_json::Value {
+        json!({
+            "testRunArtifact": {
+                "testRunEnd": {
+                    "result": "PASS",
+                    "status": "COMPLETE"
+                }
+            },
+            "sequenceNumber": seqno
+        })
+    }
+
+    fn json_step_default_start() -> serde_json::Value {
+        // seqno for the default test run start is always 3
+        json!({
+            "testStepArtifact": {
+                "testStepStart": {
+                    "name": "first step"
+                }
+            },
+            "sequenceNumber": 3
+        })
+    }
+
+    fn json_step_complete(seqno: i32) -> serde_json::Value {
+        json!({
+            "testStepArtifact": {
+                "testStepEnd": {
+                    "status": "COMPLETE"
+                }
+            },
+            "sequenceNumber": seqno
+        })
+    }
+
+    async fn check_output<F, R>(expected: &[serde_json::Value], test_fn: F) -> Result<()>
+    where
+        R: Future<Output = Result<()>>,
+        F: FnOnce(TestRunBuilder) -> R,
+    {
         let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
-
         let dut = DutInfo::builder("dut_id").build();
+        let run_builder = TestRun::builder("run_name", &dut, "1.0").config(
+            Config::builder()
+                .with_buffer_output(Arc::clone(&buffer))
+                .build(),
+        );
 
-        let test_run = TestRun::builder("run_name", &dut, "1.0")
-            .config(
-                Config::builder()
-                    .with_buffer_output(Arc::clone(&buffer))
-                    .build(),
-            )
-            .build();
-        test_run.start().await?;
-        test_run.end(TestStatus::Complete, TestResult::Pass).await?;
+        // run the main test closure
+        test_fn(run_builder).await?;
 
         for (idx, entry) in buffer.lock().await.iter().enumerate() {
             let value = serde_json::from_str::<serde_json::Value>(entry)?;
@@ -1346,229 +1406,228 @@ mod tests {
         }
 
         Ok(())
+    }
+
+    async fn check_output_run<F>(expected: &[serde_json::Value], test_fn: F) -> Result<()>
+    where
+        F: for<'a> FnOnce(&'a TestRun) -> BoxFuture<'a, Result<(), emitters::WriterError>> + Send,
+    {
+        check_output(expected, |run_builder| async {
+            let run = run_builder.build();
+
+            run.start().await?;
+            test_fn(&run).await?;
+            run.end(TestStatus::Complete, TestResult::Pass).await?;
+
+            Ok(())
+        })
+        .await
+    }
+
+    async fn check_output_step<F>(expected: &[serde_json::Value], test_fn: F) -> Result<()>
+    where
+        F: for<'a> FnOnce(&'a TestStep) -> BoxFuture<'a, Result<(), emitters::WriterError>>,
+    {
+        check_output(expected, |run_builder| async {
+            let run = run_builder.build();
+            run.start().await?;
+
+            let step = run.step("first step")?;
+            step.start().await?;
+            test_fn(&step).await?;
+            step.end(TestStatus::Complete).await?;
+
+            run.end(TestStatus::Complete, TestResult::Pass).await?;
+
+            Ok(())
+        })
+        .await
+    }
+
+    #[tokio::test]
+    async fn test_testrun_start_and_end() -> Result<()> {
+        let expected = [
+            json_schema_version(),
+            json_run_default_start(),
+            json_run_pass(3),
+        ];
+
+        check_output_run(&expected, |_| async { Ok(()) }.boxed()).await
     }
 
     #[tokio::test]
     async fn test_testrun_with_log() -> Result<()> {
         let expected = [
-            json!({"schemaVersion":{"major":2,"minor":0},"sequenceNumber":1}),
-            json!({"sequenceNumber":2,"testRunArtifact":{"testRunStart":{"dutInfo":{"dutInfoId":"dut_id","hardwareInfos":null,"metadata":null,"name":null,"platformInfos":null,"softwareInfos":null},"metadata":null,"name":"run_name","parameters":{},"version":"1.0"}}}),
-            json!({"sequenceNumber":3,"testRunArtifact":{"log":{"message":"This is a log message with INFO severity","severity":"INFO","sourceLocation":null}}}),
-            json!({"sequenceNumber":4,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
+            json_schema_version(),
+            json_run_default_start(),
+            json!({
+                "testRunArtifact": {
+                    "log": {
+                        "message": "This is a log message with INFO severity",
+                        "severity": "INFO"
+                    }
+                },
+                "sequenceNumber": 3
+            }),
+            json_run_pass(4),
         ];
-        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
-        let dut = DutInfo::builder("dut_id").build();
-
-        let test_run = TestRun::builder("run_name", &dut, "1.0")
-            .config(
-                Config::builder()
-                    .with_buffer_output(Arc::clone(&buffer))
-                    .build(),
-            )
-            .build();
-        test_run.start().await?;
-
-        test_run
-            .log(
-                LogSeverity::Info,
-                "This is a log message with INFO severity",
-            )
-            .await?;
-
-        test_run.end(TestStatus::Complete, TestResult::Pass).await?;
-
-        for (idx, entry) in buffer.lock().await.iter().enumerate() {
-            let value = serde_json::from_str::<serde_json::Value>(entry)?;
-            assert_json_include!(actual: value, expected: &expected[idx]);
-        }
-
-        Ok(())
+        check_output_run(&expected, |run| {
+            async {
+                run.log(
+                    LogSeverity::Info,
+                    "This is a log message with INFO severity",
+                )
+                .await
+            }
+            .boxed()
+        })
+        .await
     }
 
     #[tokio::test]
     async fn test_testrun_with_log_with_details() -> Result<()> {
         let expected = [
-            json!({"schemaVersion":{"major":2,"minor":0},"sequenceNumber":1}),
-            json!({"sequenceNumber":2,"testRunArtifact":{"testRunStart":{"dutInfo":{"dutInfoId":"dut_id","hardwareInfos":null,"metadata":null,"name":null,"platformInfos":null,"softwareInfos":null},"metadata":null,"name":"run_name","parameters":{},"version":"1.0"}}}),
-            json!({"sequenceNumber":3,"testRunArtifact":{"log":{"message":"This is a log message with INFO severity","severity":"INFO","sourceLocation":{
-              "file": "file",
-              "line": 1
-            }}}}),
-            json!({"sequenceNumber":4,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
+            json_schema_version(),
+            json_run_default_start(),
+            json!({
+                "testRunArtifact": {
+                    "log": {
+                        "message": "This is a log message with INFO severity",
+                        "severity": "INFO",
+                        "sourceLocation": {
+                            "file": "file",
+                            "line": 1
+                        }
+                    }
+                },
+                "sequenceNumber": 3
+            }),
+            json_run_pass(4),
         ];
-        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
-        let dut = DutInfo::builder("dut_id").build();
-
-        let test_run = TestRun::builder("run_name", &dut, "1.0")
-            .config(
-                Config::builder()
-                    .with_buffer_output(Arc::clone(&buffer))
-                    .build(),
-            )
-            .build();
-        test_run.start().await?;
-
-        test_run
-            .log_with_details(
-                &Log::builder("This is a log message with INFO severity")
-                    .severity(LogSeverity::Info)
-                    .source("file", 1)
-                    .build(),
-            )
-            .await?;
-
-        test_run.end(TestStatus::Complete, TestResult::Pass).await?;
-
-        for (idx, entry) in buffer.lock().await.iter().enumerate() {
-            let value = serde_json::from_str::<serde_json::Value>(entry)?;
-            assert_json_include!(actual: value, expected: &expected[idx]);
-        }
-
-        Ok(())
+        check_output_run(&expected, |run| {
+            async {
+                run.log_with_details(
+                    &Log::builder("This is a log message with INFO severity")
+                        .severity(LogSeverity::Info)
+                        .source("file", 1)
+                        .build(),
+                )
+                .await
+            }
+            .boxed()
+        })
+        .await
     }
 
     #[tokio::test]
     async fn test_testrun_with_error() -> Result<()> {
         let expected = [
-            json!({"schemaVersion":{"major":2,"minor":0},"sequenceNumber":1}),
-            json!({"sequenceNumber":2,"testRunArtifact":{"testRunStart":{"dutInfo":{"dutInfoId":"dut_id","hardwareInfos":null,"metadata":null,"name":null,"platformInfos":null,"softwareInfos":null},"metadata":null,"name":"run_name","parameters":{},"version":"1.0"}}}),
-            json!({"sequenceNumber":3,"testRunArtifact":{"error":{"message":null,"softwareInfoIds":null,"sourceLocation":null,"symptom":"symptom"}}}),
-            json!({"sequenceNumber":4,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
+            json_schema_version(),
+            json_run_default_start(),
+            json!({
+                "testRunArtifact": {
+                    "error": {
+                        "symptom": "symptom"
+                    }
+                },
+                "sequenceNumber": 3
+            }),
+            json_run_pass(4),
         ];
-        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
-        let dut = DutInfo::builder("dut_id").build();
-
-        let test_run = TestRun::builder("run_name", &dut, "1.0")
-            .config(
-                Config::builder()
-                    .with_buffer_output(Arc::clone(&buffer))
-                    .build(),
-            )
-            .build();
-        test_run.start().await?;
-
-        test_run.error("symptom").await?;
-
-        test_run.end(TestStatus::Complete, TestResult::Pass).await?;
-
-        for (idx, entry) in buffer.lock().await.iter().enumerate() {
-            let value = serde_json::from_str::<serde_json::Value>(entry)?;
-            assert_json_include!(actual: value, expected: &expected[idx]);
-        }
-
-        Ok(())
+        check_output_run(&expected, |run| {
+            async { run.error("symptom").await }.boxed()
+        })
+        .await
     }
 
     #[tokio::test]
     async fn test_testrun_with_error_with_message() -> Result<()> {
         let expected = [
-            json!({"schemaVersion":{"major":2,"minor":0},"sequenceNumber":1}),
-            json!({"sequenceNumber":2,"testRunArtifact":{"testRunStart":{"dutInfo":{"dutInfoId":"dut_id","hardwareInfos":null,"metadata":null,"name":null,"platformInfos":null,"softwareInfos":null},"metadata":null,"name":"run_name","parameters":{},"version":"1.0"}}}),
-            json!({"sequenceNumber":3,"testRunArtifact":{"error":{"message":"Error message","softwareInfoIds":null,"sourceLocation":null,"symptom":"symptom"}}}),
-            json!({"sequenceNumber":4,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
+            json_schema_version(),
+            json_run_default_start(),
+            json!({
+                "testRunArtifact": {
+                    "error": {
+                        "message": "Error message",
+                        "symptom": "symptom"
+                    }
+                },
+                "sequenceNumber": 3
+            }),
+            json_run_pass(4),
         ];
-        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
-        let dut = DutInfo::builder("dut_id").build();
-
-        let test_run = TestRun::builder("run_name", &dut, "1.0")
-            .config(
-                Config::builder()
-                    .with_buffer_output(Arc::clone(&buffer))
-                    .build(),
-            )
-            .build();
-        test_run.start().await?;
-
-        test_run.error_with_msg("symptom", "Error message").await?;
-
-        test_run.end(TestStatus::Complete, TestResult::Pass).await?;
-
-        for (idx, entry) in buffer.lock().await.iter().enumerate() {
-            let value = serde_json::from_str::<serde_json::Value>(entry)?;
-            assert_json_include!(actual: value, expected: &expected[idx]);
-        }
-
-        Ok(())
+        check_output_run(&expected, |run| {
+            async { run.error_with_msg("symptom", "Error message").await }.boxed()
+        })
+        .await
     }
 
     #[tokio::test]
     async fn test_testrun_with_error_with_details() -> Result<()> {
         let expected = [
-            json!({"schemaVersion":{"major":2,"minor":0},"sequenceNumber":1}),
-            json!({"sequenceNumber":2,"testRunArtifact":{"testRunStart":{"dutInfo":{"dutInfoId":"dut_id","hardwareInfos":null,"metadata":null,"name":null,"platformInfos":null,"softwareInfos":null},"metadata":null,"name":"run_name","parameters":{},"version":"1.0"}}}),
-            json!({"sequenceNumber":3,"testRunArtifact":{"error":{"message":"Error message","softwareInfoIds":[
-                {
-                  "computerSystem": null,
-                  "name": "name",
-                  "revision": null,
-                  "softwareInfoId": "id",
-                  "softwareType": null,
-                  "version": null
-                }
-              ],"sourceLocation":{
-                "file": "file",
-                "line": 1
-              },"symptom":"symptom"}}}),
-            json!({"sequenceNumber":4,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
+            json_schema_version(),
+            json_run_default_start(),
+            json!({
+                "testRunArtifact": {
+                    "error": {
+                        "message": "Error message",
+                        "softwareInfoIds":[{
+                            "name": "name",
+                            "softwareInfoId": "id",
+                        }],
+                        "sourceLocation": {
+                            "file": "file",
+                            "line": 1
+                        },
+                        "symptom": "symptom"
+                    }
+                },
+                "sequenceNumber": 3
+            }),
+            json_run_pass(4),
         ];
-        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
-        let dut = DutInfo::builder("dut_id").build();
-
-        let test_run = TestRun::builder("run_name", &dut, "1.0")
-            .config(
-                Config::builder()
-                    .with_buffer_output(Arc::clone(&buffer))
-                    .build(),
-            )
-            .build();
-        test_run.start().await?;
-
-        test_run
-            .error_with_details(
-                &Error::builder("symptom")
-                    .message("Error message")
-                    .source("file", 1)
-                    .add_software_info(&SoftwareInfo::builder("id", "name").build())
-                    .build(),
-            )
-            .await?;
-
-        test_run.end(TestStatus::Complete, TestResult::Pass).await?;
-
-        for (idx, entry) in buffer.lock().await.iter().enumerate() {
-            let value = serde_json::from_str::<serde_json::Value>(entry)?;
-            assert_json_include!(actual: value, expected: &expected[idx]);
-        }
-
-        Ok(())
+        check_output_run(&expected, |run| {
+            async {
+                run.error_with_details(
+                    &Error::builder("symptom")
+                        .message("Error message")
+                        .source("file", 1)
+                        .add_software_info(&SoftwareInfo::builder("id", "name").build())
+                        .build(),
+                )
+                .await
+            }
+            .boxed()
+        })
+        .await
     }
 
     #[tokio::test]
     async fn test_testrun_with_scope() -> Result<()> {
         let expected = [
-            json!({"schemaVersion":{"major":2,"minor":0},"sequenceNumber":1}),
-            json!({"sequenceNumber":2,"testRunArtifact":{"testRunStart":{"dutInfo":{"dutInfoId":"dut_id","hardwareInfos":null,"metadata":null,"name":null,"platformInfos":null,"softwareInfos":null},"metadata":null,"name":"run_name","parameters":{},"version":"1.0"}}}),
-            json!({"sequenceNumber":3,"testRunArtifact":{"log":{"message":"First message","severity":"INFO","sourceLocation":null}}}),
-            json!({"sequenceNumber":4,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
+            json_schema_version(),
+            json_run_default_start(),
+            json!({
+                "testRunArtifact": {
+                    "log": {
+                        "message": "First message",
+                        "severity": "INFO"
+                    }
+                },
+                "sequenceNumber": 3
+            }),
+            json_run_pass(4),
         ];
-        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
-        let dut = DutInfo::builder("dut_id").build();
-        let test_run = TestRun::builder("run_name", &dut, "1.0")
-            .config(
-                Config::builder()
-                    .with_buffer_output(Arc::clone(&buffer))
-                    .build(),
-            )
-            .build();
+        check_output(&expected, |run_builder| async {
+            let run = run_builder.build();
 
-        test_run
-            .scope(|r| async {
+            run.scope(|r| async {
                 r.log(LogSeverity::Info, "First message").await?;
                 Ok(TestRunOutcome {
                     status: TestStatus::Complete,
@@ -1577,861 +1636,871 @@ mod tests {
             })
             .await?;
 
-        for (idx, entry) in buffer.lock().await.iter().enumerate() {
-            let value = serde_json::from_str::<serde_json::Value>(entry)?;
-            assert_json_include!(actual: value, expected: &expected[idx]);
-        }
-
-        Ok(())
+            Ok(())
+        })
+        .await
     }
 
     #[tokio::test]
     async fn test_testrun_with_step() -> Result<()> {
         let expected = [
-            json!({"schemaVersion":{"major":2,"minor":0},"sequenceNumber":1}),
-            json!({"sequenceNumber":2,"testRunArtifact":{"testRunStart":{"dutInfo":{"dutInfoId":"dut_id","hardwareInfos":null,"metadata":null,"name":null,"platformInfos":null,"softwareInfos":null},"metadata":null,"name":"run_name","parameters":{},"version":"1.0"}}}),
-            json!({"sequenceNumber":3,"testStepArtifact":{"testStepStart":{"name":"first step"}}}),
-            json!({"sequenceNumber":4,"testStepArtifact":{"testStepEnd":{"status":"COMPLETE"}}}),
-            json!({"sequenceNumber":5,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
+            json_schema_version(),
+            json_run_default_start(),
+            json_step_default_start(),
+            json_step_complete(4),
+            json_run_pass(5),
         ];
-        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
-        let dut = DutInfo::builder("dut_id").build();
-
-        let test_run = TestRun::builder("run_name", &dut, "1.0")
-            .config(
-                Config::builder()
-                    .with_buffer_output(Arc::clone(&buffer))
-                    .build(),
-            )
-            .build();
-        test_run.start().await?;
-
-        let step = test_run.step("first step")?;
-        step.start().await?;
-        step.end(TestStatus::Complete).await?;
-
-        test_run.end(TestStatus::Complete, TestResult::Pass).await?;
-
-        for (idx, entry) in buffer.lock().await.iter().enumerate() {
-            let value = serde_json::from_str::<serde_json::Value>(entry)?;
-            assert_json_include!(actual: value, expected: &expected[idx]);
-        }
-
-        Ok(())
+        check_output_step(&expected, |_| async { Ok(()) }.boxed()).await
     }
 
     #[tokio::test]
     async fn test_testrun_step_log() -> Result<()> {
         let expected = [
-            json!({"schemaVersion":{"major":2,"minor":0},"sequenceNumber":1}),
-            json!({"sequenceNumber":2,"testRunArtifact":{"testRunStart":{"dutInfo":{"dutInfoId":"dut_id","hardwareInfos":null,"metadata":null,"name":null,"platformInfos":null,"softwareInfos":null},"metadata":null,"name":"run_name","parameters":{},"version":"1.0"}}}),
-            json!({"sequenceNumber":3,"testStepArtifact":{"testStepStart":{"name":"first step"}}}),
-            json!({"sequenceNumber":4,"testStepArtifact":{"log":{"message":"This is a log message with INFO severity","severity":"INFO","sourceLocation":null}}}),
-            json!({"sequenceNumber":5,"testStepArtifact":{"testStepEnd":{"status":"COMPLETE"}}}),
-            json!({"sequenceNumber":6,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
+            json_schema_version(),
+            json_run_default_start(),
+            json_step_default_start(),
+            json!({
+                "testStepArtifact": {
+                    "log": {
+                        "message": "This is a log message with INFO severity",
+                        "severity": "INFO"
+                    }
+                },
+                "sequenceNumber": 4
+            }),
+            json_step_complete(5),
+            json_run_pass(6),
         ];
-        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
-        let dut = DutInfo::builder("dut_id").build();
+        check_output_step(&expected, |step| {
+            async {
+                step.log(
+                    LogSeverity::Info,
+                    "This is a log message with INFO severity",
+                )
+                .await?;
 
-        let test_run = TestRun::builder("run_name", &dut, "1.0")
-            .config(
-                Config::builder()
-                    .with_buffer_output(Arc::clone(&buffer))
-                    .build(),
-            )
-            .build();
-        test_run.start().await?;
-
-        let step = test_run.step("first step")?;
-        step.start().await?;
-
-        step.log(
-            LogSeverity::Info,
-            "This is a log message with INFO severity",
-        )
-        .await?;
-
-        step.end(TestStatus::Complete).await?;
-
-        test_run.end(TestStatus::Complete, TestResult::Pass).await?;
-
-        for (idx, entry) in buffer.lock().await.iter().enumerate() {
-            let value = serde_json::from_str::<serde_json::Value>(entry)?;
-            assert_json_include!(actual: value, expected: &expected[idx]);
-        }
-
-        Ok(())
+                Ok(())
+            }
+            .boxed()
+        })
+        .await
     }
 
     #[tokio::test]
     async fn test_testrun_step_log_with_details() -> Result<()> {
         let expected = [
-            json!({"schemaVersion":{"major":2,"minor":0},"sequenceNumber":1}),
-            json!({"sequenceNumber":2,"testRunArtifact":{"testRunStart":{"dutInfo":{"dutInfoId":"dut_id","hardwareInfos":null,"metadata":null,"name":null,"platformInfos":null,"softwareInfos":null},"metadata":null,"name":"run_name","parameters":{},"version":"1.0"}}}),
-            json!({"sequenceNumber":3,"testStepArtifact":{"testStepStart":{"name":"first step"}}}),
-            json!({"sequenceNumber":4,"testStepArtifact":{"log":{"message":"This is a log message with INFO severity","severity":"INFO","sourceLocation":{"file": "file", "line": 1}}}}),
-            json!({"sequenceNumber":5,"testStepArtifact":{"testStepEnd":{"status":"COMPLETE"}}}),
-            json!({"sequenceNumber":6,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
+            json_schema_version(),
+            json_run_default_start(),
+            json_step_default_start(),
+            json!({
+                "sequenceNumber": 4,
+                "testStepArtifact": {
+                    "log": {
+                        "message": "This is a log message with INFO severity",
+                        "severity": "INFO",
+                        "sourceLocation": {
+                            "file": "file",
+                            "line": 1
+                        }
+                    }
+                }
+            }),
+            json_step_complete(5),
+            json_run_pass(6),
         ];
-        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
-        let dut = DutInfo::builder("dut_id").build();
+        check_output_step(&expected, |step| {
+            async {
+                step.log_with_details(
+                    &Log::builder("This is a log message with INFO severity")
+                        .severity(LogSeverity::Info)
+                        .source("file", 1)
+                        .build(),
+                )
+                .await?;
 
-        let test_run = TestRun::builder("run_name", &dut, "1.0")
-            .config(
-                Config::builder()
-                    .with_buffer_output(Arc::clone(&buffer))
-                    .build(),
-            )
-            .build();
-        test_run.start().await?;
-
-        let step = test_run.step("first step")?;
-        step.start().await?;
-
-        step.log_with_details(
-            &Log::builder("This is a log message with INFO severity")
-                .severity(LogSeverity::Info)
-                .source("file", 1)
-                .build(),
-        )
-        .await?;
-
-        step.end(TestStatus::Complete).await?;
-
-        test_run.end(TestStatus::Complete, TestResult::Pass).await?;
-
-        for (idx, entry) in buffer.lock().await.iter().enumerate() {
-            let value = serde_json::from_str::<serde_json::Value>(entry)?;
-            assert_json_include!(actual: value, expected: &expected[idx]);
-        }
-
-        Ok(())
+                Ok(())
+            }
+            .boxed()
+        })
+        .await
     }
 
     #[tokio::test]
     async fn test_testrun_step_error() -> Result<()> {
         let expected = [
-            json!({"schemaVersion":{"major":2,"minor":0},"sequenceNumber":1}),
-            json!({"sequenceNumber":2,"testRunArtifact":{"testRunStart":{"dutInfo":{"dutInfoId":"dut_id","hardwareInfos":null,"metadata":null,"name":null,"platformInfos":null,"softwareInfos":null},"metadata":null,"name":"run_name","parameters":{},"version":"1.0"}}}),
-            json!({"sequenceNumber":3,"testStepArtifact":{"testStepStart":{"name":"first step"}}}),
-            json!({"sequenceNumber":4,"testStepArtifact":{"error":{"message":null,"softwareInfoIds":null,"sourceLocation":null,"symptom":"symptom"}}}),
-            json!({"sequenceNumber":5,"testStepArtifact":{"testStepEnd":{"status":"COMPLETE"}}}),
-            json!({"sequenceNumber":6,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
+            json_schema_version(),
+            json_run_default_start(),
+            json_step_default_start(),
+            json!({
+                "sequenceNumber": 4,
+                "testStepArtifact": {
+                    "error": {
+                        "symptom": "symptom"
+                    }
+                }
+            }),
+            json_step_complete(5),
+            json_run_pass(6),
         ];
-        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
-        let dut = DutInfo::builder("dut_id").build();
+        check_output_step(&expected, |step| {
+            async {
+                step.error("symptom").await?;
 
-        let test_run = TestRun::builder("run_name", &dut, "1.0")
-            .config(
-                Config::builder()
-                    .with_buffer_output(Arc::clone(&buffer))
-                    .build(),
-            )
-            .build();
-        test_run.start().await?;
-
-        let step = test_run.step("first step")?;
-        step.start().await?;
-
-        step.error("symptom").await?;
-
-        step.end(TestStatus::Complete).await?;
-
-        test_run.end(TestStatus::Complete, TestResult::Pass).await?;
-
-        for (idx, entry) in buffer.lock().await.iter().enumerate() {
-            let value = serde_json::from_str::<serde_json::Value>(entry)?;
-            assert_json_include!(actual: value, expected: &expected[idx]);
-        }
-
-        Ok(())
+                Ok(())
+            }
+            .boxed()
+        })
+        .await
     }
 
     #[tokio::test]
     async fn test_testrun_step_error_with_message() -> Result<()> {
         let expected = [
-            json!({"schemaVersion":{"major":2,"minor":0},"sequenceNumber":1}),
-            json!({"sequenceNumber":2,"testRunArtifact":{"testRunStart":{"dutInfo":{"dutInfoId":"dut_id","hardwareInfos":null,"metadata":null,"name":null,"platformInfos":null,"softwareInfos":null},"metadata":null,"name":"run_name","parameters":{},"version":"1.0"}}}),
-            json!({"sequenceNumber":3,"testStepArtifact":{"testStepStart":{"name":"first step"}}}),
-            json!({"sequenceNumber":4,"testStepArtifact":{"error":{"message":"Error message","softwareInfoIds":null,"sourceLocation":null,"symptom":"symptom"}}}),
-            json!({"sequenceNumber":5,"testStepArtifact":{"testStepEnd":{"status":"COMPLETE"}}}),
-            json!({"sequenceNumber":6,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
+            json_schema_version(),
+            json_run_default_start(),
+            json_step_default_start(),
+            json!({
+                "sequenceNumber": 4,
+                "testStepArtifact": {
+                    "error": {
+                        "message": "Error message",
+                        "symptom": "symptom"
+                    }
+                }
+            }),
+            json_step_complete(5),
+            json_run_pass(6),
         ];
-        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
-        let dut = DutInfo::builder("dut_id").build();
+        check_output_step(&expected, |step| {
+            async {
+                step.error_with_msg("symptom", "Error message").await?;
 
-        let test_run = TestRun::builder("run_name", &dut, "1.0")
-            .config(
-                Config::builder()
-                    .with_buffer_output(Arc::clone(&buffer))
-                    .build(),
-            )
-            .build();
-        test_run.start().await?;
-
-        let step = test_run.step("first step")?;
-        step.start().await?;
-
-        step.error_with_msg("symptom", "Error message").await?;
-
-        step.end(TestStatus::Complete).await?;
-
-        test_run.end(TestStatus::Complete, TestResult::Pass).await?;
-
-        for (idx, entry) in buffer.lock().await.iter().enumerate() {
-            let value = serde_json::from_str::<serde_json::Value>(entry)?;
-            assert_json_include!(actual: value, expected: &expected[idx]);
-        }
-
-        Ok(())
+                Ok(())
+            }
+            .boxed()
+        })
+        .await
     }
 
     #[tokio::test]
     async fn test_testrun_step_error_with_details() -> Result<()> {
         let expected = [
-            json!({"schemaVersion":{"major":2,"minor":0},"sequenceNumber":1}),
-            json!({"sequenceNumber":2,"testRunArtifact":{"testRunStart":{"dutInfo":{"dutInfoId":"dut_id","hardwareInfos":null,"metadata":null,"name":null,"platformInfos":null,"softwareInfos":null},"metadata":null,"name":"run_name","parameters":{},"version":"1.0"}}}),
-            json!({"sequenceNumber":3,"testStepArtifact":{"testStepStart":{"name":"first step"}}}),
-            json!({"sequenceNumber":4,"testStepArtifact":{"error":{"message":"Error message","softwareInfoIds":[{"computerSystem": null, "name": "name", "revision": null, "softwareInfoId": "id", "softwareType": null, "version": null}],"sourceLocation":{"file": "file", "line": 1},"symptom":"symptom"}}}),
-            json!({"sequenceNumber":5,"testStepArtifact":{"testStepEnd":{"status":"COMPLETE"}}}),
-            json!({"sequenceNumber":6,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
+            json_schema_version(),
+            json_run_default_start(),
+            json_step_default_start(),
+            json!({
+                "sequenceNumber": 4,
+                "testStepArtifact": {
+                    "error": {
+                        "message": "Error message",
+                        "softwareInfoIds":[{
+                            "name": "name",
+                            "softwareInfoId": "id"
+                        }],
+                        "sourceLocation": {
+                            "file": "file",
+                            "line": 1
+                        },
+                        "symptom": "symptom"
+                    }
+                }
+            }),
+            json_step_complete(5),
+            json_run_pass(6),
         ];
-        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
-        let dut = DutInfo::builder("dut_id").build();
+        check_output_step(&expected, |step| {
+            async {
+                step.error_with_details(
+                    &Error::builder("symptom")
+                        .message("Error message")
+                        .source("file", 1)
+                        .add_software_info(&SoftwareInfo::builder("id", "name").build())
+                        .build(),
+                )
+                .await?;
 
-        let test_run = TestRun::builder("run_name", &dut, "1.0")
-            .config(
-                Config::builder()
-                    .with_buffer_output(Arc::clone(&buffer))
-                    .build(),
-            )
-            .build();
-        test_run.start().await?;
-
-        let step = test_run.step("first step")?;
-        step.start().await?;
-
-        step.error_with_details(
-            &Error::builder("symptom")
-                .message("Error message")
-                .source("file", 1)
-                .add_software_info(&SoftwareInfo::builder("id", "name").build())
-                .build(),
-        )
-        .await?;
-
-        step.end(TestStatus::Complete).await?;
-
-        test_run.end(TestStatus::Complete, TestResult::Pass).await?;
-
-        for (idx, entry) in buffer.lock().await.iter().enumerate() {
-            let value = serde_json::from_str::<serde_json::Value>(entry)?;
-            assert_json_include!(actual: value, expected: &expected[idx]);
-        }
-
-        Ok(())
+                Ok(())
+            }
+            .boxed()
+        })
+        .await
     }
 
     #[tokio::test]
     async fn test_testrun_step_scope_log() -> Result<()> {
         let expected = [
-            json!({"schemaVersion":{"major":2,"minor":0},"sequenceNumber":1}),
-            json!({"sequenceNumber":2,"testRunArtifact":{"testRunStart":{"dutInfo":{"dutInfoId":"dut_id","hardwareInfos":null,"metadata":null,"name":null,"platformInfos":null,"softwareInfos":null},"metadata":null,"name":"run_name","parameters":{},"version":"1.0"}}}),
-            json!({"sequenceNumber":3,"testStepArtifact":{"testStepStart":{"name":"first step"}}}),
-            json!({"sequenceNumber":4,"testStepArtifact":{"log":{"message":"This is a log message with INFO severity","severity":"INFO","sourceLocation":null}}}),
-            json!({"sequenceNumber":5,"testStepArtifact":{"testStepEnd":{"status":"COMPLETE"}}}),
-            json!({"sequenceNumber":6,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
+            json_schema_version(),
+            json_run_default_start(),
+            json_step_default_start(),
+            json!({
+                "sequenceNumber": 4,
+                "testStepArtifact": {
+                    "log": {
+                        "message": "This is a log message with INFO severity",
+                        "severity": "INFO"
+                    }
+                }
+            }),
+            json_step_complete(5),
+            json_run_pass(6),
         ];
-        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
-        let dut = DutInfo::builder("dut_id").build();
-
-        let test_run = TestRun::builder("run_name", &dut, "1.0")
-            .config(
-                Config::builder()
-                    .with_buffer_output(Arc::clone(&buffer))
-                    .build(),
-            )
-            .build();
-        test_run.start().await?;
-
-        test_run
-            .step("first step")?
-            .scope(|s| async {
-                s.log(
-                    LogSeverity::Info,
-                    "This is a log message with INFO severity",
-                )
-                .await?;
-                Ok(TestStatus::Complete)
-            })
-            .await?;
-
-        test_run.end(TestStatus::Complete, TestResult::Pass).await?;
-
-        for (idx, entry) in buffer.lock().await.iter().enumerate() {
-            let value = serde_json::from_str::<serde_json::Value>(entry)?;
-            assert_json_include!(actual: value, expected: &expected[idx]);
-        }
-
-        Ok(())
+        check_output_run(&expected, |run| {
+            async {
+                run.step("first step")?
+                    .scope(|s| async {
+                        s.log(
+                            LogSeverity::Info,
+                            "This is a log message with INFO severity",
+                        )
+                        .await?;
+                        Ok(TestStatus::Complete)
+                    })
+                    .await
+            }
+            .boxed()
+        })
+        .await
     }
 
     #[tokio::test]
     async fn test_step_with_measurement() -> Result<()> {
         let expected = [
-            json!({"schemaVersion":{"major":2,"minor":0},"sequenceNumber":1}),
-            json!({"sequenceNumber":2,"testRunArtifact":{"testRunStart":{"dutInfo":{"dutInfoId":"dut_id","hardwareInfos":null,"metadata":null,"name":null,"platformInfos":null,"softwareInfos":null},"metadata":null,"name":"run_name","parameters":{},"version":"1.0"}}}),
-            json!({"sequenceNumber":3,"testStepArtifact":{"testStepStart":{"name":"first step"}}}),
-            json!({"sequenceNumber":4,"testStepArtifact":{"measurement":{"hardwareInfoId":null,"metadata":null,"name":"name","subcomponent":null,"unit":null,"validators":null,"value":50}}}),
-            json!({"sequenceNumber":5,"testStepArtifact":{"testStepEnd":{"status":"COMPLETE"}}}),
-            json!({"sequenceNumber":6,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
+            json_schema_version(),
+            json_run_default_start(),
+            json_step_default_start(),
+            json!({
+                "sequenceNumber": 4,
+                "testStepArtifact": {
+                    "measurement": {
+                        "name": "name", "value": 50
+                    }
+                }
+            }),
+            json_step_complete(5),
+            json_run_pass(6),
         ];
-        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
-        let dut = DutInfo::builder("dut_id").build();
+        check_output_step(&expected, |step| {
+            async {
+                step.add_measurement("name", 50.into()).await?;
 
-        let test_run = TestRun::builder("run_name", &dut, "1.0")
-            .config(
-                Config::builder()
-                    .with_buffer_output(Arc::clone(&buffer))
-                    .build(),
-            )
-            .build();
-        test_run.start().await?;
-
-        let step = test_run.step("first step")?;
-        step.start().await?;
-
-        step.add_measurement("name", 50.into()).await?;
-
-        step.end(TestStatus::Complete).await?;
-
-        test_run.end(TestStatus::Complete, TestResult::Pass).await?;
-
-        for (idx, entry) in buffer.lock().await.iter().enumerate() {
-            let value = serde_json::from_str::<serde_json::Value>(entry)?;
-            assert_json_include!(actual: value, expected: &expected[idx]);
-        }
-
-        Ok(())
+                Ok(())
+            }
+            .boxed()
+        })
+        .await
     }
 
     #[tokio::test]
     async fn test_step_with_measurement_builder() -> Result<()> {
         let expected = [
-            json!({"schemaVersion":{"major":2,"minor":0},"sequenceNumber":1}),
-            json!({"sequenceNumber":2,"testRunArtifact":{"testRunStart":{"dutInfo":{"dutInfoId":"dut_id","hardwareInfos":null,"metadata":null,"name":null,"platformInfos":null,"softwareInfos":null},"metadata":null,"name":"run_name","parameters":{},"version":"1.0"}}}),
-            json!({"sequenceNumber":3,"testStepArtifact":{"testStepStart":{"name":"first step"}}}),
-            json!({"sequenceNumber":4,"testStepArtifact":{"measurement":{"hardwareInfoId":"id","metadata":{"key":"value"},"name":"name","subcomponent":{"location":null,"name":"name","revision":null,"type":null,"version":null},"unit":null,"validators":[{"metadata":null,"name":null,"type":"EQUAL","value":30}],"value":50}}}),
-            json!({"sequenceNumber":5,"testStepArtifact":{"testStepEnd":{"status":"COMPLETE"}}}),
-            json!({"sequenceNumber":6,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
+            json_schema_version(),
+            json_run_default_start(),
+            json_step_default_start(),
+            json!({
+                "sequenceNumber": 4,
+                "testStepArtifact": {
+                    "measurement": {
+                        "hardwareInfoId": "id",
+                        "metadata": {
+                            "key": "value"
+                        },
+                        "name": "name",
+                        "subcomponent": {
+                            "name": "name"
+                        },
+                        "validators":[{
+                            "type": "EQUAL",
+                            "value": 30
+                        }],
+                        "value": 50
+                    }
+                }
+            }),
+            json_step_complete(5),
+            json_run_pass(6),
         ];
-        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
-        let dut = DutInfo::builder("dut_id").build();
+        check_output_step(&expected, |step| {
+            async {
+                let measurement = Measurement::builder("name", 50.into())
+                    .hardware_info(&objects::HardwareInfo::builder("id", "name").build())
+                    .add_validator(
+                        &objects::Validator::builder(models::ValidatorType::Equal, 30.into())
+                            .build(),
+                    )
+                    .add_metadata("key", "value".into())
+                    .subcomponent(&objects::Subcomponent::builder("name").build())
+                    .build();
+                step.add_measurement_with_details(&measurement).await?;
 
-        let test_run = TestRun::builder("run_name", &dut, "1.0")
-            .config(
-                Config::builder()
-                    .with_buffer_output(Arc::clone(&buffer))
-                    .build(),
-            )
-            .build();
-        test_run.start().await?;
-
-        let step = test_run.step("first step")?;
-        step.start().await?;
-
-        let measurement = Measurement::builder("name", 50.into())
-            .hardware_info(&objects::HardwareInfo::builder("id", "name").build())
-            .add_validator(
-                &objects::Validator::builder(models::ValidatorType::Equal, 30.into()).build(),
-            )
-            .add_metadata("key", "value".into())
-            .subcomponent(&objects::Subcomponent::builder("name").build())
-            .build();
-        step.add_measurement_with_details(&measurement).await?;
-
-        step.end(TestStatus::Complete).await?;
-
-        test_run.end(TestStatus::Complete, TestResult::Pass).await?;
-
-        for (idx, entry) in buffer.lock().await.iter().enumerate() {
-            let value = serde_json::from_str::<serde_json::Value>(entry)?;
-            assert_json_include!(actual: value, expected: &expected[idx]);
-        }
-
-        Ok(())
+                Ok(())
+            }
+            .boxed()
+        })
+        .await
     }
 
     #[tokio::test]
     async fn test_step_with_measurement_series() -> Result<()> {
         let expected = [
-            json!({"schemaVersion":{"major":2,"minor":0},"sequenceNumber":1}),
-            json!({"sequenceNumber":2,"testRunArtifact":{"testRunStart":{"dutInfo":{"dutInfoId":"dut_id","hardwareInfos":null,"metadata":null,"name":null,"platformInfos":null,"softwareInfos":null},"metadata":null,"name":"run_name","parameters":{},"version":"1.0"}}}),
-            json!({"sequenceNumber":3,"testStepArtifact":{"testStepStart":{"name":"first step"}}}),
-            json!({"sequenceNumber":4,"testStepArtifact":{"measurementSeriesStart":{"hardwareInfoId":null,"measurementSeriesId":"series_1","metadata":null,"name":"name","subComponent":null,"unit":null,"validators":null}}}),
-            json!({"sequenceNumber":5,"testStepArtifact":{"measurementSeriesEnd":{"measurementSeriesId":"series_1","totalCount":0}}}),
-            json!({"sequenceNumber":6,"testStepArtifact":{"testStepEnd":{"status":"COMPLETE"}}}),
-            json!({"sequenceNumber":7,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
+            json_schema_version(),
+            json_run_default_start(),
+            json_step_default_start(),
+            json!({
+                "sequenceNumber": 4,
+                "testStepArtifact": {
+                    "measurementSeriesStart": {
+                        "measurementSeriesId": "series_1",
+                        "name": "name"
+                    }
+                }
+            }),
+            json!({
+                "sequenceNumber": 5,
+                "testStepArtifact": {
+                    "measurementSeriesEnd": {
+                        "measurementSeriesId":
+                        "series_1",
+                        "totalCount": 0
+                    }
+                }
+            }),
+            json_step_complete(6),
+            json_run_pass(7),
         ];
-        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
-        let dut = DutInfo::builder("dut_id").build();
+        check_output_step(&expected, |step| {
+            async {
+                let series = step.measurement_series("name");
+                series.start().await?;
+                series.end().await?;
 
-        let test_run = TestRun::builder("run_name", &dut, "1.0")
-            .config(
-                Config::builder()
-                    .with_buffer_output(Arc::clone(&buffer))
-                    .build(),
-            )
-            .build();
-        test_run.start().await?;
-
-        let step = test_run.step("first step")?;
-        step.start().await?;
-
-        let series = step.measurement_series("name");
-        series.start().await?;
-        series.end().await?;
-
-        step.end(TestStatus::Complete).await?;
-
-        test_run.end(TestStatus::Complete, TestResult::Pass).await?;
-
-        for (idx, entry) in buffer.lock().await.iter().enumerate() {
-            let value = serde_json::from_str::<serde_json::Value>(entry)?;
-            assert_json_include!(actual: value, expected: &expected[idx]);
-        }
-
-        Ok(())
+                Ok(())
+            }
+            .boxed()
+        })
+        .await
     }
 
     #[tokio::test]
     async fn test_step_with_multiple_measurement_series() -> Result<()> {
         let expected = [
-            json!({"schemaVersion":{"major":2,"minor":0},"sequenceNumber":1}),
-            json!({"sequenceNumber":2,"testRunArtifact":{"testRunStart":{"dutInfo":{"dutInfoId":"dut_id","hardwareInfos":null,"metadata":null,"name":null,"platformInfos":null,"softwareInfos":null},"metadata":null,"name":"run_name","parameters":{},"version":"1.0"}}}),
-            json!({"sequenceNumber":3,"testStepArtifact":{"testStepStart":{"name":"first step"}}}),
-            json!({"sequenceNumber":4,"testStepArtifact":{"measurementSeriesStart":{"hardwareInfoId":null,"measurementSeriesId":"series_1","metadata":null,"name":"name","subComponent":null,"unit":null,"validators":null}}}),
-            json!({"sequenceNumber":5,"testStepArtifact":{"measurementSeriesEnd":{"measurementSeriesId":"series_1","totalCount":0}}}),
-            json!({"sequenceNumber":6,"testStepArtifact":{"measurementSeriesStart":{"hardwareInfoId":null,"measurementSeriesId":"series_2","metadata":null,"name":"name","subComponent":null,"unit":null,"validators":null}}}),
-            json!({"sequenceNumber":7,"testStepArtifact":{"measurementSeriesEnd":{"measurementSeriesId":"series_2","totalCount":0}}}),
-            json!({"sequenceNumber":8,"testStepArtifact":{"testStepEnd":{"status":"COMPLETE"}}}),
-            json!({"sequenceNumber":9,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
+            json_schema_version(),
+            json_run_default_start(),
+            json_step_default_start(),
+            json!({
+                "sequenceNumber": 4,
+                "testStepArtifact": {
+                    "measurementSeriesStart": {
+                        "measurementSeriesId": "series_1",
+                        "name": "name"
+                    }
+                }
+            }),
+            json!({
+                "sequenceNumber": 5,
+                "testStepArtifact": {
+                    "measurementSeriesEnd": {
+                        "measurementSeriesId": "series_1",
+                        "totalCount": 0
+                    }
+                }
+            }),
+            json!({
+                "sequenceNumber": 6,
+                "testStepArtifact": {
+                    "measurementSeriesStart": {
+                        "measurementSeriesId": "series_2",
+                        "name": "name"
+                    }
+                }
+            }),
+            json!({
+                "sequenceNumber": 7,
+                "testStepArtifact": {
+                    "measurementSeriesEnd": {
+                        "measurementSeriesId": "series_2",
+                        "totalCount": 0
+                    }
+                }
+            }),
+            json_step_complete(8),
+            json_run_pass(9),
         ];
-        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
-        let dut = DutInfo::builder("dut_id").build();
+        check_output_step(&expected, |step| {
+            async {
+                let series = step.measurement_series("name");
+                series.start().await?;
+                series.end().await?;
 
-        let test_run = TestRun::builder("run_name", &dut, "1.0")
-            .config(
-                Config::builder()
-                    .with_buffer_output(Arc::clone(&buffer))
-                    .build(),
-            )
-            .build();
-        test_run.start().await?;
+                let series_2 = step.measurement_series("name");
+                series_2.start().await?;
+                series_2.end().await?;
 
-        let step = test_run.step("first step")?;
-        step.start().await?;
-
-        let series = step.measurement_series("name");
-        series.start().await?;
-        series.end().await?;
-
-        let series_2 = step.measurement_series("name");
-        series_2.start().await?;
-        series_2.end().await?;
-
-        step.end(TestStatus::Complete).await?;
-
-        test_run.end(TestStatus::Complete, TestResult::Pass).await?;
-
-        for (idx, entry) in buffer.lock().await.iter().enumerate() {
-            let value = serde_json::from_str::<serde_json::Value>(entry)?;
-            assert_json_include!(actual: value, expected: &expected[idx]);
-        }
-
-        Ok(())
+                Ok(())
+            }
+            .boxed()
+        })
+        .await
     }
 
     #[tokio::test]
     async fn test_step_with_measurement_series_with_details() -> Result<()> {
         let expected = [
-            json!({"schemaVersion":{"major":2,"minor":0},"sequenceNumber":1}),
-            json!({"sequenceNumber":2,"testRunArtifact":{"testRunStart":{"dutInfo":{"dutInfoId":"dut_id","hardwareInfos":null,"metadata":null,"name":null,"platformInfos":null,"softwareInfos":null},"metadata":null,"name":"run_name","parameters":{},"version":"1.0"}}}),
-            json!({"sequenceNumber":3,"testStepArtifact":{"testStepStart":{"name":"first step"}}}),
-            json!({"sequenceNumber":4,"testStepArtifact":{"measurementSeriesStart":{"hardwareInfoId":null,"measurementSeriesId":"series_id","metadata":null,"name":"name","subComponent":null,"unit":null,"validators":null}}}),
-            json!({"sequenceNumber":5,"testStepArtifact":{"measurementSeriesEnd":{"measurementSeriesId":"series_id","totalCount":0}}}),
-            json!({"sequenceNumber":6,"testStepArtifact":{"testStepEnd":{"status":"COMPLETE"}}}),
-            json!({"sequenceNumber":7,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
+            json_schema_version(),
+            json_run_default_start(),
+            json_step_default_start(),
+            json!({
+                "sequenceNumber": 4,
+                "testStepArtifact": {
+                    "measurementSeriesStart": {
+                        "measurementSeriesId": "series_id", "name": "name"
+                    }
+                }
+            }),
+            json!({
+                "sequenceNumber": 5,
+                "testStepArtifact": {
+                    "measurementSeriesEnd": {
+                        "measurementSeriesId": "series_id", "totalCount": 0
+                    }
+                }
+            }),
+            json_step_complete(6),
+            json_run_pass(7),
         ];
-        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
-        let dut = DutInfo::builder("dut_id").build();
+        check_output_step(&expected, |step| {
+            async {
+                let series = step.measurement_series_with_details(MeasurementSeriesStart::new(
+                    "name",
+                    "series_id",
+                ));
+                series.start().await?;
+                series.end().await?;
 
-        let test_run = TestRun::builder("run_name", &dut, "1.0")
-            .config(
-                Config::builder()
-                    .with_buffer_output(Arc::clone(&buffer))
-                    .build(),
-            )
-            .build();
-        test_run.start().await?;
-
-        let step = test_run.step("first step")?;
-        step.start().await?;
-
-        let series =
-            step.measurement_series_with_details(MeasurementSeriesStart::new("name", "series_id"));
-        series.start().await?;
-        series.end().await?;
-
-        step.end(TestStatus::Complete).await?;
-
-        test_run.end(TestStatus::Complete, TestResult::Pass).await?;
-
-        for (idx, entry) in buffer.lock().await.iter().enumerate() {
-            let value = serde_json::from_str::<serde_json::Value>(entry)?;
-            assert_json_include!(actual: value, expected: &expected[idx]);
-        }
-
-        Ok(())
+                Ok(())
+            }
+            .boxed()
+        })
+        .await
     }
 
     #[tokio::test]
     async fn test_step_with_measurement_series_with_details_and_start_builder() -> Result<()> {
         let expected = [
-            json!({"schemaVersion":{"major":2,"minor":0},"sequenceNumber":1}),
-            json!({"sequenceNumber":2,"testRunArtifact":{"testRunStart":{"dutInfo":{"dutInfoId":"dut_id","hardwareInfos":null,"metadata":null,"name":null,"platformInfos":null,"softwareInfos":null},"metadata":null,"name":"run_name","parameters":{},"version":"1.0"}}}),
-            json!({"sequenceNumber":3,"testStepArtifact":{"testStepStart":{"name":"first step"}}}),
-            json!({"sequenceNumber":4,"testStepArtifact":{"measurementSeriesStart":{"hardwareInfoId":{"computerSystem":null,"hardwareInfoId":"id","location":null,"manager":null,"manufacturer":null,"manufacturerPartNumber":null,"name":"name","odataId":null,"partNumber":null,"revision":null,"serialNumber":null,"version":null},"measurementSeriesId":"series_id","metadata":{"key":"value"},"name":"name","subComponent":{"location":null,"name":"name","revision":null,"type":null,"version":null},"unit":null,"validators":[{"metadata":null,"name":null,"type":"EQUAL","value":30}]}}}),
-            json!({"sequenceNumber":5,"testStepArtifact":{"measurementSeriesEnd":{"measurementSeriesId":"series_id","totalCount":0}}}),
-            json!({"sequenceNumber":6,"testStepArtifact":{"testStepEnd":{"status":"COMPLETE"}}}),
-            json!({"sequenceNumber":7,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
+            json_schema_version(),
+            json_run_default_start(),
+            json_step_default_start(),
+            json!({
+                "sequenceNumber": 4,
+                "testStepArtifact": {
+                    "measurementSeriesStart": {
+                        "hardwareInfoId": {
+                            "hardwareInfoId": "id",
+                            "name": "name"
+                        },
+                        "measurementSeriesId": "series_id",
+                        "metadata": {
+                            "key": "value"
+                        },
+                        "name": "name",
+                        "subComponent": {
+                            "name": "name"
+                        },
+                        "validators":[{
+                            "type": "EQUAL",
+                            "value": 30
+                        }]
+                    }
+                }
+            }),
+            json!({
+                "sequenceNumber": 5,
+                "testStepArtifact": {
+                    "measurementSeriesEnd": {
+                        "measurementSeriesId": "series_id",
+                        "totalCount": 0
+                    }
+                }
+            }),
+            json_step_complete(6),
+            json_run_pass(7),
         ];
-        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
-        let dut = DutInfo::builder("dut_id").build();
+        check_output_step(&expected, |step| {
+            async {
+                let series = step.measurement_series_with_details(
+                    MeasurementSeriesStart::builder("name", "series_id")
+                        .add_metadata("key", "value".into())
+                        .add_validator(&Validator::builder(ValidatorType::Equal, 30.into()).build())
+                        .hardware_info(&HardwareInfo::builder("id", "name").build())
+                        .subcomponent(&Subcomponent::builder("name").build())
+                        .build(),
+                );
+                series.start().await?;
+                series.end().await?;
 
-        let test_run = TestRun::builder("run_name", &dut, "1.0")
-            .config(
-                Config::builder()
-                    .with_buffer_output(Arc::clone(&buffer))
-                    .build(),
-            )
-            .build();
-        test_run.start().await?;
-
-        let step = test_run.step("first step")?;
-        step.start().await?;
-
-        let series = step.measurement_series_with_details(
-            MeasurementSeriesStart::builder("name", "series_id")
-                .add_metadata("key", "value".into())
-                .add_validator(&Validator::builder(ValidatorType::Equal, 30.into()).build())
-                .hardware_info(&HardwareInfo::builder("id", "name").build())
-                .subcomponent(&Subcomponent::builder("name").build())
-                .build(),
-        );
-        series.start().await?;
-        series.end().await?;
-
-        step.end(TestStatus::Complete).await?;
-
-        test_run.end(TestStatus::Complete, TestResult::Pass).await?;
-
-        for (idx, entry) in buffer.lock().await.iter().enumerate() {
-            let value = serde_json::from_str::<serde_json::Value>(entry)?;
-            assert_json_include!(actual: value, expected: &expected[idx]);
-        }
-
-        Ok(())
+                Ok(())
+            }
+            .boxed()
+        })
+        .await
     }
 
     #[tokio::test]
     async fn test_step_with_measurement_series_element() -> Result<()> {
         let expected = [
-            json!({"schemaVersion":{"major":2,"minor":0},"sequenceNumber":1}),
-            json!({"sequenceNumber":2,"testRunArtifact":{"testRunStart":{"dutInfo":{"dutInfoId":"dut_id","hardwareInfos":null,"metadata":null,"name":null,"platformInfos":null,"softwareInfos":null},"metadata":null,"name":"run_name","parameters":{},"version":"1.0"}}}),
-            json!({"sequenceNumber":3,"testStepArtifact":{"testStepStart":{"name":"first step"}}}),
-            json!({"sequenceNumber":4,"testStepArtifact":{"measurementSeriesStart":{"hardwareInfoId":null,"measurementSeriesId":"series_1","metadata":null,"name":"name","subComponent":null,"unit":null,"validators":null}}}),
-            json!({"sequenceNumber":5,"testStepArtifact":{"measurementSeriesElement":{"index":0,"measurementSeriesId":"series_1","metadata":null,"value":60}}}),
-            json!({"sequenceNumber":6,"testStepArtifact":{"measurementSeriesEnd":{"measurementSeriesId":"series_1","totalCount":1}}}),
-            json!({"sequenceNumber":7,"testStepArtifact":{"testStepEnd":{"status":"COMPLETE"}}}),
-            json!({"sequenceNumber":8,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
+            json_schema_version(),
+            json_run_default_start(),
+            json_step_default_start(),
+            json!({
+                "sequenceNumber": 4,
+                "testStepArtifact": {
+                    "measurementSeriesStart": {
+                        "measurementSeriesId": "series_1",
+                        "name": "name"
+                    }
+                }
+            }),
+            json!({
+                "sequenceNumber": 5,
+                "testStepArtifact": {
+                    "measurementSeriesElement": {
+                        "index": 0,
+                        "measurementSeriesId": "series_1",
+                        "value": 60
+                    }
+                }
+            }),
+            json!({
+                "sequenceNumber": 6,
+                "testStepArtifact": {
+                    "measurementSeriesEnd": {
+                        "measurementSeriesId": "series_1",
+                        "totalCount": 1
+                    }
+                }
+            }),
+            json_step_complete(7),
+            json_run_pass(8),
         ];
-        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
-        let dut = DutInfo::builder("dut_id").build();
+        check_output_step(&expected, |step| {
+            async {
+                let series = step.measurement_series("name");
+                series.start().await?;
+                series.add_measurement(60.into()).await?;
+                series.end().await?;
 
-        let test_run = TestRun::builder("run_name", &dut, "1.0")
-            .config(
-                Config::builder()
-                    .with_buffer_output(Arc::clone(&buffer))
-                    .build(),
-            )
-            .build();
-        test_run.start().await?;
-
-        let step = test_run.step("first step")?;
-        step.start().await?;
-
-        let series = step.measurement_series("name");
-        series.start().await?;
-        series.add_measurement(60.into()).await?;
-        series.end().await?;
-
-        step.end(TestStatus::Complete).await?;
-
-        test_run.end(TestStatus::Complete, TestResult::Pass).await?;
-
-        for (idx, entry) in buffer.lock().await.iter().enumerate() {
-            let value = serde_json::from_str::<serde_json::Value>(entry)?;
-            assert_json_include!(actual: value, expected: &expected[idx]);
-        }
-
-        Ok(())
+                Ok(())
+            }
+            .boxed()
+        })
+        .await
     }
 
     #[tokio::test]
     async fn test_step_with_measurement_series_element_index_no() -> Result<()> {
         let expected = [
-            json!({"schemaVersion":{"major":2,"minor":0},"sequenceNumber":1}),
-            json!({"sequenceNumber":2,"testRunArtifact":{"testRunStart":{"dutInfo":{"dutInfoId":"dut_id","hardwareInfos":null,"metadata":null,"name":null,"platformInfos":null,"softwareInfos":null},"metadata":null,"name":"run_name","parameters":{},"version":"1.0"}}}),
-            json!({"sequenceNumber":3,"testStepArtifact":{"testStepStart":{"name":"first step"}}}),
-            json!({"sequenceNumber":4,"testStepArtifact":{"measurementSeriesStart":{"hardwareInfoId":null,"measurementSeriesId":"series_1","metadata":null,"name":"name","subComponent":null,"unit":null,"validators":null}}}),
-            json!({"sequenceNumber":5,"testStepArtifact":{"measurementSeriesElement":{"index":0,"measurementSeriesId":"series_1","metadata":null,"value":60}}}),
-            json!({"sequenceNumber":6,"testStepArtifact":{"measurementSeriesElement":{"index":1,"measurementSeriesId":"series_1","metadata":null,"value":70}}}),
-            json!({"sequenceNumber":7,"testStepArtifact":{"measurementSeriesElement":{"index":2,"measurementSeriesId":"series_1","metadata":null,"value":80}}}),
-            json!({"sequenceNumber":8,"testStepArtifact":{"measurementSeriesEnd":{"measurementSeriesId":"series_1","totalCount":3}}}),
-            json!({"sequenceNumber":9,"testStepArtifact":{"testStepEnd":{"status":"COMPLETE"}}}),
-            json!({"sequenceNumber":10,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
+            json_schema_version(),
+            json_run_default_start(),
+            json_step_default_start(),
+            json!({
+                "sequenceNumber": 4,
+                "testStepArtifact": {
+                    "measurementSeriesStart": {
+                        "measurementSeriesId": "series_1",
+                        "name": "name"
+                    }
+                }
+            }),
+            json!({
+                "sequenceNumber": 5,
+                "testStepArtifact": {
+                    "measurementSeriesElement": {
+                        "index": 0,
+                        "measurementSeriesId": "series_1",
+                        "value": 60
+                    }
+                }
+            }),
+            json!({
+                "sequenceNumber": 6,
+                "testStepArtifact": {
+                    "measurementSeriesElement": {
+                        "index": 1,
+                        "measurementSeriesId": "series_1",
+                        "value": 70
+                    }
+                }
+            }),
+            json!({
+                "sequenceNumber": 7,
+                "testStepArtifact": {
+                    "measurementSeriesElement": {
+                        "index": 2,
+                        "measurementSeriesId": "series_1",
+                        "value": 80
+                    }
+                }
+            }),
+            json!({
+                "sequenceNumber": 8,
+                "testStepArtifact": {
+                    "measurementSeriesEnd": {
+                        "measurementSeriesId": "series_1",
+                        "totalCount": 3
+                    }
+                }
+            }),
+            json_step_complete(9),
+            json_run_pass(10),
         ];
-        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
-        let dut = DutInfo::builder("dut_id").build();
+        check_output_step(&expected, |step| {
+            async {
+                let series = step.measurement_series("name");
+                series.start().await?;
+                // add more than one element to check the index increments correctly
+                series.add_measurement(60.into()).await?;
+                series.add_measurement(70.into()).await?;
+                series.add_measurement(80.into()).await?;
+                series.end().await?;
 
-        let test_run = TestRun::builder("run_name", &dut, "1.0")
-            .config(
-                Config::builder()
-                    .with_buffer_output(Arc::clone(&buffer))
-                    .build(),
-            )
-            .build();
-        test_run.start().await?;
-
-        let step = test_run.step("first step")?;
-        step.start().await?;
-        let series = step.measurement_series("name");
-        series.start().await?;
-        // add more than one element to check the index increments correctly
-        series.add_measurement(60.into()).await?;
-        series.add_measurement(70.into()).await?;
-        series.add_measurement(80.into()).await?;
-        series.end().await?;
-        step.end(TestStatus::Complete).await?;
-
-        test_run.end(TestStatus::Complete, TestResult::Pass).await?;
-
-        for (idx, entry) in buffer.lock().await.iter().enumerate() {
-            let value = serde_json::from_str::<serde_json::Value>(entry)?;
-            assert_json_include!(actual: value, expected: &expected[idx]);
-        }
-
-        Ok(())
+                Ok(())
+            }
+            .boxed()
+        })
+        .await
     }
 
     #[tokio::test]
     async fn test_step_with_measurement_series_element_with_metadata() -> Result<()> {
         let expected = [
-            json!({"schemaVersion":{"major":2,"minor":0},"sequenceNumber":1}),
-            json!({"sequenceNumber":2,"testRunArtifact":{"testRunStart":{"dutInfo":{"dutInfoId":"dut_id","hardwareInfos":null,"metadata":null,"name":null,"platformInfos":null,"softwareInfos":null},"metadata":null,"name":"run_name","parameters":{},"version":"1.0"}}}),
-            json!({"sequenceNumber":3,"testStepArtifact":{"testStepStart":{"name":"first step"}}}),
-            json!({"sequenceNumber":4,"testStepArtifact":{"measurementSeriesStart":{"hardwareInfoId":null,"measurementSeriesId":"series_1","metadata":null,"name":"name","subComponent":null,"unit":null,"validators":null}}}),
-            json!({"sequenceNumber":5,"testStepArtifact":{"measurementSeriesElement":{"index":0,"measurementSeriesId":"series_1","metadata":{"key": "value"},"value":60}}}),
-            json!({"sequenceNumber":6,"testStepArtifact":{"measurementSeriesEnd":{"measurementSeriesId":"series_1","totalCount":1}}}),
-            json!({"sequenceNumber":7,"testStepArtifact":{"testStepEnd":{"status":"COMPLETE"}}}),
-            json!({"sequenceNumber":8,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
+            json_schema_version(),
+            json_run_default_start(),
+            json_step_default_start(),
+            json!({
+                "sequenceNumber": 4,
+                "testStepArtifact": {
+                    "measurementSeriesStart": {
+                        "measurementSeriesId": "series_1",
+                        "name": "name"
+                    }
+                }
+            }),
+            json!({
+                "sequenceNumber": 5,
+                "testStepArtifact": {
+                    "measurementSeriesElement": {
+                        "index": 0,
+                        "measurementSeriesId": "series_1",
+                        "metadata": {
+                            "key": "value"
+                        },
+                        "value": 60
+                    }
+                }
+            }),
+            json!({
+                "sequenceNumber": 6,
+                "testStepArtifact": {
+                    "measurementSeriesEnd": {
+                        "measurementSeriesId": "series_1",
+                        "totalCount": 1
+                    }
+                }
+            }),
+            json_step_complete(7),
+            json_run_pass(8),
         ];
-        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
-        let dut = DutInfo::builder("dut_id").build();
+        check_output_step(&expected, |step| {
+            async {
+                let series = step.measurement_series("name");
+                series.start().await?;
+                series
+                    .add_measurement_with_metadata(60.into(), vec![("key", "value".into())])
+                    .await?;
+                series.end().await?;
 
-        let test_run = TestRun::builder("run_name", &dut, "1.0")
-            .config(
-                Config::builder()
-                    .with_buffer_output(Arc::clone(&buffer))
-                    .build(),
-            )
-            .build();
-        test_run.start().await?;
-
-        let step = test_run.step("first step")?;
-        step.start().await?;
-        let series = step.measurement_series("name");
-        series.start().await?;
-        series
-            .add_measurement_with_metadata(60.into(), vec![("key", "value".into())])
-            .await?;
-        series.end().await?;
-        step.end(TestStatus::Complete).await?;
-
-        test_run.end(TestStatus::Complete, TestResult::Pass).await?;
-
-        for (idx, entry) in buffer.lock().await.iter().enumerate() {
-            let value = serde_json::from_str::<serde_json::Value>(entry)?;
-            assert_json_include!(actual: value, expected: &expected[idx]);
-        }
-
-        Ok(())
+                Ok(())
+            }
+            .boxed()
+        })
+        .await
     }
 
     #[tokio::test]
     async fn test_step_with_measurement_series_element_with_metadata_index_no() -> Result<()> {
         let expected = [
-            json!({"schemaVersion":{"major":2,"minor":0},"sequenceNumber":1}),
-            json!({"sequenceNumber":2,"testRunArtifact":{"testRunStart":{"dutInfo":{"dutInfoId":"dut_id","hardwareInfos":null,"metadata":null,"name":null,"platformInfos":null,"softwareInfos":null},"metadata":null,"name":"run_name","parameters":{},"version":"1.0"}}}),
-            json!({"sequenceNumber":3,"testStepArtifact":{"testStepStart":{"name":"first step"}}}),
-            json!({"sequenceNumber":4,"testStepArtifact":{"measurementSeriesStart":{"hardwareInfoId":null,"measurementSeriesId":"series_1","metadata":null,"name":"name","subComponent":null,"unit":null,"validators":null}}}),
-            json!({"sequenceNumber":5,"testStepArtifact":{"measurementSeriesElement":{"index":0,"measurementSeriesId":"series_1","metadata":{"key": "value"},"value":60}}}),
-            json!({"sequenceNumber":6,"testStepArtifact":{"measurementSeriesElement":{"index":1,"measurementSeriesId":"series_1","metadata":{"key2": "value2"},"value":70}}}),
-            json!({"sequenceNumber":7,"testStepArtifact":{"measurementSeriesElement":{"index":2,"measurementSeriesId":"series_1","metadata":{"key3": "value3"},"value":80}}}),
-            json!({"sequenceNumber":8,"testStepArtifact":{"measurementSeriesEnd":{"measurementSeriesId":"series_1","totalCount":3}}}),
-            json!({"sequenceNumber":9,"testStepArtifact":{"testStepEnd":{"status":"COMPLETE"}}}),
-            json!({"sequenceNumber":10,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
+            json_schema_version(),
+            json_run_default_start(),
+            json_step_default_start(),
+            json!({
+                "sequenceNumber": 4,
+                "testStepArtifact": {
+                    "measurementSeriesStart": {
+                        "measurementSeriesId": "series_1",
+                        "name": "name"
+                    }
+                }
+            }),
+            json!({
+                "sequenceNumber": 5,
+                "testStepArtifact": {
+                    "measurementSeriesElement": {
+                        "index": 0,
+                        "measurementSeriesId": "series_1",
+                        "metadata": {"key": "value"},
+                        "value": 60
+                    }
+                }
+            }),
+            json!({
+                "sequenceNumber": 6,
+                "testStepArtifact": {
+                    "measurementSeriesElement": {
+                        "index": 1,
+                        "measurementSeriesId": "series_1",
+                        "metadata": {"key2": "value2"},
+                        "value": 70
+                    }
+                }
+            }),
+            json!({
+                "sequenceNumber": 7,
+                "testStepArtifact": {
+                    "measurementSeriesElement": {
+                        "index": 2,
+                        "measurementSeriesId": "series_1",
+                        "metadata": {"key3": "value3"},
+                        "value": 80
+                    }
+                }
+            }),
+            json!({
+                "sequenceNumber": 8,
+                "testStepArtifact": {
+                    "measurementSeriesEnd": {
+                        "measurementSeriesId": "series_1",
+                        "totalCount": 3
+                    }
+                }
+            }),
+            json_step_complete(9),
+            json_run_pass(10),
         ];
-        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
-        let dut = DutInfo::builder("dut_id").build();
+        check_output_step(&expected, |step| {
+            async {
+                let series = step.measurement_series("name");
+                series.start().await?;
+                // add more than one element to check the index increments correctly
+                series
+                    .add_measurement_with_metadata(60.into(), vec![("key", "value".into())])
+                    .await?;
+                series
+                    .add_measurement_with_metadata(70.into(), vec![("key2", "value2".into())])
+                    .await?;
+                series
+                    .add_measurement_with_metadata(80.into(), vec![("key3", "value3".into())])
+                    .await?;
+                series.end().await?;
 
-        let test_run = TestRun::builder("run_name", &dut, "1.0")
-            .config(
-                Config::builder()
-                    .with_buffer_output(Arc::clone(&buffer))
-                    .build(),
-            )
-            .build();
-        test_run.start().await?;
-
-        let step = test_run.step("first step")?;
-        step.start().await?;
-        let series = step.measurement_series("name");
-        series.start().await?;
-        // add more than one element to check the index increments correctly
-        series
-            .add_measurement_with_metadata(60.into(), vec![("key", "value".into())])
-            .await?;
-        series
-            .add_measurement_with_metadata(70.into(), vec![("key2", "value2".into())])
-            .await?;
-        series
-            .add_measurement_with_metadata(80.into(), vec![("key3", "value3".into())])
-            .await?;
-        series.end().await?;
-        step.end(TestStatus::Complete).await?;
-
-        test_run.end(TestStatus::Complete, TestResult::Pass).await?;
-
-        for (idx, entry) in buffer.lock().await.iter().enumerate() {
-            let value = serde_json::from_str::<serde_json::Value>(entry)?;
-            assert_json_include!(actual: value, expected: &expected[idx]);
-        }
-
-        Ok(())
+                Ok(())
+            }
+            .boxed()
+        })
+        .await
     }
 
     #[tokio::test]
     async fn test_step_with_measurement_series_scope() -> Result<()> {
         let expected = [
-            json!({"schemaVersion":{"major":2,"minor":0},"sequenceNumber":1}),
-            json!({"sequenceNumber":2,"testRunArtifact":{"testRunStart":{"dutInfo":{"dutInfoId":"dut_id","hardwareInfos":null,"metadata":null,"name":null,"platformInfos":null,"softwareInfos":null},"metadata":null,"name":"run_name","parameters":{},"version":"1.0"}}}),
-            json!({"sequenceNumber":3,"testStepArtifact":{"testStepStart":{"name":"first step"}}}),
-            json!({"sequenceNumber":4,"testStepArtifact":{"measurementSeriesStart":{"hardwareInfoId":null,"measurementSeriesId":"series_1","metadata":null,"name":"name","subComponent":null,"unit":null,"validators":null}}}),
-            json!({"sequenceNumber":5,"testStepArtifact":{"measurementSeriesElement":{"index":0,"measurementSeriesId":"series_1","metadata":null,"value":60}}}),
-            json!({"sequenceNumber":6,"testStepArtifact":{"measurementSeriesElement":{"index":1,"measurementSeriesId":"series_1","metadata":null,"value":70}}}),
-            json!({"sequenceNumber":7,"testStepArtifact":{"measurementSeriesElement":{"index":2,"measurementSeriesId":"series_1","metadata":null,"value":80}}}),
-            json!({"sequenceNumber":8,"testStepArtifact":{"measurementSeriesEnd":{"measurementSeriesId":"series_1","totalCount":3}}}),
-            json!({"sequenceNumber":9,"testStepArtifact":{"testStepEnd":{"status":"COMPLETE"}}}),
-            json!({"sequenceNumber":10,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
+            json_schema_version(),
+            json_run_default_start(),
+            json_step_default_start(),
+            json!({
+                "sequenceNumber": 4,
+                "testStepArtifact": {
+                    "measurementSeriesStart": {
+                        "measurementSeriesId": "series_1",
+                        "name": "name"
+                    }
+                }
+            }),
+            json!({
+                "sequenceNumber": 5,
+                "testStepArtifact": {
+                    "measurementSeriesElement": {
+                        "index": 0,
+                        "measurementSeriesId": "series_1",
+                        "value": 60
+                    }
+                }
+            }),
+            json!({
+                "sequenceNumber": 6,
+                "testStepArtifact": {
+                    "measurementSeriesElement": {
+                        "index": 1,
+                        "measurementSeriesId": "series_1",
+                        "value": 70
+                    }
+                }
+            }),
+            json!({
+                "sequenceNumber": 7,
+                "testStepArtifact": {
+                    "measurementSeriesElement": {
+                        "index": 2,
+                        "measurementSeriesId": "series_1",
+                        "value": 80
+                    }
+                }
+            }),
+            json!({
+                "sequenceNumber": 8,
+                "testStepArtifact": {
+                    "measurementSeriesEnd": {
+                        "measurementSeriesId": "series_1",
+                        "totalCount": 3
+                    }
+                }
+            }),
+            json_step_complete(9),
+            json_run_pass(10),
         ];
-        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
-        let dut = DutInfo::builder("dut_id").build();
+        check_output_step(&expected, |step| {
+            async {
+                let series = step.measurement_series("name");
+                series
+                    .scope(|s| async {
+                        s.add_measurement(60.into()).await?;
+                        s.add_measurement(70.into()).await?;
+                        s.add_measurement(80.into()).await?;
 
-        let test_run = TestRun::builder("run_name", &dut, "1.0")
-            .config(
-                Config::builder()
-                    .with_buffer_output(Arc::clone(&buffer))
-                    .build(),
-            )
-            .build();
-        test_run.start().await?;
-
-        let step = test_run.step("first step")?;
-        step.start().await?;
-        let series = step.measurement_series("name");
-        series
-            .scope(|s| async {
-                s.add_measurement(60.into()).await?;
-                s.add_measurement(70.into()).await?;
-                s.add_measurement(80.into()).await?;
+                        Ok(())
+                    })
+                    .await?;
 
                 Ok(())
-            })
-            .await?;
-        step.end(TestStatus::Complete).await?;
-
-        test_run.end(TestStatus::Complete, TestResult::Pass).await?;
-
-        for (idx, entry) in buffer.lock().await.iter().enumerate() {
-            let value = serde_json::from_str::<serde_json::Value>(entry)?;
-            assert_json_include!(actual: value, expected: &expected[idx]);
-        }
-
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_config_builder() -> Result<()> {
-        let expected = [
-            json!({"schemaVersion":{"major":2,"minor":0},"sequenceNumber":1}),
-            json!({"sequenceNumber":2,"testRunArtifact":{"testRunStart":{"dutInfo":{"dutInfoId":"dut_id","hardwareInfos":null,"metadata":null,"name":null,"platformInfos":null,"softwareInfos":null},"metadata":null,"name":"run_name","parameters":{},"version":"1.0"}}}),
-            json!({"sequenceNumber":3,"testRunArtifact":{"error":{"message":"Error message","softwareInfoIds":null,"sourceLocation":null,"symptom":"symptom"}}}),
-            json!({"sequenceNumber":4,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
-        ];
-        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
-
-        let dut = DutInfo::builder("dut_id").build();
-
-        let test_run = TestRun::builder("run_name", &dut, "1.0")
-            .config(
-                Config::builder()
-                    .with_buffer_output(Arc::clone(&buffer))
-                    .timezone(chrono_tz::Europe::Rome)
-                    .with_file_output(std::env::temp_dir().join("file.txt"))
-                    .await?
-                    .build(),
-            )
-            .build();
-        test_run.start().await?;
-        test_run.error_with_msg("symptom", "Error message").await?;
-        test_run.end(TestStatus::Complete, TestResult::Pass).await?;
-
-        for (idx, entry) in buffer.lock().await.iter().enumerate() {
-            let value = serde_json::from_str::<serde_json::Value>(entry)?;
-            assert_json_include!(actual: value, expected: &expected[idx]);
-        }
-
-        Ok(())
+            }
+            .boxed()
+        })
+        .await
     }
 
     #[tokio::test]
@@ -2447,63 +2516,71 @@ mod tests {
     #[tokio::test]
     async fn test_testrun_metadata() -> Result<()> {
         let expected = [
-            json!({"schemaVersion":{"major":2,"minor":0},"sequenceNumber":1}),
-            json!({"sequenceNumber":2,"testRunArtifact":{"testRunStart":{"dutInfo":{"dutInfoId":"dut_id","hardwareInfos":null,"metadata":null,"name":null,"platformInfos":null,"softwareInfos":null},"metadata":{"key": "value"},"name":"run_name","parameters":{},"version":"1.0"}}}),
-            json!({"sequenceNumber":3,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
+            json_schema_version(),
+            json!({
+                "sequenceNumber": 2,
+                "testRunArtifact": {
+                    "testRunStart": {
+                        "dutInfo": {
+                            "dutInfoId": "dut_id"
+                        },
+                        "metadata": {"key": "value"},
+                        "name": "run_name",
+                        "parameters": {},
+                        "version": "1.0"
+                    }
+                }
+            }),
+            json_run_pass(3),
         ];
-        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
-        let dut = DutInfo::builder("dut_id").build();
-
-        let test_run = TestRun::builder("run_name", &dut, "1.0")
-            .config(
-                Config::builder()
-                    .with_buffer_output(Arc::clone(&buffer))
-                    .build(),
-            )
-            .add_metadata("key", "value".into())
-            .build();
-        test_run.start().await?;
-        test_run.end(TestStatus::Complete, TestResult::Pass).await?;
-
-        for (idx, entry) in buffer.lock().await.iter().enumerate() {
-            let value = serde_json::from_str::<serde_json::Value>(entry)?;
-            assert_json_include!(actual: value, expected: &expected[idx]);
-        }
-
-        Ok(())
+        check_output(&expected, |run_builder| async {
+            let run = run_builder.add_metadata("key", "value".into()).build();
+            run.start().await?;
+            run.end(TestStatus::Complete, TestResult::Pass).await?;
+            Ok(())
+        })
+        .await
     }
 
     #[tokio::test]
     async fn test_testrun_builder() -> Result<()> {
         let expected = [
-            json!({"schemaVersion":{"major":2,"minor":0},"sequenceNumber":1}),
-            json!({"sequenceNumber":2,"testRunArtifact":{"testRunStart":{"commandLine":"cmd_line", "dutInfo":{"dutInfoId":"dut_id","hardwareInfos":null,"metadata":null,"name":null,"platformInfos":null,"softwareInfos":null},"metadata":{"key": "value", "key2": "value2"},"name":"run_name","parameters":{"key": "value"},"version":"1.0"}}}),
-            json!({"sequenceNumber":3,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
+            json_schema_version(),
+            json!({
+                "testRunArtifact": {
+                    "testRunStart": {
+                        "commandLine": "cmd_line",
+                        "dutInfo": {
+                            "dutInfoId": "dut_id"
+                        },
+                        "metadata": {
+                            "key": "value",
+                            "key2": "value2"
+                        },
+                        "name": "run_name",
+                        "parameters": {
+                            "key": "value"
+                        },
+                        "version": "1.0"
+                    }
+                },
+                "sequenceNumber": 2
+            }),
+            json_run_pass(3),
         ];
-        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
-        let dut = DutInfo::builder("dut_id").build();
-
-        let test_run = TestRun::builder("run_name", &dut, "1.0")
-            .config(
-                Config::builder()
-                    .with_buffer_output(Arc::clone(&buffer))
-                    .build(),
-            )
-            .add_metadata("key", "value".into())
-            .add_metadata("key2", "value2".into())
-            .add_parameter("key", "value".into())
-            .command_line("cmd_line")
-            .build();
-        test_run.start().await?;
-        test_run.end(TestStatus::Complete, TestResult::Pass).await?;
-
-        for (idx, entry) in buffer.lock().await.iter().enumerate() {
-            let value = serde_json::from_str::<serde_json::Value>(entry)?;
-            assert_json_include!(actual: value, expected: &expected[idx]);
-        }
-
-        Ok(())
+        check_output(&expected, |run_builder| async {
+            let run = run_builder
+                .add_metadata("key", "value".into())
+                .add_metadata("key2", "value2".into())
+                .add_parameter("key", "value".into())
+                .command_line("cmd_line")
+                .build();
+            run.start().await?;
+            run.end(TestStatus::Complete, TestResult::Pass).await?;
+            Ok(())
+        })
+        .await
     }
 }
