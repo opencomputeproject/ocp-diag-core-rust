@@ -16,7 +16,7 @@ use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 use tokio::sync::Mutex;
 
-use crate::models;
+use crate::output::models;
 
 #[derive(Debug, thiserror::Error, derive_more::Display)]
 #[non_exhaustive]
@@ -133,7 +133,7 @@ mod tests {
     use serde_json::json;
 
     use super::*;
-    use crate::objects::*;
+    use crate::output::objects::*;
 
     #[tokio::test]
     async fn test_emit_using_buffer_writer() -> Result<()> {

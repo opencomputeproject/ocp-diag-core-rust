@@ -25,11 +25,11 @@
 /// use std::io::Write;
 /// use std::io::{self};
 ///
-/// use ocptv_formatter::ocptv_error;
-/// use ocptv_formatter::Error;
-/// use ocptv_formatter::TestResult;
-/// use ocptv_formatter::TestRun;
-/// use ocptv_formatter::TestStatus;
+/// use ocptv::ocptv_error;
+/// use ocptv::output::Error;
+/// use ocptv::output::TestResult;
+/// use ocptv::output::TestRun;
+/// use ocptv::output::TestStatus;
 ///
 /// let test_run = TestRun::new("run_name", "my_dut", "1.0");
 /// test_run.start().unwrap();
@@ -45,11 +45,11 @@
 /// use std::io::Write;
 /// use std::io::{self};
 ///
-/// use ocptv_formatter::ocptv_error;
-/// use ocptv_formatter::Error;
-/// use ocptv_formatter::TestResult;
-/// use ocptv_formatter::TestRun;
-/// use ocptv_formatter::TestStatus;
+/// use ocptv::ocptv_error;
+/// use ocptv::output::Error;
+/// use ocptv::output::TestResult;
+/// use ocptv::output::TestRun;
+/// use ocptv::output::TestStatus;
 ///
 /// let test_run = TestRun::new("run_name", "my_dut", "1.0");
 /// test_run.start().unwrap();
@@ -64,7 +64,7 @@ macro_rules! ocptv_error {
         async {
             $runner
                 .error_with_details(
-                    &$crate::Error::builder($symptom)
+                    &$crate::output::Error::builder($symptom)
                         .message($msg)
                         .source(file!(), line!() as i32)
                         .build(),
@@ -76,7 +76,7 @@ macro_rules! ocptv_error {
         async {
             $runner
                 .error_with_details(
-                    &$crate::Error::builder($symptom)
+                    &$crate::output::Error::builder($symptom)
                         .source(file!(), line!() as i32)
                         .build(),
                 )
@@ -103,15 +103,15 @@ macro_rules! ocptv_error {
 /// use std::io::Write;
 /// use std::io::{self};
 ///
-/// use ocptv_formatter::ocptv_log_debug;
-/// use ocptv_formatter::ocptv_log_error;
-/// use ocptv_formatter::ocptv_log_fatal;
-/// use ocptv_formatter::ocptv_log_info;
-/// use ocptv_formatter::ocptv_log_warning;
-/// use ocptv_formatter::LogSeverity;
-/// use ocptv_formatter::TestResult;
-/// use ocptv_formatter::TestRun;
-/// use ocptv_formatter::TestStatus;
+/// use ocptv::ocptv_log_debug;
+/// use ocptv::ocptv_log_error;
+/// use ocptv::ocptv_log_fatal;
+/// use ocptv::ocptv_log_info;
+/// use ocptv::ocptv_log_warning;
+/// use ocptv::output::LogSeverity;
+/// use ocptv::output::TestResult;
+/// use ocptv::output::TestRun;
+/// use ocptv::output::TestStatus;
 ///
 /// let test_run = TestRun::new("run_name", "my_dut", "1.0");
 /// test_run.start().unwrap();
@@ -127,8 +127,8 @@ macro_rules! ocptv_log_debug {
         async {
             $runner
                 .log_with_details(
-                    &$crate::Log::builder($msg)
-                        .severity($crate::LogSeverity::Debug)
+                    &$crate::output::Log::builder($msg)
+                        .severity($crate::output::LogSeverity::Debug)
                         .source(file!(), line!() as i32)
                         .build(),
                 )
@@ -143,8 +143,8 @@ macro_rules! ocptv_log_info {
         async {
             $runner
                 .log_with_details(
-                    &$crate::Log::builder($msg)
-                        .severity($crate::LogSeverity::Info)
+                    &$crate::output::Log::builder($msg)
+                        .severity($crate::output::LogSeverity::Info)
                         .source(file!(), line!() as i32)
                         .build(),
                 )
@@ -159,8 +159,8 @@ macro_rules! ocptv_log_warning {
         async {
             $runner
                 .log_with_details(
-                    &$crate::Log::builder($msg)
-                        .severity($crate::LogSeverity::Warning)
+                    &$crate::output::Log::builder($msg)
+                        .severity($crate::output::LogSeverity::Warning)
                         .source(file!(), line!() as i32)
                         .build(),
                 )
@@ -175,8 +175,8 @@ macro_rules! ocptv_log_error {
         async {
             $runner
                 .log_with_details(
-                    &$crate::Log::builder($msg)
-                        .severity($crate::LogSeverity::Error)
+                    &$crate::output::Log::builder($msg)
+                        .severity($crate::output::LogSeverity::Error)
                         .source(file!(), line!() as i32)
                         .build(),
                 )
@@ -191,8 +191,8 @@ macro_rules! ocptv_log_fatal {
         async {
             $runner
                 .log_with_details(
-                    &$crate::Log::builder($msg)
-                        .severity($crate::LogSeverity::Fatal)
+                    &$crate::output::Log::builder($msg)
+                        .severity($crate::output::LogSeverity::Fatal)
                         .source(file!(), line!() as i32)
                         .build(),
                 )
@@ -211,8 +211,8 @@ mod tests {
     use serde_json::json;
     use tokio::sync::Mutex;
 
-    use crate::objects::*;
-    use crate::runner::*;
+    use crate::output::objects::*;
+    use crate::output::runner::*;
 
     #[tokio::test]
     async fn test_ocptv_error_macro_with_symptom_and_message() -> Result<()> {

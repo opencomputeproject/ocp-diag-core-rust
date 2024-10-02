@@ -8,7 +8,7 @@ use chrono::DateTime;
 use serde_json::Map;
 use serde_json::Value;
 
-use crate::models;
+use crate::output::models;
 
 pub enum ArtifactContext {
     TestRun,
@@ -886,8 +886,8 @@ impl SoftwareInfoBuilder {
 /// ## Create a Measurement object with the `new` method
 ///
 /// ```
-/// use ocptv_formatter::Measurement;
-/// use ocptv_formatter::Value;
+/// use ocptv::output::Measurement;
+/// use ocptv::output::Value;
 ///
 /// let measurement = Measurement::new("name", Value::from(50));
 /// ```
@@ -895,12 +895,12 @@ impl SoftwareInfoBuilder {
 /// ## Create a Measurement object with the `builder` method
 ///
 /// ```
-/// use ocptv_formatter::HardwareInfo;
-/// use ocptv_formatter::Measurement;
-/// use ocptv_formatter::Subcomponent;
-/// use ocptv_formatter::Validator;
-/// use ocptv_formatter::ValidatorType;
-/// use ocptv_formatter::Value;
+/// use ocptv::output::HardwareInfo;
+/// use ocptv::output::Measurement;
+/// use ocptv::output::Subcomponent;
+/// use ocptv::output::Validator;
+/// use ocptv::output::ValidatorType;
+/// use ocptv::output::Value;
 ///
 /// let measurement = Measurement::builder("name", Value::from(50))
 ///     .hardware_info(&HardwareInfo::builder("id", "name").build())
@@ -925,8 +925,8 @@ impl Measurement {
     /// # Examples
     ///
     /// ```
-    /// use ocptv_formatter::Measurement;
-    /// use ocptv_formatter::Value;
+    /// use ocptv::output::Measurement;
+    /// use ocptv::output::Value;
     ///
     /// let measurement = Measurement::new("name", Value::from(50));
     /// ```
@@ -947,12 +947,12 @@ impl Measurement {
     /// # Examples
     ///
     /// ```
-    /// use ocptv_formatter::HardwareInfo;
-    /// use ocptv_formatter::Measurement;
-    /// use ocptv_formatter::Subcomponent;
-    /// use ocptv_formatter::Validator;
-    /// use ocptv_formatter::ValidatorType;
-    /// use ocptv_formatter::Value;
+    /// use ocptv::output::HardwareInfo;
+    /// use ocptv::output::Measurement;
+    /// use ocptv::output::Subcomponent;
+    /// use ocptv::output::Validator;
+    /// use ocptv::output::ValidatorType;
+    /// use ocptv::output::Value;
     ///
     /// let measurement = Measurement::builder("name", Value::from(50))
     ///     .hardware_info(&HardwareInfo::builder("id", "name").build())
@@ -970,8 +970,8 @@ impl Measurement {
     /// # Examples
     ///
     /// ```
-    /// use ocptv_formatter::Measurement;
-    /// use ocptv_formatter::Value;
+    /// use ocptv::output::Measurement;
+    /// use ocptv::output::Value;
     ///
     /// let measurement = Measurement::new("name", Value::from(50));
     /// let _ = measurement.to_artifact();
@@ -1005,13 +1005,13 @@ impl Measurement {
 /// # Examples
 ///
 /// ```
-/// use ocptv_formatter::HardwareInfo;
-/// use ocptv_formatter::Measurement;
-/// use ocptv_formatter::MeasurementBuilder;
-/// use ocptv_formatter::Subcomponent;
-/// use ocptv_formatter::Validator;
-/// use ocptv_formatter::ValidatorType;
-/// use ocptv_formatter::Value;
+/// use ocptv::output::HardwareInfo;
+/// use ocptv::output::Measurement;
+/// use ocptv::output::MeasurementBuilder;
+/// use ocptv::output::Subcomponent;
+/// use ocptv::output::Validator;
+/// use ocptv::output::ValidatorType;
+/// use ocptv::output::Value;
 ///
 /// let builder = MeasurementBuilder::new("name", Value::from(50))
 ///     .hardware_info(&HardwareInfo::builder("id", "name").build())
@@ -1036,8 +1036,8 @@ impl MeasurementBuilder {
     /// # Examples
     ///
     /// ```
-    /// use ocptv_formatter::MeasurementBuilder;
-    /// use ocptv_formatter::Value;
+    /// use ocptv::output::MeasurementBuilder;
+    /// use ocptv::output::Value;
     ///
     /// let builder = MeasurementBuilder::new("name", Value::from(50));
     /// ```
@@ -1058,12 +1058,12 @@ impl MeasurementBuilder {
     /// # Examples
     ///
     /// ```
-    /// use ocptv_formatter::HardwareInfo;
-    /// use ocptv_formatter::MeasurementBuilder;
-    /// use ocptv_formatter::Subcomponent;
-    /// use ocptv_formatter::Validator;
-    /// use ocptv_formatter::ValidatorType;
-    /// use ocptv_formatter::Value;
+    /// use ocptv::output::HardwareInfo;
+    /// use ocptv::output::MeasurementBuilder;
+    /// use ocptv::output::Subcomponent;
+    /// use ocptv::output::Validator;
+    /// use ocptv::output::ValidatorType;
+    /// use ocptv::output::Value;
     ///
     /// let builder = MeasurementBuilder::new("name", Value::from(50))
     ///     .add_validator(&Validator::builder(ValidatorType::Equal, Value::from(30)).build());
@@ -1084,9 +1084,9 @@ impl MeasurementBuilder {
     /// # Examples
     ///
     /// ```
-    /// use ocptv_formatter::HardwareInfo;
-    /// use ocptv_formatter::MeasurementBuilder;
-    /// use ocptv_formatter::Value;
+    /// use ocptv::output::HardwareInfo;
+    /// use ocptv::output::MeasurementBuilder;
+    /// use ocptv::output::Value;
     ///
     /// let builder = MeasurementBuilder::new("name", Value::from(50))
     ///     .hardware_info(&HardwareInfo::builder("id", "name").build());
@@ -1101,9 +1101,9 @@ impl MeasurementBuilder {
     /// # Examples
     ///
     /// ```
-    /// use ocptv_formatter::MeasurementBuilder;
-    /// use ocptv_formatter::Subcomponent;
-    /// use ocptv_formatter::Value;
+    /// use ocptv::output::MeasurementBuilder;
+    /// use ocptv::output::Subcomponent;
+    /// use ocptv::output::Value;
     ///
     /// let builder = MeasurementBuilder::new("name", Value::from(50))
     ///     .subcomponent(&Subcomponent::builder("name").build());
@@ -1118,8 +1118,8 @@ impl MeasurementBuilder {
     /// # Examples
     ///
     /// ```
-    /// use ocptv_formatter::MeasurementBuilder;
-    /// use ocptv_formatter::Value;
+    /// use ocptv::output::MeasurementBuilder;
+    /// use ocptv::output::Value;
     ///
     /// let builder =
     ///     MeasurementBuilder::new("name", Value::from(50)).add_metadata("key", Value::from("value"));
@@ -1145,8 +1145,8 @@ impl MeasurementBuilder {
     /// # Examples
     ///
     /// ```
-    /// use ocptv_formatter::MeasurementBuilder;
-    /// use ocptv_formatter::Value;
+    /// use ocptv::output::MeasurementBuilder;
+    /// use ocptv::output::Value;
     ///
     /// let builder = MeasurementBuilder::new("name", Value::from(50000)).unit("RPM");
     /// ```
@@ -1160,8 +1160,8 @@ impl MeasurementBuilder {
     /// # Examples
     ///
     /// ```
-    /// use ocptv_formatter::MeasurementBuilder;
-    /// use ocptv_formatter::Value;
+    /// use ocptv::output::MeasurementBuilder;
+    /// use ocptv::output::Value;
     ///
     /// let builder = MeasurementBuilder::new("name", Value::from(50));
     /// let measurement = builder.build();
@@ -1383,8 +1383,8 @@ mod tests {
     use serde_json::Value;
 
     use super::*;
-    use crate::models;
-    use crate::models::ValidatorType;
+    use crate::output::models;
+    use crate::output::models::ValidatorType;
 
     #[test]
     fn test_schema_creation_from_builder() {

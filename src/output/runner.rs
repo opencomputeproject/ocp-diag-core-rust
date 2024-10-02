@@ -19,9 +19,9 @@ use serde_json::Map;
 use serde_json::Value;
 use tokio::sync::Mutex;
 
-use crate::emitters;
-use crate::models;
-use crate::objects;
+use crate::output::emitters;
+use crate::output::models;
+use crate::output::objects;
 
 /// The configuration repository for the TestRun.
 pub struct Config {
@@ -34,7 +34,7 @@ impl Config {
     ///
     /// # Examples
     /// ```
-    /// use ocptv_formatter::Config;
+    /// use ocptv::output::Config;
     ///
     /// let builder = Config::builder();
     /// ```
@@ -129,8 +129,8 @@ impl TestRun {
     /// # Examples
     ///
     /// ```
-    /// use ocptv_formatter::DutInfo;
-    /// use ocptv_formatter::TestRun;
+    /// use ocptv::output::DutInfo;
+    /// use ocptv::output::TestRun;
     ///
     /// let dut = DutInfo::builder("my_dut").build();
     /// let builder = TestRun::builder("run_name", &dut, "1.0");
@@ -144,7 +144,7 @@ impl TestRun {
     /// # Examples
     ///
     /// ```
-    /// use ocptv_formatter::TestRun;
+    /// use ocptv::output::TestRun;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// ```
@@ -161,7 +161,7 @@ impl TestRun {
     /// # Examples
     ///
     /// ```
-    /// use ocptv_formatter::TestRun;
+    /// use ocptv::output::TestRun;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// test_run.start().await?;
@@ -204,9 +204,9 @@ impl TestRun {
     /// # Examples
     ///
     /// ```
-    /// use ocptv_formatter::TestResult;
-    /// use ocptv_formatter::TestRun;
-    /// use ocptv_formatter::TestStatus;
+    /// use ocptv::output::TestResult;
+    /// use ocptv::output::TestRun;
+    /// use ocptv::output::TestStatus;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// test_run.start().await?;
@@ -240,11 +240,11 @@ impl TestRun {
     /// # Examples
     ///
     /// ```
-    /// use ocptv_formatter::LogSeverity;
-    /// use ocptv_formatter::TestResult;
-    /// use ocptv_formatter::TestRun;
-    /// use ocptv_formatter::TestRunOutcome;
-    /// use ocptv_formatter::TestStatus;
+    /// use ocptv::output::LogSeverity;
+    /// use ocptv::output::TestResult;
+    /// use ocptv::output::TestRun;
+    /// use ocptv::output::TestRunOutcome;
+    /// use ocptv::output::TestStatus;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// test_run.scope(|r| {
@@ -275,10 +275,10 @@ impl TestRun {
     /// # Examples
     ///
     /// ```
-    /// use ocptv_formatter::LogSeverity;
-    /// use ocptv_formatter::TestResult;
-    /// use ocptv_formatter::TestRun;
-    /// use ocptv_formatter::TestStatus;
+    /// use ocptv::output::LogSeverity;
+    /// use ocptv::output::TestResult;
+    /// use ocptv::output::TestRun;
+    /// use ocptv::output::TestStatus;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// test_run.start().await?;
@@ -311,11 +311,11 @@ impl TestRun {
     /// # Examples
     ///
     /// ```
-    /// use ocptv_formatter::Log;
-    /// use ocptv_formatter::LogSeverity;
-    /// use ocptv_formatter::TestResult;
-    /// use ocptv_formatter::TestRun;
-    /// use ocptv_formatter::TestStatus;
+    /// use ocptv::output::Log;
+    /// use ocptv::output::LogSeverity;
+    /// use ocptv::output::TestResult;
+    /// use ocptv::output::TestRun;
+    /// use ocptv::output::TestStatus;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// test_run.start().await?;
@@ -345,9 +345,9 @@ impl TestRun {
     /// # Examples
     ///
     /// ```
-    /// use ocptv_formatter::TestResult;
-    /// use ocptv_formatter::TestRun;
-    /// use ocptv_formatter::TestStatus;
+    /// use ocptv::output::TestResult;
+    /// use ocptv::output::TestRun;
+    /// use ocptv::output::TestStatus;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// test_run.start().await?;
@@ -374,9 +374,9 @@ impl TestRun {
     /// # Examples
     ///
     /// ```
-    /// use ocptv_formatter::TestResult;
-    /// use ocptv_formatter::TestRun;
-    /// use ocptv_formatter::TestStatus;
+    /// use ocptv::output::TestResult;
+    /// use ocptv::output::TestRun;
+    /// use ocptv::output::TestStatus;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// test_run.start().await?;
@@ -406,10 +406,10 @@ impl TestRun {
     /// # Examples
     ///
     /// ```
-    /// use ocptv_formatter::Error;
-    /// use ocptv_formatter::TestResult;
-    /// use ocptv_formatter::TestRun;
-    /// use ocptv_formatter::TestStatus;
+    /// use ocptv::output::Error;
+    /// use ocptv::output::TestResult;
+    /// use ocptv::output::TestRun;
+    /// use ocptv::output::TestStatus;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// test_run.start().await?;
@@ -469,8 +469,8 @@ impl TestRunBuilder {
     /// # Examples
     ///
     /// ```
-    /// use ocptv_formatter::DutInfo;
-    /// use ocptv_formatter::TestRunBuilder;
+    /// use ocptv::output::DutInfo;
+    /// use ocptv::output::TestRunBuilder;
     ///
     /// let dut = DutInfo::builder("dut_id").build();
     /// let test_run = TestRunBuilder::new("run_name", &dut, "1.0")
@@ -488,8 +488,8 @@ impl TestRunBuilder {
     /// # Examples
     ///
     /// ```
-    /// use ocptv_formatter::DutInfo;
-    /// use ocptv_formatter::TestRunBuilder;
+    /// use ocptv::output::DutInfo;
+    /// use ocptv::output::TestRunBuilder;
     ///
     /// let dut = DutInfo::builder("dut_id").build();
     /// let test_run = TestRunBuilder::new("run_name", &dut, "1.0")
@@ -506,9 +506,9 @@ impl TestRunBuilder {
     /// # Examples
     ///
     /// ```
-    /// use ocptv_formatter::Config;
-    /// use ocptv_formatter::DutInfo;
-    /// use ocptv_formatter::TestRunBuilder;
+    /// use ocptv::output::Config;
+    /// use ocptv::output::DutInfo;
+    /// use ocptv::output::TestRunBuilder;
     ///
     /// let dut = DutInfo::builder("dut_id").build();
     /// let test_run = TestRunBuilder::new("run_name", &dut, "1.0")
@@ -525,8 +525,8 @@ impl TestRunBuilder {
     /// # Examples
     ///
     /// ```
-    /// use ocptv_formatter::DutInfo;
-    /// use ocptv_formatter::TestRunBuilder;
+    /// use ocptv::output::DutInfo;
+    /// use ocptv::output::TestRunBuilder;
     ///
     /// let dut = DutInfo::builder("dut_id").build();
     /// let test_run = TestRunBuilder::new("run_name", &dut, "1.0")
@@ -589,7 +589,7 @@ impl TestStep {
     /// # Examples
     ///
     /// ```
-    /// use ocptv_formatter::TestRun;
+    /// use ocptv::output::TestRun;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// test_run.start().await?;
@@ -613,8 +613,8 @@ impl TestStep {
     ///
     /// # Examples
     // ```
-    /// use ocptv_formatter::TestRun;
-    /// use ocptv_formatter::TestStatus;
+    /// use ocptv::output::TestRun;
+    /// use ocptv::output::TestStatus;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// test_run.start().await?;
@@ -643,9 +643,9 @@ impl TestStep {
     /// # Examples
     ///
     /// ```
-    /// use ocptv_formatter::LogSeverity;
-    /// use ocptv_formatter::TestRun;
-    /// use ocptv_formatter::TestStatus;
+    /// use ocptv::output::LogSeverity;
+    /// use ocptv::output::TestRun;
+    /// use ocptv::output::TestStatus;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// test_run.start().await?;
@@ -678,9 +678,9 @@ impl TestStep {
     /// # Examples
     ///
     /// ```
-    /// use ocptv_formatter::LogSeverity;
-    /// use ocptv_formatter::TestRun;
-    /// use ocptv_formatter::TestStatus;
+    /// use ocptv::output::LogSeverity;
+    /// use ocptv::output::TestRun;
+    /// use ocptv::output::TestStatus;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// test_run.start().await?;
@@ -695,10 +695,10 @@ impl TestStep {
     /// ## Using macros
     ///  
     /// ```
-    /// use ocptv_formatter::ocptv_log_info;
-    /// use ocptv_formatter::LogSeverity;
-    /// use ocptv_formatter::TestRun;
-    /// use ocptv_formatter::TestStatus;
+    /// use ocptv::ocptv_log_info;
+    /// use ocptv::output::LogSeverity;
+    /// use ocptv::output::TestRun;
+    /// use ocptv::output::TestStatus;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// test_run.start().await?;
@@ -730,10 +730,10 @@ impl TestStep {
     /// # Examples
     ///
     /// ```
-    /// use ocptv_formatter::Log;
-    /// use ocptv_formatter::LogSeverity;
-    /// use ocptv_formatter::TestRun;
-    /// use ocptv_formatter::TestStatus;
+    /// use ocptv::output::Log;
+    /// use ocptv::output::LogSeverity;
+    /// use ocptv::output::TestRun;
+    /// use ocptv::output::TestStatus;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// test_run.start().await?;
@@ -765,9 +765,9 @@ impl TestStep {
     /// # Examples
     ///
     /// ```
-    /// use ocptv_formatter::TestResult;
-    /// use ocptv_formatter::TestRun;
-    /// use ocptv_formatter::TestStatus;
+    /// use ocptv::output::TestResult;
+    /// use ocptv::output::TestRun;
+    /// use ocptv::output::TestStatus;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// let step = test_run.step("step_name")?;
@@ -779,10 +779,10 @@ impl TestStep {
     /// ## Using macros
     ///  
     /// ```
-    /// use ocptv_formatter::ocptv_log_info;
-    /// use ocptv_formatter::LogSeverity;
-    /// use ocptv_formatter::TestRun;
-    /// use ocptv_formatter::TestStatus;
+    /// use ocptv::ocptv_log_info;
+    /// use ocptv::output::LogSeverity;
+    /// use ocptv::output::TestRun;
+    /// use ocptv::output::TestStatus;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// test_run.start().await?;
@@ -811,9 +811,9 @@ impl TestStep {
     /// # Examples
     ///
     /// ```
-    /// use ocptv_formatter::TestResult;
-    /// use ocptv_formatter::TestRun;
-    /// use ocptv_formatter::TestStatus;
+    /// use ocptv::output::TestResult;
+    /// use ocptv::output::TestRun;
+    /// use ocptv::output::TestStatus;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// let step = test_run.step("step_name")?;
@@ -825,10 +825,10 @@ impl TestStep {
     /// ## Using macros
     ///  
     /// ```
-    /// use ocptv_formatter::ocptv_log_info;
-    /// use ocptv_formatter::LogSeverity;
-    /// use ocptv_formatter::TestRun;
-    /// use ocptv_formatter::TestStatus;
+    /// use ocptv::ocptv_log_info;
+    /// use ocptv::output::LogSeverity;
+    /// use ocptv::output::TestRun;
+    /// use ocptv::output::TestStatus;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// test_run.start().await?;
@@ -860,11 +860,11 @@ impl TestStep {
     /// # Examples
     ///
     /// ```
-    /// use ocptv_formatter::Error;
-    /// use ocptv_formatter::SoftwareInfo;
-    /// use ocptv_formatter::TestResult;
-    /// use ocptv_formatter::TestRun;
-    /// use ocptv_formatter::TestStatus;
+    /// use ocptv::output::Error;
+    /// use ocptv::output::SoftwareInfo;
+    /// use ocptv::output::TestResult;
+    /// use ocptv::output::TestRun;
+    /// use ocptv::output::TestStatus;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// let step = test_run.step("step_name")?;
@@ -898,9 +898,9 @@ impl TestStep {
     /// # Examples
     ///
     /// ```
-    /// use ocptv_formatter::TestResult;
-    /// use ocptv_formatter::TestRun;
-    /// use ocptv_formatter::TestStatus;
+    /// use ocptv::output::TestResult;
+    /// use ocptv::output::TestRun;
+    /// use ocptv::output::TestStatus;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// let step = test_run.step("step_name")?;
@@ -931,13 +931,13 @@ impl TestStep {
     /// # Examples
     ///
     /// ```
-    /// use ocptv_formatter::Measurement;
-    /// use ocptv_formatter::SoftwareInfo;
-    /// use ocptv_formatter::Subcomponent;
-    /// use ocptv_formatter::TestResult;
-    /// use ocptv_formatter::TestRun;
-    /// use ocptv_formatter::TestStatus;
-    /// use ocptv_formatter::Validator;
+    /// use ocptv::output::Measurement;
+    /// use ocptv::output::SoftwareInfo;
+    /// use ocptv::output::Subcomponent;
+    /// use ocptv::output::TestResult;
+    /// use ocptv::output::TestRun;
+    /// use ocptv::output::TestStatus;
+    /// use ocptv::output::Validator;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// let step = test_run.step("step_name")?;
@@ -973,7 +973,7 @@ impl TestStep {
     /// # Examples
     ///
     /// ```
-    /// use ocptv_formatter::TestRun;
+    /// use ocptv::output::TestRun;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// let step = test_run.step("step_name")?;
@@ -999,8 +999,8 @@ impl TestStep {
     /// # Examples
     ///
     /// ```
-    /// use ocptv_formatter::MeasurementSeriesStart;
-    /// use ocptv_formatter::TestRun;
+    /// use ocptv::output::MeasurementSeriesStart;
+    /// use ocptv::output::TestRun;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// let step = test_run.step("step_name")?;
@@ -1064,7 +1064,7 @@ impl MeasurementSeries {
     /// # Examples
     ///
     /// ```
-    /// use ocptv_formatter::TestRun;
+    /// use ocptv::output::TestRun;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// test_run.start().await?;
@@ -1090,7 +1090,7 @@ impl MeasurementSeries {
     /// # Examples
     ///
     /// ```
-    /// use ocptv_formatter::TestRun;
+    /// use ocptv::output::TestRun;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// test_run.start().await?;
@@ -1121,8 +1121,8 @@ impl MeasurementSeries {
     /// # Examples
     ///
     /// ```
-    /// use ocptv_formatter::TestRun;
-    /// use ocptv_formatter::Value;
+    /// use ocptv::output::TestRun;
+    /// use ocptv::output::Value;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// test_run.start().await?;
@@ -1157,8 +1157,8 @@ impl MeasurementSeries {
     /// # Examples
     ///
     /// ```
-    /// use ocptv_formatter::TestRun;
-    /// use ocptv_formatter::Value;
+    /// use ocptv::output::TestRun;
+    /// use ocptv::output::Value;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// test_run.start().await?;
@@ -1201,8 +1201,8 @@ impl MeasurementSeries {
     /// # Examples
     ///
     /// ```
-    /// use ocptv_formatter::TestRun;
-    /// use ocptv_formatter::Value;
+    /// use ocptv::output::TestRun;
+    /// use ocptv::output::Value;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// test_run.start().await?;
@@ -1240,8 +1240,8 @@ mod tests {
     use tokio::sync::Mutex;
 
     use super::*;
-    use crate::models::*;
-    use crate::objects::*;
+    use crate::output::models::*;
+    use crate::output::objects::*;
 
     #[tokio::test]
     async fn test_testrun_start_and_end() {
