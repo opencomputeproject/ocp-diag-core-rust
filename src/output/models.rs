@@ -656,7 +656,7 @@ mod tests {
         let test_date = "2022-01-01T00:00:00.000Z";
         let msr = MeasurementSeriesElementSpec {
             index: 0,
-            value: Value::from(1.0),
+            value: 1.0.into(),
             timestamp: DateTime::parse_from_rfc3339(test_date)?.with_timezone(&chrono_tz::UTC),
             series_id: "test".to_string(),
             metadata: None,

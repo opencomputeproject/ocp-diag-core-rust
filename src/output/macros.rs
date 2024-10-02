@@ -192,6 +192,7 @@ macro_rules! ocptv_log_fatal {
 mod tests {
     use std::sync::Arc;
 
+    use anyhow::anyhow;
     use anyhow::Result;
     use assert_json_diff::assert_json_include;
     use serde_json::json;
@@ -202,7 +203,15 @@ mod tests {
 
     #[tokio::test]
     async fn test_ocptv_error_macro_with_symptom_and_message() -> Result<()> {
-        let expected = json!({"sequenceNumber":1,"testRunArtifact":{"error":{"message":"Error message","softwareInfoIds":null,"symptom":"symptom"}}});
+        let expected = json!({
+            "testRunArtifact":{
+                "error": {
+                    "message": "Error message",
+                    "symptom": "symptom"
+                }
+            },
+            "sequenceNumber": 1
+        });
 
         let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
         let dut = DutInfo::builder("dut_id").build();
@@ -217,25 +226,34 @@ mod tests {
                 .lock()
                 .await
                 .first()
-                .ok_or(anyhow::Error::msg("Buffer is empty"))?,
+                .ok_or(anyhow!("Buffer is empty"))?,
         )?;
         assert_json_include!(actual: actual.clone(), expected: &expected);
+
         let source = actual
             .get("testRunArtifact")
-            .ok_or(anyhow::Error::msg("testRunArtifact key does not exist"))?
+            .ok_or(anyhow!("testRunArtifact key does not exist"))?
             .get("error")
-            .ok_or(anyhow::Error::msg("error key does not exist"))?;
+            .ok_or(anyhow!("error key does not exist"))?;
         assert_ne!(
             source.get("sourceLocation"),
             None,
             "sourceLocation is not present in the serialized object"
         );
+
         Ok(())
     }
 
     #[tokio::test]
     async fn test_ocptv_error_macro_with_symptom() -> Result<()> {
-        let expected = json!({"sequenceNumber":1,"testRunArtifact":{"error":{"message":null,"softwareInfoIds":null,"symptom":"symptom"}}});
+        let expected = json!({
+            "testRunArtifact": {
+                "error": {
+                    "symptom": "symptom"
+                }
+            },
+            "sequenceNumber": 1
+        });
 
         let dut = DutInfo::builder("dut_id").build();
         let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
@@ -250,25 +268,35 @@ mod tests {
                 .lock()
                 .await
                 .first()
-                .ok_or(anyhow::Error::msg("Buffer is empty"))?,
+                .ok_or(anyhow!("Buffer is empty"))?,
         )?;
         assert_json_include!(actual: actual.clone(), expected: &expected);
+
         let source = actual
             .get("testRunArtifact")
-            .ok_or(anyhow::Error::msg("testRunArtifact key does not exist"))?
+            .ok_or(anyhow!("testRunArtifact key does not exist"))?
             .get("error")
-            .ok_or(anyhow::Error::msg("error key does not exist"))?;
+            .ok_or(anyhow!("error key does not exist"))?;
         assert_ne!(
             source.get("sourceLocation"),
             None,
             "sourceLocation is not present in the serialized object"
         );
+
         Ok(())
     }
 
     #[tokio::test]
     async fn test_ocptv_log_debug() -> Result<()> {
-        let expected = json!({"sequenceNumber":1,"testRunArtifact":{"log":{"message":"log message","severity":"DEBUG"}}});
+        let expected = json!({
+            "testRunArtifact": {
+                "log": {
+                    "message": "log message",
+                    "severity": "DEBUG"
+                }
+            },
+            "sequenceNumber":1
+        });
 
         let dut = DutInfo::builder("dut_id").build();
         let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
@@ -283,25 +311,35 @@ mod tests {
                 .lock()
                 .await
                 .first()
-                .ok_or(anyhow::Error::msg("Buffer is empty"))?,
+                .ok_or(anyhow!("Buffer is empty"))?,
         )?;
         assert_json_include!(actual: actual.clone(), expected: &expected);
+
         let source = actual
             .get("testRunArtifact")
-            .ok_or(anyhow::Error::msg("testRunArtifact key does not exist"))?
+            .ok_or(anyhow!("testRunArtifact key does not exist"))?
             .get("log")
-            .ok_or(anyhow::Error::msg("log key does not exist"))?;
+            .ok_or(anyhow!("log key does not exist"))?;
         assert_ne!(
             source.get("sourceLocation"),
             None,
             "sourceLocation is not present in the serialized object"
         );
+
         Ok(())
     }
 
     #[tokio::test]
     async fn test_ocptv_log_info() -> Result<()> {
-        let expected = json!({"sequenceNumber":1,"testRunArtifact":{"log":{"message":"log message","severity":"INFO"}}});
+        let expected = json!({
+            "testRunArtifact": {
+                "log": {
+                    "message": "log message",
+                    "severity": "INFO"
+                }
+            },
+            "sequenceNumber": 1
+        });
 
         let dut = DutInfo::builder("dut_id").build();
         let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
@@ -316,25 +354,36 @@ mod tests {
                 .lock()
                 .await
                 .first()
-                .ok_or(anyhow::Error::msg("Buffer is empty"))?,
+                .ok_or(anyhow!("Buffer is empty"))?,
         )?;
         assert_json_include!(actual: actual.clone(), expected: &expected);
+
         let source = actual
             .get("testRunArtifact")
-            .ok_or(anyhow::Error::msg("testRunArtifact key does not exist"))?
+            .ok_or(anyhow!("testRunArtifact key does not exist"))?
             .get("log")
-            .ok_or(anyhow::Error::msg("log key does not exist"))?;
+            .ok_or(anyhow!("log key does not exist"))?;
+
         assert_ne!(
             source.get("sourceLocation"),
             None,
             "sourceLocation is not present in the serialized object"
         );
+
         Ok(())
     }
 
     #[tokio::test]
     async fn test_ocptv_log_warning() -> Result<()> {
-        let expected = json!({"sequenceNumber":1,"testRunArtifact":{"log":{"message":"log message","severity":"WARNING"}}});
+        let expected = json!({
+            "testRunArtifact": {
+                "log": {
+                    "message": "log message",
+                    "severity": "WARNING"
+                }
+            },
+            "sequenceNumber": 1
+        });
 
         let dut = DutInfo::builder("dut_id").build();
         let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
@@ -349,25 +398,35 @@ mod tests {
                 .lock()
                 .await
                 .first()
-                .ok_or(anyhow::Error::msg("Buffer is empty"))?,
+                .ok_or(anyhow!("Buffer is empty"))?,
         )?;
         assert_json_include!(actual: actual.clone(), expected: &expected);
+
         let source = actual
             .get("testRunArtifact")
-            .ok_or(anyhow::Error::msg("testRunArtifact key does not exist"))?
+            .ok_or(anyhow!("testRunArtifact key does not exist"))?
             .get("log")
-            .ok_or(anyhow::Error::msg("log key does not exist"))?;
+            .ok_or(anyhow!("log key does not exist"))?;
         assert_ne!(
             source.get("sourceLocation"),
             None,
             "sourceLocation is not present in the serialized object"
         );
+
         Ok(())
     }
 
     #[tokio::test]
     async fn test_ocptv_log_error() -> Result<()> {
-        let expected = json!({"sequenceNumber":1,"testRunArtifact":{"log":{"message":"log message","severity":"ERROR"}}});
+        let expected = json!({
+            "testRunArtifact": {
+                "log": {
+                    "message": "log message",
+                    "severity": "ERROR"
+                }
+            },
+            "sequenceNumber":1
+        });
 
         let dut = DutInfo::builder("dut_id").build();
         let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
@@ -382,25 +441,35 @@ mod tests {
                 .lock()
                 .await
                 .first()
-                .ok_or(anyhow::Error::msg("Buffer is empty"))?,
+                .ok_or(anyhow!("Buffer is empty"))?,
         )?;
         assert_json_include!(actual: actual.clone(), expected: &expected);
+
         let source = actual
             .get("testRunArtifact")
-            .ok_or(anyhow::Error::msg("testRunArtifact key does not exist"))?
+            .ok_or(anyhow!("testRunArtifact key does not exist"))?
             .get("log")
-            .ok_or(anyhow::Error::msg("log key does not exist"))?;
+            .ok_or(anyhow!("log key does not exist"))?;
         assert_ne!(
             source.get("sourceLocation"),
             None,
             "sourceLocation is not present in the serialized object"
         );
+
         Ok(())
     }
 
     #[tokio::test]
     async fn test_ocptv_log_fatal() -> Result<()> {
-        let expected = json!({"sequenceNumber":1,"testRunArtifact":{"log":{"message":"log message","severity":"FATAL"}}});
+        let expected = json!({
+            "testRunArtifact": {
+                "log": {
+                    "message": "log message",
+                    "severity": "FATAL"
+                }
+            },
+            "sequenceNumber": 1
+        });
 
         let dut = DutInfo::builder("dut_id").build();
         let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
@@ -415,25 +484,35 @@ mod tests {
                 .lock()
                 .await
                 .first()
-                .ok_or(anyhow::Error::msg("Buffer is empty"))?,
+                .ok_or(anyhow!("Buffer is empty"))?,
         )?;
         assert_json_include!(actual: actual.clone(), expected: &expected);
+
         let source = actual
             .get("testRunArtifact")
-            .ok_or(anyhow::Error::msg("testRunArtifact key does not exist"))?
+            .ok_or(anyhow!("testRunArtifact key does not exist"))?
             .get("log")
-            .ok_or(anyhow::Error::msg("log key does not exist"))?;
+            .ok_or(anyhow!("log key does not exist"))?;
         assert_ne!(
             source.get("sourceLocation"),
             None,
             "sourceLocation is not present in the serialized object"
         );
+
         Ok(())
     }
 
     #[tokio::test]
     async fn test_ocptv_error_macro_with_symptom_and_message_in_step() -> Result<()> {
-        let expected = json!({"sequenceNumber":1,"testStepArtifact":{"error":{"message":"Error message","softwareInfoIds":null,"symptom":"symptom"}}});
+        let expected = json!({
+            "testStepArtifact": {
+                "error": {
+                    "message": "Error message",
+                    "symptom":"symptom"
+                }
+            },
+            "sequenceNumber": 1
+        });
 
         let dut = DutInfo::builder("dut_id").build();
         let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
@@ -450,25 +529,34 @@ mod tests {
                 .lock()
                 .await
                 .first()
-                .ok_or(anyhow::Error::msg("Buffer is empty"))?,
+                .ok_or(anyhow!("Buffer is empty"))?,
         )?;
         assert_json_include!(actual: actual.clone(), expected: &expected);
+
         let source = actual
             .get("testStepArtifact")
-            .ok_or(anyhow::Error::msg("testStepArtifact key does not exist"))?
+            .ok_or(anyhow!("testStepArtifact key does not exist"))?
             .get("error")
-            .ok_or(anyhow::Error::msg("error key does not exist"))?;
+            .ok_or(anyhow!("error key does not exist"))?;
         assert_ne!(
             source.get("sourceLocation"),
             None,
             "sourceLocation is not present in the serialized object"
         );
+
         Ok(())
     }
 
     #[tokio::test]
     async fn test_ocptv_error_macro_with_symptom_in_step() -> Result<()> {
-        let expected = json!({"sequenceNumber":1,"testStepArtifact":{"error":{"message":null,"softwareInfoIds":null,"symptom":"symptom"}}});
+        let expected = json!({
+            "testStepArtifact": {
+                "error": {
+                    "symptom": "symptom"
+                }
+            },
+            "sequenceNumber": 1
+        });
 
         let dut = DutInfo::builder("dut_id").build();
         let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
@@ -485,25 +573,35 @@ mod tests {
                 .lock()
                 .await
                 .first()
-                .ok_or(anyhow::Error::msg("Buffer is empty"))?,
+                .ok_or(anyhow!("Buffer is empty"))?,
         )?;
         assert_json_include!(actual: actual.clone(), expected: &expected);
+
         let source = actual
             .get("testStepArtifact")
-            .ok_or(anyhow::Error::msg("testStepArtifact key does not exist"))?
+            .ok_or(anyhow!("testStepArtifact key does not exist"))?
             .get("error")
-            .ok_or(anyhow::Error::msg("error key does not exist"))?;
+            .ok_or(anyhow!("error key does not exist"))?;
         assert_ne!(
             source.get("sourceLocation"),
             None,
             "sourceLocation is not present in the serialized object"
         );
+
         Ok(())
     }
 
     #[tokio::test]
     async fn test_ocptv_log_debug_in_step() -> Result<()> {
-        let expected = json!({"sequenceNumber":1,"testStepArtifact":{"log":{"message":"log message","severity":"DEBUG"}}});
+        let expected = json!({
+            "testStepArtifact": {
+                "log": {
+                    "message": "log message",
+                    "severity": "DEBUG"
+                }
+            },
+            "sequenceNumber": 1
+        });
 
         let dut = DutInfo::builder("dut_id").build();
         let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
@@ -519,25 +617,35 @@ mod tests {
                 .lock()
                 .await
                 .first()
-                .ok_or(anyhow::Error::msg("Buffer is empty"))?,
+                .ok_or(anyhow!("Buffer is empty"))?,
         )?;
         assert_json_include!(actual: actual.clone(), expected: &expected);
+
         let source = actual
             .get("testStepArtifact")
-            .ok_or(anyhow::Error::msg("testStepArtifact key does not exist"))?
+            .ok_or(anyhow!("testStepArtifact key does not exist"))?
             .get("log")
-            .ok_or(anyhow::Error::msg("log key does not exist"))?;
+            .ok_or(anyhow!("log key does not exist"))?;
         assert_ne!(
             source.get("sourceLocation"),
             None,
             "sourceLocation is not present in the serialized object"
         );
+
         Ok(())
     }
 
     #[tokio::test]
     async fn test_ocptv_log_info_in_step() -> Result<()> {
-        let expected = json!({"sequenceNumber":1,"testStepArtifact":{"log":{"message":"log message","severity":"INFO"}}});
+        let expected = json!({
+            "testStepArtifact": {
+                "log": {
+                    "message": "log message",
+                    "severity": "INFO"
+                }
+            },
+            "sequenceNumber": 1
+        });
 
         let dut = DutInfo::builder("dut_id").build();
         let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
@@ -553,25 +661,35 @@ mod tests {
                 .lock()
                 .await
                 .first()
-                .ok_or(anyhow::Error::msg("Buffer is empty"))?,
+                .ok_or(anyhow!("Buffer is empty"))?,
         )?;
         assert_json_include!(actual: actual.clone(), expected: &expected);
+
         let source = actual
             .get("testStepArtifact")
-            .ok_or(anyhow::Error::msg("testStepArtifact key does not exist"))?
+            .ok_or(anyhow!("testStepArtifact key does not exist"))?
             .get("log")
-            .ok_or(anyhow::Error::msg("log key does not exist"))?;
+            .ok_or(anyhow!("log key does not exist"))?;
         assert_ne!(
             source.get("sourceLocation"),
             None,
             "sourceLocation is not present in the serialized object"
         );
+
         Ok(())
     }
 
     #[tokio::test]
     async fn test_ocptv_log_warning_in_step() -> Result<()> {
-        let expected = json!({"sequenceNumber":1,"testStepArtifact":{"log":{"message":"log message","severity":"WARNING"}}});
+        let expected = json!({
+            "testStepArtifact": {
+                "log": {
+                    "message": "log message",
+                    "severity":"WARNING"
+                }
+            },
+            "sequenceNumber": 1
+        });
 
         let dut = DutInfo::builder("dut_id").build();
         let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
@@ -587,25 +705,35 @@ mod tests {
                 .lock()
                 .await
                 .first()
-                .ok_or(anyhow::Error::msg("Buffer is empty"))?,
+                .ok_or(anyhow!("Buffer is empty"))?,
         )?;
         assert_json_include!(actual: actual.clone(), expected: &expected);
+
         let source = actual
             .get("testStepArtifact")
-            .ok_or(anyhow::Error::msg("testStepArtifact key does not exist"))?
+            .ok_or(anyhow!("testStepArtifact key does not exist"))?
             .get("log")
-            .ok_or(anyhow::Error::msg("log key does not exist"))?;
+            .ok_or(anyhow!("log key does not exist"))?;
         assert_ne!(
             source.get("sourceLocation"),
             None,
             "sourceLocation is not present in the serialized object"
         );
+
         Ok(())
     }
 
     #[tokio::test]
     async fn test_ocptv_log_error_in_step() -> Result<()> {
-        let expected = json!({"sequenceNumber":1,"testStepArtifact":{"log":{"message":"log message","severity":"ERROR"}}});
+        let expected = json!({
+            "testStepArtifact": {
+                "log": {
+                    "message": "log message",
+                    "severity": "ERROR"
+                }
+            },
+            "sequenceNumber": 1
+        });
 
         let dut = DutInfo::builder("dut_id").build();
         let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
@@ -621,25 +749,35 @@ mod tests {
                 .lock()
                 .await
                 .first()
-                .ok_or(anyhow::Error::msg("Buffer is empty"))?,
+                .ok_or(anyhow!("Buffer is empty"))?,
         )?;
         assert_json_include!(actual: actual.clone(), expected: &expected);
+
         let source = actual
             .get("testStepArtifact")
-            .ok_or(anyhow::Error::msg("testStepArtifact key does not exist"))?
+            .ok_or(anyhow!("testStepArtifact key does not exist"))?
             .get("log")
-            .ok_or(anyhow::Error::msg("log key does not exist"))?;
+            .ok_or(anyhow!("log key does not exist"))?;
         assert_ne!(
             source.get("sourceLocation"),
             None,
             "sourceLocation is not present in the serialized object"
         );
+
         Ok(())
     }
 
     #[tokio::test]
     async fn test_ocptv_log_fatal_in_step() -> Result<()> {
-        let expected = json!({"sequenceNumber":1,"testStepArtifact":{"log":{"message":"log message","severity":"FATAL"}}});
+        let expected = json!({
+            "testStepArtifact": {
+                "log": {
+                    "message": "log message",
+                    "severity": "FATAL"
+                }
+            },
+            "sequenceNumber": 1
+        });
 
         let dut = DutInfo::builder("dut_id").build();
         let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
@@ -655,19 +793,21 @@ mod tests {
                 .lock()
                 .await
                 .first()
-                .ok_or(anyhow::Error::msg("Buffer is empty"))?,
+                .ok_or(anyhow!("Buffer is empty"))?,
         )?;
         assert_json_include!(actual: actual.clone(), expected: &expected);
+
         let source = actual
             .get("testStepArtifact")
-            .ok_or(anyhow::Error::msg("testStepArtifact key does not exist"))?
+            .ok_or(anyhow!("testStepArtifact key does not exist"))?
             .get("log")
-            .ok_or(anyhow::Error::msg("log key does not exist"))?;
+            .ok_or(anyhow!("log key does not exist"))?;
         assert_ne!(
             source.get("sourceLocation"),
             None,
             "sourceLocation is not present in the serialized object"
         );
+
         Ok(())
     }
 }

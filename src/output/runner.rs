@@ -185,11 +185,13 @@ impl TestRun {
             &self.parameters,
             &self.dut,
         );
-        if self.metadata.is_some() {
-            for m in self.metadata.as_ref().unwrap().into_iter() {
+
+        if let Some(m) = &self.metadata {
+            for m in m {
                 builder = builder.add_metadata(m.0, m.1.clone())
             }
         }
+
         let start = builder.build();
         self.state
             .lock()
@@ -982,7 +984,7 @@ impl TestStep {
     ///
     /// let measurement = Measurement::builder("name", 5000.into())
     ///     .hardware_info(&hwinfo)
-    ///     .add_validator(&Validator::builder(ValidatorType::Equal, Value::from(30)).build())
+    ///     .add_validator(&Validator::builder(ValidatorType::Equal, 30.into()).build())
     ///     .add_metadata("key", "value".into())
     ///     .subcomponent(&Subcomponent::builder("name").build())
     ///     .build();
@@ -1192,7 +1194,7 @@ impl MeasurementSeries {
     ///
     /// let series = step.measurement_series("name");
     /// series.start().await?;
-    /// series.add_measurement(Value::from(60)).await?;
+    /// series.add_measurement(60.into()).await?;
     ///
     /// # Ok::<(), WriterError>(())
     /// # });
@@ -1233,7 +1235,7 @@ impl MeasurementSeries {
     ///
     /// let series = step.measurement_series("name");
     /// series.start().await?;
-    /// series.add_measurement_with_metadata(Value::from(60), vec![("key", Value::from("value"))]).await?;
+    /// series.add_measurement_with_metadata(60.into(), vec![("key", "value".into())]).await?;
     ///
     /// # Ok::<(), WriterError>(())
     /// # });
@@ -1283,9 +1285,9 @@ impl MeasurementSeries {
     /// let series = step.measurement_series("name");
     /// series.start().await?;
     /// series.scope(|s| async {
-    ///     s.add_measurement(Value::from(60)).await?;
-    ///     s.add_measurement(Value::from(70)).await?;
-    ///     s.add_measurement(Value::from(80)).await?;
+    ///     s.add_measurement(60.into()).await?;
+    ///     s.add_measurement(70.into()).await?;
+    ///     s.add_measurement(80.into()).await?;
     ///     Ok(())
     /// }).await?;
     ///
@@ -1318,15 +1320,15 @@ mod tests {
     use crate::output::objects::*;
 
     #[tokio::test]
-    async fn test_testrun_start_and_end() {
+    async fn test_testrun_start_and_end() -> Result<()> {
         let expected = [
             json!({"schemaVersion":{"major":2,"minor":0},"sequenceNumber":1}),
             json!({"sequenceNumber":2,"testRunArtifact":{"testRunStart":{"dutInfo":{"dutInfoId":"dut_id","hardwareInfos":null,"metadata":null,"name":null,"platformInfos":null,"softwareInfos":null},"metadata":null,"name":"run_name","parameters":{},"version":"1.0"}}}),
             json!({"sequenceNumber":3,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
         ];
-        let dut = DutInfo::builder("dut_id").build();
-
         let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
+
+        let dut = DutInfo::builder("dut_id").build();
 
         let test_run = TestRun::builder("run_name", &dut, "1.0")
             .config(
@@ -1335,30 +1337,28 @@ mod tests {
                     .build(),
             )
             .build();
-        test_run.start().await.unwrap();
-        test_run
-            .end(TestStatus::Complete, TestResult::Pass)
-            .await
-            .unwrap();
+        test_run.start().await?;
+        test_run.end(TestStatus::Complete, TestResult::Pass).await?;
 
         for (idx, entry) in buffer.lock().await.iter().enumerate() {
-            let value = serde_json::from_str::<serde_json::Value>(entry).unwrap();
+            let value = serde_json::from_str::<serde_json::Value>(entry)?;
             assert_json_include!(actual: value, expected: &expected[idx]);
         }
+
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_testrun_with_log() {
+    async fn test_testrun_with_log() -> Result<()> {
         let expected = [
             json!({"schemaVersion":{"major":2,"minor":0},"sequenceNumber":1}),
             json!({"sequenceNumber":2,"testRunArtifact":{"testRunStart":{"dutInfo":{"dutInfoId":"dut_id","hardwareInfos":null,"metadata":null,"name":null,"platformInfos":null,"softwareInfos":null},"metadata":null,"name":"run_name","parameters":{},"version":"1.0"}}}),
             json!({"sequenceNumber":3,"testRunArtifact":{"log":{"message":"This is a log message with INFO severity","severity":"INFO","sourceLocation":null}}}),
             json!({"sequenceNumber":4,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
         ];
+        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
         let dut = DutInfo::builder("dut_id").build();
-
-        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
         let test_run = TestRun::builder("run_name", &dut, "1.0")
             .config(
@@ -1367,27 +1367,27 @@ mod tests {
                     .build(),
             )
             .build();
-        test_run.start().await.unwrap();
+        test_run.start().await?;
+
         test_run
             .log(
                 LogSeverity::Info,
                 "This is a log message with INFO severity",
             )
-            .await
-            .unwrap();
-        test_run
-            .end(TestStatus::Complete, TestResult::Pass)
-            .await
-            .unwrap();
+            .await?;
+
+        test_run.end(TestStatus::Complete, TestResult::Pass).await?;
 
         for (idx, entry) in buffer.lock().await.iter().enumerate() {
-            let value = serde_json::from_str::<serde_json::Value>(entry).unwrap();
+            let value = serde_json::from_str::<serde_json::Value>(entry)?;
             assert_json_include!(actual: value, expected: &expected[idx]);
         }
+
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_testrun_with_log_with_details() {
+    async fn test_testrun_with_log_with_details() -> Result<()> {
         let expected = [
             json!({"schemaVersion":{"major":2,"minor":0},"sequenceNumber":1}),
             json!({"sequenceNumber":2,"testRunArtifact":{"testRunStart":{"dutInfo":{"dutInfoId":"dut_id","hardwareInfos":null,"metadata":null,"name":null,"platformInfos":null,"softwareInfos":null},"metadata":null,"name":"run_name","parameters":{},"version":"1.0"}}}),
@@ -1397,10 +1397,9 @@ mod tests {
             }}}}),
             json!({"sequenceNumber":4,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
         ];
+        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
         let dut = DutInfo::builder("dut_id").build();
-
-        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
         let test_run = TestRun::builder("run_name", &dut, "1.0")
             .config(
@@ -1409,7 +1408,8 @@ mod tests {
                     .build(),
             )
             .build();
-        test_run.start().await.unwrap();
+        test_run.start().await?;
+
         test_run
             .log_with_details(
                 &Log::builder("This is a log message with INFO severity")
@@ -1417,31 +1417,29 @@ mod tests {
                     .source("file", 1)
                     .build(),
             )
-            .await
-            .unwrap();
-        test_run
-            .end(TestStatus::Complete, TestResult::Pass)
-            .await
-            .unwrap();
+            .await?;
+
+        test_run.end(TestStatus::Complete, TestResult::Pass).await?;
 
         for (idx, entry) in buffer.lock().await.iter().enumerate() {
-            let value = serde_json::from_str::<serde_json::Value>(entry).unwrap();
+            let value = serde_json::from_str::<serde_json::Value>(entry)?;
             assert_json_include!(actual: value, expected: &expected[idx]);
         }
+
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_testrun_with_error() {
+    async fn test_testrun_with_error() -> Result<()> {
         let expected = [
             json!({"schemaVersion":{"major":2,"minor":0},"sequenceNumber":1}),
             json!({"sequenceNumber":2,"testRunArtifact":{"testRunStart":{"dutInfo":{"dutInfoId":"dut_id","hardwareInfos":null,"metadata":null,"name":null,"platformInfos":null,"softwareInfos":null},"metadata":null,"name":"run_name","parameters":{},"version":"1.0"}}}),
             json!({"sequenceNumber":3,"testRunArtifact":{"error":{"message":null,"softwareInfoIds":null,"sourceLocation":null,"symptom":"symptom"}}}),
             json!({"sequenceNumber":4,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
         ];
+        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
         let dut = DutInfo::builder("dut_id").build();
-
-        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
         let test_run = TestRun::builder("run_name", &dut, "1.0")
             .config(
@@ -1450,31 +1448,31 @@ mod tests {
                     .build(),
             )
             .build();
-        test_run.start().await.unwrap();
-        test_run.error("symptom").await.unwrap();
-        test_run
-            .end(TestStatus::Complete, TestResult::Pass)
-            .await
-            .unwrap();
+        test_run.start().await?;
+
+        test_run.error("symptom").await?;
+
+        test_run.end(TestStatus::Complete, TestResult::Pass).await?;
 
         for (idx, entry) in buffer.lock().await.iter().enumerate() {
-            let value = serde_json::from_str::<serde_json::Value>(entry).unwrap();
+            let value = serde_json::from_str::<serde_json::Value>(entry)?;
             assert_json_include!(actual: value, expected: &expected[idx]);
         }
+
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_testrun_with_error_with_message() {
+    async fn test_testrun_with_error_with_message() -> Result<()> {
         let expected = [
             json!({"schemaVersion":{"major":2,"minor":0},"sequenceNumber":1}),
             json!({"sequenceNumber":2,"testRunArtifact":{"testRunStart":{"dutInfo":{"dutInfoId":"dut_id","hardwareInfos":null,"metadata":null,"name":null,"platformInfos":null,"softwareInfos":null},"metadata":null,"name":"run_name","parameters":{},"version":"1.0"}}}),
             json!({"sequenceNumber":3,"testRunArtifact":{"error":{"message":"Error message","softwareInfoIds":null,"sourceLocation":null,"symptom":"symptom"}}}),
             json!({"sequenceNumber":4,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
         ];
+        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
         let dut = DutInfo::builder("dut_id").build();
-
-        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
         let test_run = TestRun::builder("run_name", &dut, "1.0")
             .config(
@@ -1483,24 +1481,22 @@ mod tests {
                     .build(),
             )
             .build();
-        test_run.start().await.unwrap();
-        test_run
-            .error_with_msg("symptom", "Error message")
-            .await
-            .unwrap();
-        test_run
-            .end(TestStatus::Complete, TestResult::Pass)
-            .await
-            .unwrap();
+        test_run.start().await?;
+
+        test_run.error_with_msg("symptom", "Error message").await?;
+
+        test_run.end(TestStatus::Complete, TestResult::Pass).await?;
 
         for (idx, entry) in buffer.lock().await.iter().enumerate() {
-            let value = serde_json::from_str::<serde_json::Value>(entry).unwrap();
+            let value = serde_json::from_str::<serde_json::Value>(entry)?;
             assert_json_include!(actual: value, expected: &expected[idx]);
         }
+
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_testrun_with_error_with_details() {
+    async fn test_testrun_with_error_with_details() -> Result<()> {
         let expected = [
             json!({"schemaVersion":{"major":2,"minor":0},"sequenceNumber":1}),
             json!({"sequenceNumber":2,"testRunArtifact":{"testRunStart":{"dutInfo":{"dutInfoId":"dut_id","hardwareInfos":null,"metadata":null,"name":null,"platformInfos":null,"softwareInfos":null},"metadata":null,"name":"run_name","parameters":{},"version":"1.0"}}}),
@@ -1519,10 +1515,9 @@ mod tests {
               },"symptom":"symptom"}}}),
             json!({"sequenceNumber":4,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
         ];
+        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
         let dut = DutInfo::builder("dut_id").build();
-
-        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
         let test_run = TestRun::builder("run_name", &dut, "1.0")
             .config(
@@ -1531,7 +1526,8 @@ mod tests {
                     .build(),
             )
             .build();
-        test_run.start().await.unwrap();
+        test_run.start().await?;
+
         test_run
             .error_with_details(
                 &Error::builder("symptom")
@@ -1540,28 +1536,26 @@ mod tests {
                     .add_software_info(&SoftwareInfo::builder("id", "name").build())
                     .build(),
             )
-            .await
-            .unwrap();
-        test_run
-            .end(TestStatus::Complete, TestResult::Pass)
-            .await
-            .unwrap();
+            .await?;
+
+        test_run.end(TestStatus::Complete, TestResult::Pass).await?;
 
         for (idx, entry) in buffer.lock().await.iter().enumerate() {
-            let value = serde_json::from_str::<serde_json::Value>(entry).unwrap();
+            let value = serde_json::from_str::<serde_json::Value>(entry)?;
             assert_json_include!(actual: value, expected: &expected[idx]);
         }
+
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_testrun_with_scope() {
+    async fn test_testrun_with_scope() -> Result<()> {
         let expected = [
             json!({"schemaVersion":{"major":2,"minor":0},"sequenceNumber":1}),
             json!({"sequenceNumber":2,"testRunArtifact":{"testRunStart":{"dutInfo":{"dutInfoId":"dut_id","hardwareInfos":null,"metadata":null,"name":null,"platformInfos":null,"softwareInfos":null},"metadata":null,"name":"run_name","parameters":{},"version":"1.0"}}}),
             json!({"sequenceNumber":3,"testRunArtifact":{"log":{"message":"First message","severity":"INFO","sourceLocation":null}}}),
             json!({"sequenceNumber":4,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
         ];
-
         let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
         let dut = DutInfo::builder("dut_id").build();
@@ -1572,6 +1566,7 @@ mod tests {
                     .build(),
             )
             .build();
+
         test_run
             .scope(|r| async {
                 r.log(LogSeverity::Info, "First message").await?;
@@ -1580,13 +1575,14 @@ mod tests {
                     result: TestResult::Pass,
                 })
             })
-            .await
-            .unwrap();
+            .await?;
 
         for (idx, entry) in buffer.lock().await.iter().enumerate() {
-            let value = serde_json::from_str::<serde_json::Value>(entry).unwrap();
+            let value = serde_json::from_str::<serde_json::Value>(entry)?;
             assert_json_include!(actual: value, expected: &expected[idx]);
         }
+
+        Ok(())
     }
 
     #[tokio::test]
@@ -1598,10 +1594,9 @@ mod tests {
             json!({"sequenceNumber":4,"testStepArtifact":{"testStepEnd":{"status":"COMPLETE"}}}),
             json!({"sequenceNumber":5,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
         ];
+        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
         let dut = DutInfo::builder("dut_id").build();
-
-        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
         let test_run = TestRun::builder("run_name", &dut, "1.0")
             .config(
@@ -1636,10 +1631,9 @@ mod tests {
             json!({"sequenceNumber":5,"testStepArtifact":{"testStepEnd":{"status":"COMPLETE"}}}),
             json!({"sequenceNumber":6,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
         ];
+        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
         let dut = DutInfo::builder("dut_id").build();
-
-        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
         let test_run = TestRun::builder("run_name", &dut, "1.0")
             .config(
@@ -1652,11 +1646,13 @@ mod tests {
 
         let step = test_run.step("first step")?;
         step.start().await?;
+
         step.log(
             LogSeverity::Info,
             "This is a log message with INFO severity",
         )
         .await?;
+
         step.end(TestStatus::Complete).await?;
 
         test_run.end(TestStatus::Complete, TestResult::Pass).await?;
@@ -1679,10 +1675,9 @@ mod tests {
             json!({"sequenceNumber":5,"testStepArtifact":{"testStepEnd":{"status":"COMPLETE"}}}),
             json!({"sequenceNumber":6,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
         ];
+        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
         let dut = DutInfo::builder("dut_id").build();
-
-        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
         let test_run = TestRun::builder("run_name", &dut, "1.0")
             .config(
@@ -1695,6 +1690,7 @@ mod tests {
 
         let step = test_run.step("first step")?;
         step.start().await?;
+
         step.log_with_details(
             &Log::builder("This is a log message with INFO severity")
                 .severity(LogSeverity::Info)
@@ -1702,6 +1698,7 @@ mod tests {
                 .build(),
         )
         .await?;
+
         step.end(TestStatus::Complete).await?;
 
         test_run.end(TestStatus::Complete, TestResult::Pass).await?;
@@ -1724,10 +1721,9 @@ mod tests {
             json!({"sequenceNumber":5,"testStepArtifact":{"testStepEnd":{"status":"COMPLETE"}}}),
             json!({"sequenceNumber":6,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
         ];
+        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
         let dut = DutInfo::builder("dut_id").build();
-
-        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
         let test_run = TestRun::builder("run_name", &dut, "1.0")
             .config(
@@ -1740,7 +1736,9 @@ mod tests {
 
         let step = test_run.step("first step")?;
         step.start().await?;
+
         step.error("symptom").await?;
+
         step.end(TestStatus::Complete).await?;
 
         test_run.end(TestStatus::Complete, TestResult::Pass).await?;
@@ -1763,10 +1761,9 @@ mod tests {
             json!({"sequenceNumber":5,"testStepArtifact":{"testStepEnd":{"status":"COMPLETE"}}}),
             json!({"sequenceNumber":6,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
         ];
+        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
         let dut = DutInfo::builder("dut_id").build();
-
-        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
         let test_run = TestRun::builder("run_name", &dut, "1.0")
             .config(
@@ -1779,7 +1776,9 @@ mod tests {
 
         let step = test_run.step("first step")?;
         step.start().await?;
+
         step.error_with_msg("symptom", "Error message").await?;
+
         step.end(TestStatus::Complete).await?;
 
         test_run.end(TestStatus::Complete, TestResult::Pass).await?;
@@ -1802,10 +1801,9 @@ mod tests {
             json!({"sequenceNumber":5,"testStepArtifact":{"testStepEnd":{"status":"COMPLETE"}}}),
             json!({"sequenceNumber":6,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
         ];
+        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
         let dut = DutInfo::builder("dut_id").build();
-
-        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
         let test_run = TestRun::builder("run_name", &dut, "1.0")
             .config(
@@ -1818,6 +1816,7 @@ mod tests {
 
         let step = test_run.step("first step")?;
         step.start().await?;
+
         step.error_with_details(
             &Error::builder("symptom")
                 .message("Error message")
@@ -1826,6 +1825,7 @@ mod tests {
                 .build(),
         )
         .await?;
+
         step.end(TestStatus::Complete).await?;
 
         test_run.end(TestStatus::Complete, TestResult::Pass).await?;
@@ -1848,10 +1848,9 @@ mod tests {
             json!({"sequenceNumber":5,"testStepArtifact":{"testStepEnd":{"status":"COMPLETE"}}}),
             json!({"sequenceNumber":6,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
         ];
+        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
         let dut = DutInfo::builder("dut_id").build();
-
-        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
         let test_run = TestRun::builder("run_name", &dut, "1.0")
             .config(
@@ -1862,16 +1861,17 @@ mod tests {
             .build();
         test_run.start().await?;
 
-        let step = test_run.step("first step")?;
-        step.scope(|s: &TestStep| async {
-            s.log(
-                LogSeverity::Info,
-                "This is a log message with INFO severity",
-            )
+        test_run
+            .step("first step")?
+            .scope(|s| async {
+                s.log(
+                    LogSeverity::Info,
+                    "This is a log message with INFO severity",
+                )
+                .await?;
+                Ok(TestStatus::Complete)
+            })
             .await?;
-            Ok(TestStatus::Complete)
-        })
-        .await?;
 
         test_run.end(TestStatus::Complete, TestResult::Pass).await?;
 
@@ -1893,10 +1893,9 @@ mod tests {
             json!({"sequenceNumber":5,"testStepArtifact":{"testStepEnd":{"status":"COMPLETE"}}}),
             json!({"sequenceNumber":6,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
         ];
+        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
         let dut = DutInfo::builder("dut_id").build();
-
-        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
         let test_run = TestRun::builder("run_name", &dut, "1.0")
             .config(
@@ -1909,7 +1908,9 @@ mod tests {
 
         let step = test_run.step("first step")?;
         step.start().await?;
-        step.add_measurement("name", Value::from(50)).await?;
+
+        step.add_measurement("name", 50.into()).await?;
+
         step.end(TestStatus::Complete).await?;
 
         test_run.end(TestStatus::Complete, TestResult::Pass).await?;
@@ -1932,10 +1933,9 @@ mod tests {
             json!({"sequenceNumber":5,"testStepArtifact":{"testStepEnd":{"status":"COMPLETE"}}}),
             json!({"sequenceNumber":6,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
         ];
+        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
         let dut = DutInfo::builder("dut_id").build();
-
-        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
         let test_run = TestRun::builder("run_name", &dut, "1.0")
             .config(
@@ -1948,15 +1948,17 @@ mod tests {
 
         let step = test_run.step("first step")?;
         step.start().await?;
-        let measurement = Measurement::builder("name", Value::from(50))
+
+        let measurement = Measurement::builder("name", 50.into())
             .hardware_info(&objects::HardwareInfo::builder("id", "name").build())
             .add_validator(
-                &objects::Validator::builder(models::ValidatorType::Equal, Value::from(30)).build(),
+                &objects::Validator::builder(models::ValidatorType::Equal, 30.into()).build(),
             )
-            .add_metadata("key", Value::from("value"))
+            .add_metadata("key", "value".into())
             .subcomponent(&objects::Subcomponent::builder("name").build())
             .build();
         step.add_measurement_with_details(&measurement).await?;
+
         step.end(TestStatus::Complete).await?;
 
         test_run.end(TestStatus::Complete, TestResult::Pass).await?;
@@ -1980,10 +1982,9 @@ mod tests {
             json!({"sequenceNumber":6,"testStepArtifact":{"testStepEnd":{"status":"COMPLETE"}}}),
             json!({"sequenceNumber":7,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
         ];
+        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
         let dut = DutInfo::builder("dut_id").build();
-
-        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
         let test_run = TestRun::builder("run_name", &dut, "1.0")
             .config(
@@ -1996,9 +1997,11 @@ mod tests {
 
         let step = test_run.step("first step")?;
         step.start().await?;
+
         let series = step.measurement_series("name");
         series.start().await?;
         series.end().await?;
+
         step.end(TestStatus::Complete).await?;
 
         test_run.end(TestStatus::Complete, TestResult::Pass).await?;
@@ -2024,10 +2027,9 @@ mod tests {
             json!({"sequenceNumber":8,"testStepArtifact":{"testStepEnd":{"status":"COMPLETE"}}}),
             json!({"sequenceNumber":9,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
         ];
+        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
         let dut = DutInfo::builder("dut_id").build();
-
-        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
         let test_run = TestRun::builder("run_name", &dut, "1.0")
             .config(
@@ -2040,12 +2042,15 @@ mod tests {
 
         let step = test_run.step("first step")?;
         step.start().await?;
+
         let series = step.measurement_series("name");
         series.start().await?;
         series.end().await?;
+
         let series_2 = step.measurement_series("name");
         series_2.start().await?;
         series_2.end().await?;
+
         step.end(TestStatus::Complete).await?;
 
         test_run.end(TestStatus::Complete, TestResult::Pass).await?;
@@ -2069,10 +2074,9 @@ mod tests {
             json!({"sequenceNumber":6,"testStepArtifact":{"testStepEnd":{"status":"COMPLETE"}}}),
             json!({"sequenceNumber":7,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
         ];
+        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
         let dut = DutInfo::builder("dut_id").build();
-
-        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
         let test_run = TestRun::builder("run_name", &dut, "1.0")
             .config(
@@ -2085,10 +2089,12 @@ mod tests {
 
         let step = test_run.step("first step")?;
         step.start().await?;
+
         let series =
             step.measurement_series_with_details(MeasurementSeriesStart::new("name", "series_id"));
         series.start().await?;
         series.end().await?;
+
         step.end(TestStatus::Complete).await?;
 
         test_run.end(TestStatus::Complete, TestResult::Pass).await?;
@@ -2112,10 +2118,9 @@ mod tests {
             json!({"sequenceNumber":6,"testStepArtifact":{"testStepEnd":{"status":"COMPLETE"}}}),
             json!({"sequenceNumber":7,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
         ];
+        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
         let dut = DutInfo::builder("dut_id").build();
-
-        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
         let test_run = TestRun::builder("run_name", &dut, "1.0")
             .config(
@@ -2128,16 +2133,18 @@ mod tests {
 
         let step = test_run.step("first step")?;
         step.start().await?;
+
         let series = step.measurement_series_with_details(
             MeasurementSeriesStart::builder("name", "series_id")
-                .add_metadata("key", Value::from("value"))
-                .add_validator(&Validator::builder(ValidatorType::Equal, Value::from(30)).build())
+                .add_metadata("key", "value".into())
+                .add_validator(&Validator::builder(ValidatorType::Equal, 30.into()).build())
                 .hardware_info(&HardwareInfo::builder("id", "name").build())
                 .subcomponent(&Subcomponent::builder("name").build())
                 .build(),
         );
         series.start().await?;
         series.end().await?;
+
         step.end(TestStatus::Complete).await?;
 
         test_run.end(TestStatus::Complete, TestResult::Pass).await?;
@@ -2162,10 +2169,9 @@ mod tests {
             json!({"sequenceNumber":7,"testStepArtifact":{"testStepEnd":{"status":"COMPLETE"}}}),
             json!({"sequenceNumber":8,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
         ];
+        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
         let dut = DutInfo::builder("dut_id").build();
-
-        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
         let test_run = TestRun::builder("run_name", &dut, "1.0")
             .config(
@@ -2178,10 +2184,12 @@ mod tests {
 
         let step = test_run.step("first step")?;
         step.start().await?;
+
         let series = step.measurement_series("name");
         series.start().await?;
-        series.add_measurement(Value::from(60)).await?;
+        series.add_measurement(60.into()).await?;
         series.end().await?;
+
         step.end(TestStatus::Complete).await?;
 
         test_run.end(TestStatus::Complete, TestResult::Pass).await?;
@@ -2208,10 +2216,9 @@ mod tests {
             json!({"sequenceNumber":9,"testStepArtifact":{"testStepEnd":{"status":"COMPLETE"}}}),
             json!({"sequenceNumber":10,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
         ];
+        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
         let dut = DutInfo::builder("dut_id").build();
-
-        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
         let test_run = TestRun::builder("run_name", &dut, "1.0")
             .config(
@@ -2227,9 +2234,9 @@ mod tests {
         let series = step.measurement_series("name");
         series.start().await?;
         // add more than one element to check the index increments correctly
-        series.add_measurement(Value::from(60)).await?;
-        series.add_measurement(Value::from(70)).await?;
-        series.add_measurement(Value::from(80)).await?;
+        series.add_measurement(60.into()).await?;
+        series.add_measurement(70.into()).await?;
+        series.add_measurement(80.into()).await?;
         series.end().await?;
         step.end(TestStatus::Complete).await?;
 
@@ -2255,10 +2262,9 @@ mod tests {
             json!({"sequenceNumber":7,"testStepArtifact":{"testStepEnd":{"status":"COMPLETE"}}}),
             json!({"sequenceNumber":8,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
         ];
+        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
         let dut = DutInfo::builder("dut_id").build();
-
-        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
         let test_run = TestRun::builder("run_name", &dut, "1.0")
             .config(
@@ -2274,7 +2280,7 @@ mod tests {
         let series = step.measurement_series("name");
         series.start().await?;
         series
-            .add_measurement_with_metadata(Value::from(60), vec![("key", Value::from("value"))])
+            .add_measurement_with_metadata(60.into(), vec![("key", "value".into())])
             .await?;
         series.end().await?;
         step.end(TestStatus::Complete).await?;
@@ -2303,10 +2309,9 @@ mod tests {
             json!({"sequenceNumber":9,"testStepArtifact":{"testStepEnd":{"status":"COMPLETE"}}}),
             json!({"sequenceNumber":10,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
         ];
+        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
         let dut = DutInfo::builder("dut_id").build();
-
-        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
         let test_run = TestRun::builder("run_name", &dut, "1.0")
             .config(
@@ -2323,13 +2328,13 @@ mod tests {
         series.start().await?;
         // add more than one element to check the index increments correctly
         series
-            .add_measurement_with_metadata(Value::from(60), vec![("key", Value::from("value"))])
+            .add_measurement_with_metadata(60.into(), vec![("key", "value".into())])
             .await?;
         series
-            .add_measurement_with_metadata(Value::from(70), vec![("key2", Value::from("value2"))])
+            .add_measurement_with_metadata(70.into(), vec![("key2", "value2".into())])
             .await?;
         series
-            .add_measurement_with_metadata(Value::from(80), vec![("key3", Value::from("value3"))])
+            .add_measurement_with_metadata(80.into(), vec![("key3", "value3".into())])
             .await?;
         series.end().await?;
         step.end(TestStatus::Complete).await?;
@@ -2358,10 +2363,9 @@ mod tests {
             json!({"sequenceNumber":9,"testStepArtifact":{"testStepEnd":{"status":"COMPLETE"}}}),
             json!({"sequenceNumber":10,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
         ];
+        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
         let dut = DutInfo::builder("dut_id").build();
-
-        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
         let test_run = TestRun::builder("run_name", &dut, "1.0")
             .config(
@@ -2377,9 +2381,10 @@ mod tests {
         let series = step.measurement_series("name");
         series
             .scope(|s| async {
-                s.add_measurement(Value::from(60)).await?;
-                s.add_measurement(Value::from(70)).await?;
-                s.add_measurement(Value::from(80)).await?;
+                s.add_measurement(60.into()).await?;
+                s.add_measurement(70.into()).await?;
+                s.add_measurement(80.into()).await?;
+
                 Ok(())
             })
             .await?;
@@ -2396,17 +2401,16 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_config_builder() -> anyhow::Result<()> {
+    async fn test_config_builder() -> Result<()> {
         let expected = [
             json!({"schemaVersion":{"major":2,"minor":0},"sequenceNumber":1}),
             json!({"sequenceNumber":2,"testRunArtifact":{"testRunStart":{"dutInfo":{"dutInfoId":"dut_id","hardwareInfos":null,"metadata":null,"name":null,"platformInfos":null,"softwareInfos":null},"metadata":null,"name":"run_name","parameters":{},"version":"1.0"}}}),
             json!({"sequenceNumber":3,"testRunArtifact":{"error":{"message":"Error message","softwareInfoIds":null,"sourceLocation":null,"symptom":"symptom"}}}),
             json!({"sequenceNumber":4,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
         ];
+        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
         let dut = DutInfo::builder("dut_id").build();
-
-        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
         let test_run = TestRun::builder("run_name", &dut, "1.0")
             .config(
@@ -2418,18 +2422,12 @@ mod tests {
                     .build(),
             )
             .build();
-        test_run.start().await.unwrap();
-        test_run
-            .error_with_msg("symptom", "Error message")
-            .await
-            .unwrap();
-        test_run
-            .end(TestStatus::Complete, TestResult::Pass)
-            .await
-            .unwrap();
+        test_run.start().await?;
+        test_run.error_with_msg("symptom", "Error message").await?;
+        test_run.end(TestStatus::Complete, TestResult::Pass).await?;
 
         for (idx, entry) in buffer.lock().await.iter().enumerate() {
-            let value = serde_json::from_str::<serde_json::Value>(entry).unwrap();
+            let value = serde_json::from_str::<serde_json::Value>(entry)?;
             assert_json_include!(actual: value, expected: &expected[idx]);
         }
 
@@ -2437,28 +2435,25 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_testrun_instantiation_with_new() {
+    async fn test_testrun_instantiation_with_new() -> Result<()> {
         let test_run = TestRun::new("run_name", "dut_id", "1.0");
-        test_run.start().await.unwrap();
-        test_run
-            .end(TestStatus::Complete, TestResult::Pass)
-            .await
-            .unwrap();
+        test_run.start().await?;
+        test_run.end(TestStatus::Complete, TestResult::Pass).await?;
 
         assert_eq!(test_run.dut.to_spec().id, "dut_id");
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_testrun_metadata() -> anyhow::Result<()> {
+    async fn test_testrun_metadata() -> Result<()> {
         let expected = [
             json!({"schemaVersion":{"major":2,"minor":0},"sequenceNumber":1}),
             json!({"sequenceNumber":2,"testRunArtifact":{"testRunStart":{"dutInfo":{"dutInfoId":"dut_id","hardwareInfos":null,"metadata":null,"name":null,"platformInfos":null,"softwareInfos":null},"metadata":{"key": "value"},"name":"run_name","parameters":{},"version":"1.0"}}}),
             json!({"sequenceNumber":3,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
         ];
+        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
         let dut = DutInfo::builder("dut_id").build();
-
-        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
         let test_run = TestRun::builder("run_name", &dut, "1.0")
             .config(
@@ -2466,16 +2461,13 @@ mod tests {
                     .with_buffer_output(Arc::clone(&buffer))
                     .build(),
             )
-            .add_metadata("key", Value::from("value"))
+            .add_metadata("key", "value".into())
             .build();
-        test_run.start().await.unwrap();
-        test_run
-            .end(TestStatus::Complete, TestResult::Pass)
-            .await
-            .unwrap();
+        test_run.start().await?;
+        test_run.end(TestStatus::Complete, TestResult::Pass).await?;
 
         for (idx, entry) in buffer.lock().await.iter().enumerate() {
-            let value = serde_json::from_str::<serde_json::Value>(entry).unwrap();
+            let value = serde_json::from_str::<serde_json::Value>(entry)?;
             assert_json_include!(actual: value, expected: &expected[idx]);
         }
 
@@ -2483,16 +2475,15 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_testrun_builder() -> anyhow::Result<()> {
+    async fn test_testrun_builder() -> Result<()> {
         let expected = [
             json!({"schemaVersion":{"major":2,"minor":0},"sequenceNumber":1}),
             json!({"sequenceNumber":2,"testRunArtifact":{"testRunStart":{"commandLine":"cmd_line", "dutInfo":{"dutInfoId":"dut_id","hardwareInfos":null,"metadata":null,"name":null,"platformInfos":null,"softwareInfos":null},"metadata":{"key": "value", "key2": "value2"},"name":"run_name","parameters":{"key": "value"},"version":"1.0"}}}),
             json!({"sequenceNumber":3,"testRunArtifact":{"testRunEnd":{"result":"PASS","status":"COMPLETE"}}}),
         ];
+        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
         let dut = DutInfo::builder("dut_id").build();
-
-        let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
         let test_run = TestRun::builder("run_name", &dut, "1.0")
             .config(
@@ -2500,19 +2491,16 @@ mod tests {
                     .with_buffer_output(Arc::clone(&buffer))
                     .build(),
             )
-            .add_metadata("key", Value::from("value"))
-            .add_metadata("key2", Value::from("value2"))
-            .add_parameter("key", Value::from("value"))
+            .add_metadata("key", "value".into())
+            .add_metadata("key2", "value2".into())
+            .add_parameter("key", "value".into())
             .command_line("cmd_line")
             .build();
-        test_run.start().await.unwrap();
-        test_run
-            .end(TestStatus::Complete, TestResult::Pass)
-            .await
-            .unwrap();
+        test_run.start().await?;
+        test_run.end(TestStatus::Complete, TestResult::Pass).await?;
 
         for (idx, entry) in buffer.lock().await.iter().enumerate() {
-            let value = serde_json::from_str::<serde_json::Value>(entry).unwrap();
+            let value = serde_json::from_str::<serde_json::Value>(entry)?;
             assert_json_include!(actual: value, expected: &expected[idx]);
         }
 

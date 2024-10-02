@@ -77,8 +77,7 @@ impl StdoutWriter {
     }
 
     async fn write(&self, s: &str) -> Result<(), WriterError> {
-        let mut handle = io::stdout().lock();
-        writeln!(handle, "{}", s).map_err(WriterError::IoError)?;
+        println!("{}", s);
         Ok(())
     }
 }
@@ -139,8 +138,8 @@ mod tests {
     async fn test_emit_using_buffer_writer() -> Result<()> {
         let expected = json!({
             "schemaVersion": {
-                "major": 2,
-                "minor": 0
+                "major": models::SPEC_VERSION.0,
+                "minor": models::SPEC_VERSION.1,
             },
             "sequenceNumber": 1
         });
@@ -162,8 +161,20 @@ mod tests {
 
     #[tokio::test]
     async fn test_sequence_number_increments_at_each_call() -> Result<()> {
-        let expected_1 = json!({"schemaVersion": {"major":2,"minor":0},"sequenceNumber":1});
-        let expected_2 = json!({"schemaVersion": {"major":2,"minor":0},"sequenceNumber":2});
+        let expected_1 = json!({
+            "schemaVersion": {
+                "major": models::SPEC_VERSION.0,
+                "minor": models::SPEC_VERSION.1,
+            },
+            "sequenceNumber": 1
+        });
+        let expected_2 = json!({
+            "schemaVersion": {
+                "major": models::SPEC_VERSION.0,
+                "minor": models::SPEC_VERSION.1,
+            },
+            "sequenceNumber": 2
+        });
 
         let buffer = Arc::new(Mutex::new(vec![]));
         let writer = BufferWriter::new(buffer.clone());

@@ -889,7 +889,7 @@ impl SoftwareInfoBuilder {
 /// use ocptv::output::Measurement;
 /// use ocptv::output::Value;
 ///
-/// let measurement = Measurement::new("name", Value::from(50));
+/// let measurement = Measurement::new("name", 50.into());
 /// ```
 ///
 /// ## Create a Measurement object with the `builder` method
@@ -902,10 +902,10 @@ impl SoftwareInfoBuilder {
 /// use ocptv::output::ValidatorType;
 /// use ocptv::output::Value;
 ///
-/// let measurement = Measurement::builder("name", Value::from(50))
+/// let measurement = Measurement::builder("name", 50.into())
 ///     .hardware_info(&HardwareInfo::builder("id", "name").build())
-///     .add_validator(&Validator::builder(ValidatorType::Equal, Value::from(30)).build())
-///     .add_metadata("key", Value::from("value"))
+///     .add_validator(&Validator::builder(ValidatorType::Equal, 30.into()).build())
+///     .add_metadata("key", "value".into())
 ///     .subcomponent(&Subcomponent::builder("name").build())
 ///     .build();
 /// ```
@@ -928,7 +928,7 @@ impl Measurement {
     /// use ocptv::output::Measurement;
     /// use ocptv::output::Value;
     ///
-    /// let measurement = Measurement::new("name", Value::from(50));
+    /// let measurement = Measurement::new("name", 50.into());
     /// ```
     pub fn new(name: &str, value: Value) -> Self {
         Measurement {
@@ -954,10 +954,10 @@ impl Measurement {
     /// use ocptv::output::ValidatorType;
     /// use ocptv::output::Value;
     ///
-    /// let measurement = Measurement::builder("name", Value::from(50))
+    /// let measurement = Measurement::builder("name", 50.into())
     ///     .hardware_info(&HardwareInfo::builder("id", "name").build())
-    ///     .add_validator(&Validator::builder(ValidatorType::Equal, Value::from(30)).build())
-    ///     .add_metadata("key", Value::from("value"))
+    ///     .add_validator(&Validator::builder(ValidatorType::Equal, 30.into()).build())
+    ///     .add_metadata("key", "value".into())
     ///     .subcomponent(&Subcomponent::builder("name").build())
     ///     .build();
     /// ```
@@ -973,7 +973,7 @@ impl Measurement {
     /// use ocptv::output::Measurement;
     /// use ocptv::output::Value;
     ///
-    /// let measurement = Measurement::new("name", Value::from(50));
+    /// let measurement = Measurement::new("name", 50.into());
     /// let _ = measurement.to_artifact();
     /// ```
     pub fn to_artifact(&self) -> models::OutputArtifactDescendant {
@@ -1013,10 +1013,10 @@ impl Measurement {
 /// use ocptv::output::ValidatorType;
 /// use ocptv::output::Value;
 ///
-/// let builder = MeasurementBuilder::new("name", Value::from(50))
+/// let builder = MeasurementBuilder::new("name", 50.into())
 ///     .hardware_info(&HardwareInfo::builder("id", "name").build())
-///     .add_validator(&Validator::builder(ValidatorType::Equal, Value::from(30)).build())
-///     .add_metadata("key", Value::from("value"))
+///     .add_validator(&Validator::builder(ValidatorType::Equal, 30.into()).build())
+///     .add_metadata("key", "value".into())
 ///     .subcomponent(&Subcomponent::builder("name").build());
 /// let measurement = builder.build();
 /// ```
@@ -1039,7 +1039,7 @@ impl MeasurementBuilder {
     /// use ocptv::output::MeasurementBuilder;
     /// use ocptv::output::Value;
     ///
-    /// let builder = MeasurementBuilder::new("name", Value::from(50));
+    /// let builder = MeasurementBuilder::new("name", 50.into());
     /// ```
     pub fn new(name: &str, value: Value) -> Self {
         MeasurementBuilder {
@@ -1065,8 +1065,8 @@ impl MeasurementBuilder {
     /// use ocptv::output::ValidatorType;
     /// use ocptv::output::Value;
     ///
-    /// let builder = MeasurementBuilder::new("name", Value::from(50))
-    ///     .add_validator(&Validator::builder(ValidatorType::Equal, Value::from(30)).build());
+    /// let builder = MeasurementBuilder::new("name", 50.into())
+    ///     .add_validator(&Validator::builder(ValidatorType::Equal, 30.into()).build());
     /// ```
     pub fn add_validator(mut self, validator: &Validator) -> MeasurementBuilder {
         self.validators = match self.validators {
@@ -1088,7 +1088,7 @@ impl MeasurementBuilder {
     /// use ocptv::output::MeasurementBuilder;
     /// use ocptv::output::Value;
     ///
-    /// let builder = MeasurementBuilder::new("name", Value::from(50))
+    /// let builder = MeasurementBuilder::new("name", 50.into())
     ///     .hardware_info(&HardwareInfo::builder("id", "name").build());
     /// ```
     pub fn hardware_info(mut self, hardware_info: &HardwareInfo) -> MeasurementBuilder {
@@ -1105,7 +1105,7 @@ impl MeasurementBuilder {
     /// use ocptv::output::Subcomponent;
     /// use ocptv::output::Value;
     ///
-    /// let builder = MeasurementBuilder::new("name", Value::from(50))
+    /// let builder = MeasurementBuilder::new("name", 50.into())
     ///     .subcomponent(&Subcomponent::builder("name").build());
     /// ```
     pub fn subcomponent(mut self, subcomponent: &Subcomponent) -> MeasurementBuilder {
@@ -1122,7 +1122,7 @@ impl MeasurementBuilder {
     /// use ocptv::output::Value;
     ///
     /// let builder =
-    ///     MeasurementBuilder::new("name", Value::from(50)).add_metadata("key", Value::from("value"));
+    ///     MeasurementBuilder::new("name", 50.into()).add_metadata("key", "value".into());
     /// ```
     pub fn add_metadata(mut self, key: &str, value: Value) -> MeasurementBuilder {
         match self.metadata {
@@ -1130,11 +1130,9 @@ impl MeasurementBuilder {
                 metadata.insert(key.to_string(), value.clone());
             }
             None => {
-                self.metadata = Some(Map::new());
-                self.metadata
-                    .as_mut()
-                    .unwrap()
-                    .insert(key.to_string(), value.clone());
+                let mut entries = serde_json::Map::new();
+                entries.insert(key.to_owned(), value);
+                self.metadata = Some(entries);
             }
         };
         self
@@ -1148,7 +1146,7 @@ impl MeasurementBuilder {
     /// use ocptv::output::MeasurementBuilder;
     /// use ocptv::output::Value;
     ///
-    /// let builder = MeasurementBuilder::new("name", Value::from(50000)).unit("RPM");
+    /// let builder = MeasurementBuilder::new("name", 50000.into()).unit("RPM");
     /// ```
     pub fn unit(mut self, unit: &str) -> MeasurementBuilder {
         self.unit = Some(unit.to_string());
@@ -1163,7 +1161,7 @@ impl MeasurementBuilder {
     /// use ocptv::output::MeasurementBuilder;
     /// use ocptv::output::Value;
     ///
-    /// let builder = MeasurementBuilder::new("name", Value::from(50));
+    /// let builder = MeasurementBuilder::new("name", 50.into());
     /// let measurement = builder.build();
     /// ```
     pub fn build(self) -> Measurement {
@@ -1378,6 +1376,9 @@ impl MeasurementSeriesElement {
 
 #[cfg(test)]
 mod tests {
+    use anyhow::bail;
+    use anyhow::Result;
+
     use assert_json_diff::assert_json_include;
     use serde_json::Map;
     use serde_json::Value;
@@ -1387,117 +1388,116 @@ mod tests {
     use crate::output::models::ValidatorType;
 
     #[test]
-    fn test_schema_creation_from_builder() {
-        let version = super::SchemaVersion::new();
+    fn test_schema_creation_from_builder() -> Result<()> {
+        let version = SchemaVersion::new();
         assert_eq!(version.major, models::SPEC_VERSION.0);
         assert_eq!(version.minor, models::SPEC_VERSION.1);
+        Ok(())
     }
 
     #[test]
-    fn test_dut_creation_from_builder_with_defaults() {
-        let dut = super::DutInfo::builder("1234").build();
+    fn test_dut_creation_from_builder_with_defaults() -> Result<()> {
+        let dut = DutInfo::builder("1234").build();
         assert_eq!(dut.id, "1234");
+        Ok(())
     }
 
     #[test]
-    fn test_log_output_as_test_run_descendant_to_artifact() {
-        let log = super::Log::builder("test")
-            .severity(super::models::LogSeverity::Info)
+    fn test_log_output_as_test_run_descendant_to_artifact() -> Result<()> {
+        let log = Log::builder("test")
+            .severity(models::LogSeverity::Info)
             .build();
-        let artifact = log.to_artifact(super::ArtifactContext::TestRun);
+
+        let artifact = log.to_artifact(ArtifactContext::TestRun);
         assert_eq!(
             artifact,
-            super::models::OutputArtifactDescendant::TestRunArtifact(
-                super::models::TestRunArtifactSpec {
-                    descendant: super::models::TestRunArtifactDescendant::Log(
-                        super::models::LogSpec {
-                            severity: log.severity.clone(),
-                            message: log.message.clone(),
-                            source_location: log.source_location.clone(),
-                        }
-                    ),
-                }
-            )
+            models::OutputArtifactDescendant::TestRunArtifact(models::TestRunArtifactSpec {
+                descendant: models::TestRunArtifactDescendant::Log(models::LogSpec {
+                    severity: log.severity.clone(),
+                    message: log.message.clone(),
+                    source_location: log.source_location.clone(),
+                }),
+            })
         );
+
+        Ok(())
     }
 
     #[test]
-    fn test_log_output_as_test_step_descendant_to_artifact() {
-        let log = super::Log::builder("test")
-            .severity(super::models::LogSeverity::Info)
+    fn test_log_output_as_test_step_descendant_to_artifact() -> Result<()> {
+        let log = Log::builder("test")
+            .severity(models::LogSeverity::Info)
             .build();
-        let artifact = log.to_artifact(super::ArtifactContext::TestStep);
+
+        let artifact = log.to_artifact(ArtifactContext::TestStep);
         assert_eq!(
             artifact,
-            super::models::OutputArtifactDescendant::TestStepArtifact(
-                super::models::TestStepArtifactSpec {
-                    descendant: super::models::TestStepArtifactDescendant::Log(
-                        super::models::LogSpec {
-                            severity: log.severity.clone(),
-                            message: log.message.clone(),
-                            source_location: log.source_location.clone(),
-                        }
-                    ),
-                }
-            )
+            models::OutputArtifactDescendant::TestStepArtifact(models::TestStepArtifactSpec {
+                descendant: models::TestStepArtifactDescendant::Log(models::LogSpec {
+                    severity: log.severity.clone(),
+                    message: log.message.clone(),
+                    source_location: log.source_location.clone(),
+                }),
+            })
         );
+
+        Ok(())
     }
 
     #[test]
-    fn test_error_output_as_test_run_descendant_to_artifact() {
-        let error = super::Error::builder("symptom")
+    fn test_error_output_as_test_run_descendant_to_artifact() -> Result<()> {
+        let error = Error::builder("symptom")
             .message("")
-            .add_software_info(&super::SoftwareInfo::builder("id", "name").build())
+            .add_software_info(&SoftwareInfo::builder("id", "name").build())
             .source("", 1)
             .build();
-        let artifact = error.to_artifact(super::ArtifactContext::TestRun);
+
+        let artifact = error.to_artifact(ArtifactContext::TestRun);
         assert_eq!(
             artifact,
-            super::models::OutputArtifactDescendant::TestRunArtifact(
-                super::models::TestRunArtifactSpec {
-                    descendant: super::models::TestRunArtifactDescendant::Error(
-                        super::models::ErrorSpec {
-                            symptom: error.symptom.clone(),
-                            message: error.message.clone(),
-                            software_infos: error.software_infos.clone(),
-                            source_location: error.source_location.clone(),
-                        }
-                    ),
-                }
-            )
+            models::OutputArtifactDescendant::TestRunArtifact(models::TestRunArtifactSpec {
+                descendant: models::TestRunArtifactDescendant::Error(models::ErrorSpec {
+                    symptom: error.symptom.clone(),
+                    message: error.message.clone(),
+                    software_infos: error.software_infos.clone(),
+                    source_location: error.source_location.clone(),
+                }),
+            })
         );
+
+        Ok(())
     }
 
     #[test]
-    fn test_error_output_as_test_step_descendant_to_artifact() {
-        let error = super::Error::builder("symptom")
+    fn test_error_output_as_test_step_descendant_to_artifact() -> Result<()> {
+        let error = Error::builder("symptom")
             .message("")
-            .add_software_info(&super::SoftwareInfo::builder("id", "name").build())
+            .add_software_info(&SoftwareInfo::builder("id", "name").build())
             .source("", 1)
             .build();
-        let artifact = error.to_artifact(super::ArtifactContext::TestStep);
+
+        let artifact = error.to_artifact(ArtifactContext::TestStep);
         assert_eq!(
             artifact,
-            super::models::OutputArtifactDescendant::TestStepArtifact(
-                super::models::TestStepArtifactSpec {
-                    descendant: super::models::TestStepArtifactDescendant::Error(
-                        super::models::ErrorSpec {
-                            symptom: error.symptom.clone(),
-                            message: error.message.clone(),
-                            software_infos: error.software_infos.clone(),
-                            source_location: error.source_location.clone(),
-                        }
-                    ),
-                }
-            )
+            models::OutputArtifactDescendant::TestStepArtifact(models::TestStepArtifactSpec {
+                descendant: models::TestStepArtifactDescendant::Error(models::ErrorSpec {
+                    symptom: error.symptom.clone(),
+                    message: error.message.clone(),
+                    software_infos: error.software_infos.clone(),
+                    source_location: error.source_location.clone(),
+                }),
+            })
         );
+
+        Ok(())
     }
 
     #[test]
-    fn test_measurement_as_test_step_descendant_to_artifact() {
-        let name = String::from("name");
+    fn test_measurement_as_test_step_descendant_to_artifact() -> Result<()> {
+        let name = "name".to_owned();
         let value = Value::from(50);
-        let measurement = super::Measurement::new(&name, value.clone());
+        let measurement = Measurement::new(&name, value.clone());
+
         let artifact = measurement.to_artifact();
         assert_eq!(
             artifact,
@@ -1515,20 +1515,25 @@ mod tests {
                 ),
             })
         );
+
+        Ok(())
     }
 
     #[test]
-    fn test_measurement_builder_as_test_step_descendant_to_artifact() {
-        let name = String::from("name");
+    fn test_measurement_builder_as_test_step_descendant_to_artifact() -> Result<()> {
+        let name = "name".to_owned();
         let value = Value::from(50000);
         let hardware_info = HardwareInfo::builder("id", "name").build();
-        let validator = Validator::builder(models::ValidatorType::Equal, Value::from(30)).build();
+        let validator = Validator::builder(models::ValidatorType::Equal, 30.into()).build();
+
         let meta_key = "key";
         let meta_value = Value::from("value");
         let mut metadata = Map::new();
         metadata.insert(meta_key.to_string(), meta_value.clone());
         metadata.insert(meta_key.to_string(), meta_value.clone());
+
         let subcomponent = Subcomponent::builder("name").build();
+
         let unit = "RPM";
         let measurement = Measurement::builder(&name, value.clone())
             .hardware_info(&hardware_info)
@@ -1539,13 +1544,14 @@ mod tests {
             .subcomponent(&subcomponent)
             .unit(unit)
             .build();
+
         let artifact = measurement.to_artifact();
         assert_eq!(
             artifact,
             models::OutputArtifactDescendant::TestStepArtifact(models::TestStepArtifactSpec {
                 descendant: models::TestStepArtifactDescendant::Measurement(
                     models::MeasurementSpec {
-                        name: name.to_string(),
+                        name,
                         unit: Some(unit.to_string()),
                         value,
                         validators: Some(vec![validator.to_spec(), validator.to_spec()]),
@@ -1556,13 +1562,16 @@ mod tests {
                 ),
             })
         );
+
+        Ok(())
     }
 
     #[test]
-    fn test_measurement_series_start_to_artifact() {
-        let name = String::from("name");
-        let series_id = String::from("series_id");
-        let series = super::MeasurementSeriesStart::new(&name, &series_id);
+    fn test_measurement_series_start_to_artifact() -> Result<()> {
+        let name = "name".to_owned();
+        let series_id = "series_id".to_owned();
+        let series = MeasurementSeriesStart::new(&name, &series_id);
+
         let artifact = series.to_artifact();
         assert_eq!(
             artifact,
@@ -1580,21 +1589,22 @@ mod tests {
                 ),
             })
         );
+
+        Ok(())
     }
 
     #[test]
-    fn test_measurement_series_start_builder_to_artifact() {
-        let name = String::from("name");
-        let series_id = String::from("series_id");
-        let validator = Validator::builder(models::ValidatorType::Equal, Value::from(30)).build();
-        let validator2 =
-            Validator::builder(models::ValidatorType::GreaterThen, Value::from(10)).build();
+    fn test_measurement_series_start_builder_to_artifact() -> Result<()> {
+        let name = "name".to_owned();
+        let series_id = "series_id".to_owned();
+        let validator = Validator::builder(models::ValidatorType::Equal, 30.into()).build();
+        let validator2 = Validator::builder(models::ValidatorType::GreaterThen, 10.into()).build();
         let hw_info = HardwareInfo::builder("id", "name").build();
         let subcomponent = Subcomponent::builder("name").build();
-        let series = super::MeasurementSeriesStart::builder(&name, &series_id)
+        let series = MeasurementSeriesStart::builder(&name, &series_id)
             .unit("unit")
-            .add_metadata("key", Value::from("value"))
-            .add_metadata("key2", Value::from("value2"))
+            .add_metadata("key", "value".into())
+            .add_metadata("key2", "value2".into())
             .add_validator(&validator)
             .add_validator(&validator2)
             .hardware_info(&hw_info)
@@ -1607,26 +1617,29 @@ mod tests {
             models::OutputArtifactDescendant::TestStepArtifact(models::TestStepArtifactSpec {
                 descendant: models::TestStepArtifactDescendant::MeasurementSeriesStart(
                     models::MeasurementSeriesStartSpec {
-                        name: name.to_string(),
+                        name,
                         unit: Some("unit".to_string()),
                         series_id: series_id.to_string(),
                         validators: Some(vec![validator.to_spec(), validator2.to_spec()]),
                         hardware_info: Some(hw_info.to_spec()),
                         subcomponent: Some(subcomponent.to_spec()),
-                        metadata: Some(Map::from_iter([
-                            ("key".to_string(), Value::from("value")),
-                            ("key2".to_string(), Value::from("value2"))
+                        metadata: Some(serde_json::Map::from_iter([
+                            ("key".to_string(), "value".into()),
+                            ("key2".to_string(), "value2".into())
                         ])),
                     }
                 ),
             })
         );
+
+        Ok(())
     }
 
     #[test]
-    fn test_measurement_series_end_to_artifact() {
-        let series_id = String::from("series_id");
-        let series = super::MeasurementSeriesEnd::new(&series_id, 1);
+    fn test_measurement_series_end_to_artifact() -> Result<()> {
+        let series_id = "series_id".to_owned();
+        let series = MeasurementSeriesEnd::new(&series_id, 1);
+
         let artifact = series.to_artifact();
         assert_eq!(
             artifact,
@@ -1639,17 +1652,19 @@ mod tests {
                 ),
             })
         );
+
+        Ok(())
     }
 
     #[test]
-    fn test_dut_builder() {
-        let platform = super::PlatformInfo::builder("platform_info").build();
-        let software = super::SoftwareInfo::builder("software_id", "name").build();
-        let hardware = super::HardwareInfo::builder("hardware_id", "name").build();
-        let dut = super::DutInfo::builder("1234")
+    fn test_dut_builder() -> Result<()> {
+        let platform = PlatformInfo::builder("platform_info").build();
+        let software = SoftwareInfo::builder("software_id", "name").build();
+        let hardware = HardwareInfo::builder("hardware_id", "name").build();
+        let dut = DutInfo::builder("1234")
             .name("DUT")
-            .add_metadata("key", Value::from("value"))
-            .add_metadata("key2", Value::from("value2"))
+            .add_metadata("key", "value".into())
+            .add_metadata("key2", "value2".into())
             .add_hardware_info(&hardware)
             .add_hardware_info(&hardware)
             .add_platform_info(&platform)
@@ -1657,63 +1672,159 @@ mod tests {
             .add_software_info(&software)
             .add_software_info(&software)
             .build();
-        assert_eq!(dut.to_spec().id, "1234");
-        assert_eq!(dut.to_spec().name.unwrap(), "DUT");
-        assert_eq!(dut.to_spec().metadata.unwrap()["key"], "value");
-        assert_eq!(dut.to_spec().metadata.unwrap()["key2"], "value2");
-        assert_eq!(
-            dut.to_spec().hardware_infos.unwrap().first().unwrap().id,
-            "hardware_id"
-        );
-        assert_eq!(
-            dut.to_spec().software_infos.unwrap().first().unwrap().id,
-            "software_id"
-        );
-        assert_eq!(
-            dut.to_spec().platform_infos.unwrap().first().unwrap().info,
-            "platform_info"
-        );
+
+        let spec_dut = dut.to_spec();
+
+        assert_eq!(spec_dut.id, "1234");
+        assert_eq!(spec_dut.name, Some("DUT".to_owned()));
+
+        match spec_dut.metadata {
+            Some(m) => {
+                assert_eq!(m["key"], "value");
+                assert_eq!(m["key2"], "value2");
+            }
+            _ => bail!("metadata is empty"),
+        }
+
+        match spec_dut.hardware_infos {
+            Some(infos) => match infos.first() {
+                Some(info) => {
+                    assert_eq!(info.id, "hardware_id");
+                }
+                _ => bail!("hardware_infos is empty"),
+            },
+            _ => bail!("hardware_infos is missing"),
+        }
+
+        match spec_dut.software_infos {
+            Some(infos) => match infos.first() {
+                Some(info) => {
+                    assert_eq!(info.id, "software_id");
+                }
+                _ => bail!("software_infos is empty"),
+            },
+            _ => bail!("software_infos is missing"),
+        }
+
+        match spec_dut.platform_infos {
+            Some(infos) => match infos.first() {
+                Some(info) => {
+                    assert_eq!(info.info, "platform_info");
+                }
+                _ => bail!("platform_infos is empty"),
+            },
+            _ => bail!("platform_infos is missing"),
+        }
+
+        Ok(())
     }
 
     #[test]
-    fn test_error() {
-        let expected_run = serde_json::json!({"testRunArtifact": {"error": {"message": "message", "softwareInfoIds": [{"computerSystem": null, "name": "name", "revision": null, "softwareInfoId": "software_id", "softwareType": null, "version": null},  {"computerSystem": null, "name": "name", "revision": null, "softwareInfoId": "software_id", "softwareType": null, "version": null}], "sourceLocation": {"file": "file.rs", "line": 1}, "symptom": "symptom"}}});
-        let expected_step = serde_json::json!({"testStepArtifact":{"error":{"message":"message","softwareInfoIds":[{"computerSystem":null,"name":"name","revision":null,"softwareInfoId":"software_id","softwareType":null,"version":null},{"computerSystem":null,"name":"name","revision":null,"softwareInfoId":"software_id","softwareType":null,"version":null}],"sourceLocation":{"file":"file.rs","line":1},"symptom":"symptom"}}});
+    fn test_error() -> Result<()> {
+        let expected_run = serde_json::json!({
+            "testRunArtifact": {
+                "error": {
+                    "message": "message",
+                    "softwareInfoIds": [
+                        {
+                            "computerSystem": null,
+                            "name": "name",
+                            "revision": null,
+                            "softwareInfoId":
+                            "software_id",
+                            "softwareType": null,
+                            "version": null
+                        },
+                        {
+                            "computerSystem": null,
+                            "name": "name",
+                            "revision": null,
+                            "softwareInfoId":
+                            "software_id",
+                            "softwareType": null,
+                            "version": null
+                        }
+                    ],
+                    "sourceLocation": {"file": "file.rs", "line": 1},
+                    "symptom": "symptom"
+                }
+            }
+        });
+        let expected_step = serde_json::json!({
+            "testStepArtifact": {
+                "error": {
+                    "message": "message",
+                    "softwareInfoIds": [
+                        {
+                            "computerSystem": null,
+                            "name": "name",
+                            "revision": null,
+                            "softwareInfoId": "software_id",
+                            "softwareType": null,
+                            "version": null
+                        },
+                        {
+                            "computerSystem": null,
+                            "name": "name",
+                            "revision": null,
+                            "softwareInfoId": "software_id",
+                            "softwareType": null,
+                            "version": null
+                        }
+                    ],
+                    "sourceLocation": {"file":"file.rs","line":1},
+                    "symptom":"symptom"
+                }
+            }
+        });
 
-        let software = super::SoftwareInfo::builder("software_id", "name").build();
-        let error = super::ErrorBuilder::new("symptom")
+        let software = SoftwareInfo::builder("software_id", "name").build();
+        let error = ErrorBuilder::new("symptom")
             .message("message")
             .source("file.rs", 1)
             .add_software_info(&software)
             .add_software_info(&software)
             .build();
-        let spec = error.to_artifact(ArtifactContext::TestRun);
-        let actual = serde_json::json!(spec);
+
+        let spec_error = error.to_artifact(ArtifactContext::TestRun);
+        let actual = serde_json::json!(spec_error);
         assert_json_include!(actual: actual, expected: &expected_run);
 
-        let spec = error.to_artifact(ArtifactContext::TestStep);
-        let actual = serde_json::json!(spec);
+        let spec_error = error.to_artifact(ArtifactContext::TestStep);
+        let actual = serde_json::json!(spec_error);
         assert_json_include!(actual: actual, expected: &expected_step);
+
+        Ok(())
     }
 
     #[test]
-    fn test_validator() {
-        let validator = super::Validator::builder(ValidatorType::Equal, Value::from(30))
+    fn test_validator() -> Result<()> {
+        let validator = Validator::builder(ValidatorType::Equal, 30.into())
             .name("validator")
-            .add_metadata("key", Value::from("value"))
-            .add_metadata("key2", Value::from("value2"))
+            .add_metadata("key", "value".into())
+            .add_metadata("key2", "value2".into())
             .build();
 
-        assert_eq!(validator.to_spec().name.unwrap(), "validator");
-        assert_eq!(validator.to_spec().value, 30);
-        assert_eq!(validator.to_spec().validator_type, ValidatorType::Equal);
-        assert_eq!(validator.to_spec().metadata.unwrap()["key"], "value");
-        assert_eq!(validator.to_spec().metadata.unwrap()["key2"], "value2");
+        let spec_validator = validator.to_spec();
+
+        assert_eq!(spec_validator.name, Some("validator".to_owned()));
+        assert_eq!(spec_validator.value, 30);
+        assert_eq!(spec_validator.validator_type, ValidatorType::Equal);
+
+        match spec_validator.metadata {
+            Some(m) => {
+                assert_eq!(m["key"], "value");
+                assert_eq!(m["key2"], "value2");
+            }
+            _ => bail!("metadata is none"),
+        }
+
+        Ok(())
     }
 
     #[test]
-    fn test_hardware_info() {
-        let info = super::HardwareInfo::builder("hardware_id", "hardware_name")
+    fn test_hardware_info() -> Result<()> {
+        let info = HardwareInfo::builder("hardware_id", "hardware_name")
             .version("version")
             .revision("revision")
             .location("location")
@@ -1726,66 +1837,82 @@ mod tests {
             .manager("manager")
             .build();
 
-        assert_eq!(info.to_spec().id, "hardware_id");
-        assert_eq!(info.to_spec().name, "hardware_name");
-        assert_eq!(info.to_spec().version.unwrap(), "version");
-        assert_eq!(info.to_spec().revision.unwrap(), "revision");
-        assert_eq!(info.to_spec().location.unwrap(), "location");
-        assert_eq!(info.to_spec().serial_no.unwrap(), "serial_no");
-        assert_eq!(info.to_spec().part_no.unwrap(), "part_no");
-        assert_eq!(info.to_spec().manufacturer.unwrap(), "manufacturer");
+        let spec_hwinfo = info.to_spec();
+
+        assert_eq!(spec_hwinfo.id, "hardware_id");
+        assert_eq!(spec_hwinfo.name, "hardware_name");
+        assert_eq!(spec_hwinfo.version, Some("version".to_owned()));
+        assert_eq!(spec_hwinfo.revision, Some("revision".to_owned()));
+        assert_eq!(spec_hwinfo.location, Some("location".to_owned()));
+        assert_eq!(spec_hwinfo.serial_no, Some("serial_no".to_owned()));
+        assert_eq!(spec_hwinfo.part_no, Some("part_no".to_owned()));
+        assert_eq!(spec_hwinfo.manufacturer, Some("manufacturer".to_owned()));
         assert_eq!(
-            info.to_spec().manufacturer_part_no.unwrap(),
-            "manufacturer_part_no"
+            spec_hwinfo.manufacturer_part_no,
+            Some("manufacturer_part_no".to_owned())
         );
-        assert_eq!(info.to_spec().odata_id.unwrap(), "odata_id");
-        assert_eq!(info.to_spec().computer_system.unwrap(), "computer_system");
-        assert_eq!(info.to_spec().manager.unwrap(), "manager");
+        assert_eq!(spec_hwinfo.odata_id, Some("odata_id".to_owned()));
+        assert_eq!(
+            spec_hwinfo.computer_system,
+            Some("computer_system".to_owned())
+        );
+        assert_eq!(spec_hwinfo.manager, Some("manager".to_owned()));
+
+        Ok(())
     }
 
     #[test]
-    fn test_subcomponent() {
-        let sub = super::Subcomponent::builder("sub_name")
+    fn test_subcomponent() -> Result<()> {
+        let sub = Subcomponent::builder("sub_name")
             .subcomponent_type(models::SubcomponentType::Asic)
             .version("version")
             .location("location")
             .revision("revision")
             .build();
 
-        assert_eq!(sub.to_spec().name, "sub_name");
-        assert_eq!(sub.to_spec().version.unwrap(), "version");
-        assert_eq!(sub.to_spec().revision.unwrap(), "revision");
-        assert_eq!(sub.to_spec().location.unwrap(), "location");
+        let spec_subcomponent = sub.to_spec();
+
+        assert_eq!(spec_subcomponent.name, "sub_name");
+        assert_eq!(spec_subcomponent.version, Some("version".to_owned()));
+        assert_eq!(spec_subcomponent.revision, Some("revision".to_owned()));
+        assert_eq!(spec_subcomponent.location, Some("location".to_owned()));
         assert_eq!(
-            sub.to_spec().subcomponent_type.unwrap(),
-            models::SubcomponentType::Asic
+            spec_subcomponent.subcomponent_type,
+            Some(models::SubcomponentType::Asic)
         );
+
+        Ok(())
     }
 
     #[test]
-    fn test_platform_info() {
-        let info = super::PlatformInfo::builder("info").build();
+    fn test_platform_info() -> Result<()> {
+        let info = PlatformInfo::builder("info").build();
 
         assert_eq!(info.to_spec().info, "info");
+        Ok(())
     }
 
     #[test]
-    fn test_software_info() {
-        let info = super::SoftwareInfo::builder("software_id", "name")
+    fn test_software_info() -> Result<()> {
+        let info = SoftwareInfo::builder("software_id", "name")
             .version("version")
             .revision("revision")
             .software_type(models::SoftwareType::Application)
             .computer_system("system")
             .build();
 
-        assert_eq!(info.to_spec().id, "software_id");
-        assert_eq!(info.to_spec().name, "name");
-        assert_eq!(info.to_spec().version.unwrap(), "version");
-        assert_eq!(info.to_spec().revision.unwrap(), "revision");
+        let spec_swinfo = info.to_spec();
+
+        assert_eq!(spec_swinfo.id, "software_id");
+        assert_eq!(spec_swinfo.name, "name");
+        assert_eq!(spec_swinfo.version, Some("version".to_owned()));
+        assert_eq!(spec_swinfo.revision, Some("revision".to_owned()));
         assert_eq!(
-            info.to_spec().software_type.unwrap(),
-            models::SoftwareType::Application
+            spec_swinfo.software_type,
+            Some(models::SoftwareType::Application)
         );
-        assert_eq!(info.to_spec().computer_system.unwrap(), "system");
+        assert_eq!(spec_swinfo.computer_system, Some("system".to_owned()));
+
+        Ok(())
     }
 }
