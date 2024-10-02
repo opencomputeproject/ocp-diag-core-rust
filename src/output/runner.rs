@@ -33,8 +33,8 @@ impl Config {
     /// Creates a new [`ConfigBuilder`]
     ///
     /// # Examples
-    /// ```
-    /// use ocptv::output::Config;
+    /// ```rust
+    /// # use ocptv::output::*;
     ///
     /// let builder = Config::builder();
     /// ```
@@ -128,9 +128,8 @@ impl TestRun {
     ///
     /// # Examples
     ///
-    /// ```
-    /// use ocptv::output::DutInfo;
-    /// use ocptv::output::TestRun;
+    /// ```rust
+    /// # use ocptv::output::*;
     ///
     /// let dut = DutInfo::builder("my_dut").build();
     /// let builder = TestRun::builder("run_name", &dut, "1.0");
@@ -143,8 +142,8 @@ impl TestRun {
     ///
     /// # Examples
     ///
-    /// ```
-    /// use ocptv::output::TestRun;
+    /// ```rust
+    /// # use ocptv::output::*;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// ```
@@ -160,11 +159,15 @@ impl TestRun {
     ///
     /// # Examples
     ///
-    /// ```
-    /// use ocptv::output::TestRun;
+    /// ```rust
+    /// # tokio_test::block_on(async {
+    /// # use ocptv::output::*;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// test_run.start().await?;
+    ///
+    /// # Ok::<(), WriterError>(())
+    /// # });
     /// ```
     pub async fn start(&self) -> Result<(), emitters::WriterError> {
         let version = objects::SchemaVersion::new();
@@ -203,14 +206,16 @@ impl TestRun {
     ///
     /// # Examples
     ///
-    /// ```
-    /// use ocptv::output::TestResult;
-    /// use ocptv::output::TestRun;
-    /// use ocptv::output::TestStatus;
+    /// ```rust
+    /// # tokio_test::block_on(async {
+    /// # use ocptv::output::*;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// test_run.start().await?;
-    /// test_run.end(TestStatus::Complete, TestResult::Pass)?;
+    /// test_run.end(TestStatus::Complete, TestResult::Pass).await?;
+    ///
+    /// # Ok::<(), WriterError>(())
+    /// # });
     /// ```
     pub async fn end(
         &self,
@@ -239,21 +244,21 @@ impl TestRun {
     ///
     /// # Examples
     ///
-    /// ```
-    /// use ocptv::output::LogSeverity;
-    /// use ocptv::output::TestResult;
-    /// use ocptv::output::TestRun;
-    /// use ocptv::output::TestRunOutcome;
-    /// use ocptv::output::TestStatus;
+    /// ```rust
+    /// # tokio_test::block_on(async {
+    /// # use ocptv::output::*;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
-    /// test_run.scope(|r| {
-    ///     r.log(LogSeverity::Info, "First message")?;
-    ///     TestRunOutcome {
+    /// test_run.scope(|r| async {
+    ///     r.log(LogSeverity::Info, "First message").await?;
+    ///     Ok(TestRunOutcome {
     ///         status: TestStatus::Complete,
     ///         result: TestResult::Pass,
-    ///     }
-    /// })?;
+    ///     })
+    /// }).await?;
+    ///
+    /// # Ok::<(), WriterError>(())
+    /// # });
     /// ```
     pub async fn scope<'a, F, R>(&'a self, func: F) -> Result<(), emitters::WriterError>
     where
@@ -274,19 +279,20 @@ impl TestRun {
     ///
     /// # Examples
     ///
-    /// ```
-    /// use ocptv::output::LogSeverity;
-    /// use ocptv::output::TestResult;
-    /// use ocptv::output::TestRun;
-    /// use ocptv::output::TestStatus;
+    /// ```rust
+    /// # tokio_test::block_on(async {
+    /// # use ocptv::output::*;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// test_run.start().await?;
     /// test_run.log(
     ///     LogSeverity::Info,
     ///     "This is a log message with INFO severity",
-    /// )?;
-    /// test_run.end(TestStatus::Complete, TestResult::Pass)?;
+    /// ).await?;
+    /// test_run.end(TestStatus::Complete, TestResult::Pass).await?;
+    ///
+    /// # Ok::<(), WriterError>(())
+    /// # });
     /// ```
     pub async fn log(
         &self,
@@ -310,12 +316,9 @@ impl TestRun {
     ///
     /// # Examples
     ///
-    /// ```
-    /// use ocptv::output::Log;
-    /// use ocptv::output::LogSeverity;
-    /// use ocptv::output::TestResult;
-    /// use ocptv::output::TestRun;
-    /// use ocptv::output::TestStatus;
+    /// ```rust
+    /// # tokio_test::block_on(async {
+    /// # use ocptv::output::*;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// test_run.start().await?;
@@ -324,8 +327,11 @@ impl TestRun {
     ///         .severity(LogSeverity::Info)
     ///         .source("file", 1)
     ///         .build(),
-    /// )?;
-    /// test_run.end(TestStatus::Complete, TestResult::Pass)?;
+    /// ).await?;
+    /// test_run.end(TestStatus::Complete, TestResult::Pass).await?;
+    ///
+    /// # Ok::<(), WriterError>(())
+    /// # });
     /// ```
     pub async fn log_with_details(&self, log: &objects::Log) -> Result<(), emitters::WriterError> {
         self.state
@@ -344,15 +350,17 @@ impl TestRun {
     ///
     /// # Examples
     ///
-    /// ```
-    /// use ocptv::output::TestResult;
-    /// use ocptv::output::TestRun;
-    /// use ocptv::output::TestStatus;
+    /// ```rust
+    /// # tokio_test::block_on(async {
+    /// # use ocptv::output::*;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// test_run.start().await?;
-    /// test_run.error("symptom")?;
-    /// test_run.end(TestStatus::Complete, TestResult::Pass)?;
+    /// test_run.error("symptom").await?;
+    /// test_run.end(TestStatus::Complete, TestResult::Pass).await?;
+    ///
+    /// # Ok::<(), WriterError>(())
+    /// # });
     /// ```
     pub async fn error(&self, symptom: &str) -> Result<(), emitters::WriterError> {
         let error = objects::Error::builder(symptom).build();
@@ -373,15 +381,17 @@ impl TestRun {
     ///
     /// # Examples
     ///
-    /// ```
-    /// use ocptv::output::TestResult;
-    /// use ocptv::output::TestRun;
-    /// use ocptv::output::TestStatus;
+    /// ```rust
+    /// # tokio_test::block_on(async {
+    /// # use ocptv::output::*;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// test_run.start().await?;
-    /// test_run.error("symptom", "error messasge")?;
-    /// test_run.end(TestStatus::Complete, TestResult::Pass)?;
+    /// test_run.error_with_msg("symptom", "error messasge").await?;
+    /// test_run.end(TestStatus::Complete, TestResult::Pass).await?;
+    ///
+    /// # Ok::<(), WriterError>(())
+    /// # });
     /// ```
     pub async fn error_with_msg(
         &self,
@@ -405,11 +415,9 @@ impl TestRun {
     ///
     /// # Examples
     ///
-    /// ```
-    /// use ocptv::output::Error;
-    /// use ocptv::output::TestResult;
-    /// use ocptv::output::TestRun;
-    /// use ocptv::output::TestStatus;
+    /// ```rust
+    /// # tokio_test::block_on(async {
+    /// # use ocptv::output::*;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// test_run.start().await?;
@@ -419,8 +427,11 @@ impl TestRun {
     ///         .source("file", 1)
     ///         .add_software_info(&SoftwareInfo::builder("id", "name").build())
     ///         .build(),
-    /// )?;
-    /// test_run.end(TestStatus::Complete, TestResult::Pass)?;
+    /// ).await?;
+    /// test_run.end(TestStatus::Complete, TestResult::Pass).await?;
+    ///
+    /// # Ok::<(), WriterError>(())
+    /// # });
     /// ```
     pub async fn error_with_details(
         &self,
@@ -452,7 +463,7 @@ pub struct TestRunBuilder {
 }
 
 impl TestRunBuilder {
-    fn new(name: &str, dut: &objects::DutInfo, version: &str) -> Self {
+    pub fn new(name: &str, dut: &objects::DutInfo, version: &str) -> Self {
         Self {
             name: name.to_string(),
             dut: dut.clone(),
@@ -468,13 +479,12 @@ impl TestRunBuilder {
     ///
     /// # Examples
     ///
-    /// ```
-    /// use ocptv::output::DutInfo;
-    /// use ocptv::output::TestRunBuilder;
+    /// ```rust
+    /// # use ocptv::output::*;
     ///
     /// let dut = DutInfo::builder("dut_id").build();
     /// let test_run = TestRunBuilder::new("run_name", &dut, "1.0")
-    ///     .add_parameter("param1", "value1")
+    ///     .add_parameter("param1", "value1".into())
     ///     .build();
     /// ```
     pub fn add_parameter(mut self, key: &str, value: Value) -> TestRunBuilder {
@@ -487,9 +497,8 @@ impl TestRunBuilder {
     ///
     /// # Examples
     ///
-    /// ```
-    /// use ocptv::output::DutInfo;
-    /// use ocptv::output::TestRunBuilder;
+    /// ```rust
+    /// # use ocptv::output::*;
     ///
     /// let dut = DutInfo::builder("dut_id").build();
     /// let test_run = TestRunBuilder::new("run_name", &dut, "1.0")
@@ -505,10 +514,8 @@ impl TestRunBuilder {
     ///
     /// # Examples
     ///
-    /// ```
-    /// use ocptv::output::Config;
-    /// use ocptv::output::DutInfo;
-    /// use ocptv::output::TestRunBuilder;
+    /// ```rust
+    /// use ocptv::output::{Config, TestRunBuilder, DutInfo};
     ///
     /// let dut = DutInfo::builder("dut_id").build();
     /// let test_run = TestRunBuilder::new("run_name", &dut, "1.0")
@@ -524,13 +531,12 @@ impl TestRunBuilder {
     ///
     /// # Examples
     ///
-    /// ```
-    /// use ocptv::output::DutInfo;
-    /// use ocptv::output::TestRunBuilder;
+    /// ```rust
+    /// # use ocptv::output::*;
     ///
     /// let dut = DutInfo::builder("dut_id").build();
     /// let test_run = TestRunBuilder::new("run_name", &dut, "1.0")
-    ///     .add_metadata("meta1", "value1")
+    ///     .add_metadata("meta1", "value1".into())
     ///     .build();
     /// ```
     pub fn add_metadata(mut self, key: &str, value: Value) -> TestRunBuilder {
@@ -588,13 +594,18 @@ impl TestStep {
     ///
     /// # Examples
     ///
-    /// ```
-    /// use ocptv::output::TestRun;
+    /// ```rust
+    /// # tokio_test::block_on(async {
+    /// # use ocptv::output::*;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// test_run.start().await?;
+    ///
     /// let step = test_run.step("step_name")?;
-    /// step.start()?;
+    /// step.start().await?;
+    ///
+    /// # Ok::<(), WriterError>(())
+    /// # });
     /// ```
     pub async fn start(&self) -> Result<(), emitters::WriterError> {
         let start = objects::TestStepStart::new(&self.name);
@@ -612,15 +623,20 @@ impl TestStep {
     /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#teststepend
     ///
     /// # Examples
-    // ```
-    /// use ocptv::output::TestRun;
-    /// use ocptv::output::TestStatus;
+    ///
+    /// ```rust
+    /// # tokio_test::block_on(async {
+    /// # use ocptv::output::*;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// test_run.start().await?;
+    ///
     /// let step = test_run.step("step_name")?;
-    /// step.start()?;
-    /// step.end(TestStatus::Complete)?;
+    /// step.start().await?;
+    /// step.end(TestStatus::Complete).await?;
+    ///
+    /// # Ok::<(), WriterError>(())
+    /// # });
     /// ```
     pub async fn end(&self, status: models::TestStatus) -> Result<(), emitters::WriterError> {
         let end = objects::TestStepEnd::new(status);
@@ -642,21 +658,24 @@ impl TestStep {
     ///
     /// # Examples
     ///
-    /// ```
-    /// use ocptv::output::LogSeverity;
-    /// use ocptv::output::TestRun;
-    /// use ocptv::output::TestStatus;
+    /// ```rust
+    /// # tokio_test::block_on(async {
+    /// # use ocptv::output::*;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// test_run.start().await?;
+    ///
     /// let step = test_run.step("first step")?;
-    /// step.scope(|s: &TestStep| -> Result<TestStatus, WriterError> {
+    /// step.scope(|s| async {
     ///     s.log(
     ///         LogSeverity::Info,
     ///         "This is a log message with INFO severity",
-    ///     )?;
+    ///     ).await?;
     ///     Ok(TestStatus::Complete)
-    /// })?;
+    /// }).await?;
+    ///
+    /// # Ok::<(), WriterError>(())
+    /// # });
     /// ```
     pub async fn scope<'a, F, R>(&'a self, func: F) -> Result<(), emitters::WriterError>
     where
@@ -677,35 +696,42 @@ impl TestStep {
     ///
     /// # Examples
     ///
-    /// ```
-    /// use ocptv::output::LogSeverity;
-    /// use ocptv::output::TestRun;
-    /// use ocptv::output::TestStatus;
+    /// ```rust
+    /// # tokio_test::block_on(async {
+    /// # use ocptv::output::*;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// test_run.start().await?;
+    ///
     /// let step = test_run.step("step_name")?;
-    /// step.start()?;
+    /// step.start().await?;
     /// step.log(
     ///     LogSeverity::Info,
     ///     "This is a log message with INFO severity",
-    /// )?;
-    /// step.end(TestStatus::Complete)?;
+    /// ).await?;
+    /// step.end(TestStatus::Complete).await?;
+    ///
+    /// # Ok::<(), WriterError>(())
+    /// # });
     /// ```
     /// ## Using macros
     ///  
-    /// ```
+    /// ```rust
+    /// # tokio_test::block_on(async {
+    /// # use ocptv::output::*;
+    ///
     /// use ocptv::ocptv_log_info;
-    /// use ocptv::output::LogSeverity;
-    /// use ocptv::output::TestRun;
-    /// use ocptv::output::TestStatus;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// test_run.start().await?;
+    ///
     /// let step = test_run.step("step_name")?;
-    /// step.start()?;
-    /// ocptv_log_info!(step, "This is a log message with INFO severity")?;
-    /// step.end(TestStatus::Complete)?;
+    /// step.start().await?;
+    /// ocptv_log_info!(step, "This is a log message with INFO severity").await?;
+    /// step.end(TestStatus::Complete).await?;
+    ///
+    /// # Ok::<(), WriterError>(())
+    /// # });
     /// ```
     pub async fn log(
         &self,
@@ -729,23 +755,25 @@ impl TestStep {
     ///
     /// # Examples
     ///
-    /// ```
-    /// use ocptv::output::Log;
-    /// use ocptv::output::LogSeverity;
-    /// use ocptv::output::TestRun;
-    /// use ocptv::output::TestStatus;
+    /// ```rust
+    /// # tokio_test::block_on(async {
+    /// # use ocptv::output::*;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// test_run.start().await?;
+    ///
     /// let step = test_run.step("step_name")?;
-    /// step.start()?;
+    /// step.start().await?;
     /// step.log_with_details(
     ///     &Log::builder("This is a log message with INFO severity")
     ///         .severity(LogSeverity::Info)
     ///         .source("file", 1)
     ///         .build(),
-    /// )?;
-    /// step.end(TestStatus::Complete)?;
+    /// ).await?;
+    /// step.end(TestStatus::Complete).await?;
+    ///
+    /// # Ok::<(), WriterError>(())
+    /// # });
     /// ```
     pub async fn log_with_details(&self, log: &objects::Log) -> Result<(), emitters::WriterError> {
         self.state
@@ -757,39 +785,45 @@ impl TestStep {
         Ok(())
     }
 
-    /// Emits a Error message.
+    /// Emits an Error symptom.
     /// This method accepts a [`std::string::String`] to define the symptom.
     ///
     /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#error
     ///
     /// # Examples
     ///
-    /// ```
-    /// use ocptv::output::TestResult;
-    /// use ocptv::output::TestRun;
-    /// use ocptv::output::TestStatus;
+    /// ```rust
+    /// # tokio_test::block_on(async {
+    /// # use ocptv::output::*;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// let step = test_run.step("step_name")?;
-    /// step.start()?;
-    /// step.error("symptom")?;
-    /// step.end(TestStatus::Complete)?;
+    /// step.start().await?;
+    /// step.error("symptom").await?;
+    /// step.end(TestStatus::Complete).await?;
+    ///
+    /// # Ok::<(), WriterError>(())
+    /// # });
     /// ```
     ///
     /// ## Using macros
     ///  
-    /// ```
-    /// use ocptv::ocptv_log_info;
-    /// use ocptv::output::LogSeverity;
-    /// use ocptv::output::TestRun;
-    /// use ocptv::output::TestStatus;
+    /// ```rust
+    /// # tokio_test::block_on(async {
+    /// # use ocptv::output::*;
+    ///
+    /// use ocptv::ocptv_error;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// test_run.start().await?;
+    ///
     /// let step = test_run.step("step_name")?;
-    /// step.start()?;
-    /// ocptv_error!(step, "symptom")?;
-    /// step.end(TestStatus::Complete)?;
+    /// step.start().await?;
+    /// ocptv_error!(step, "symptom").await?;
+    /// step.end(TestStatus::Complete).await?;
+    ///
+    /// # Ok::<(), WriterError>(())
+    /// # });
     /// ```
     pub async fn error(&self, symptom: &str) -> Result<(), emitters::WriterError> {
         let error = objects::Error::builder(symptom).build();
@@ -802,7 +836,7 @@ impl TestStep {
         Ok(())
     }
 
-    /// Emits a Error message.
+    /// Emits an Error message.
     /// This method accepts a [`std::string::String`] to define the symptom and
     /// another [`std::string::String`] as error message.
     ///
@@ -810,32 +844,37 @@ impl TestStep {
     ///
     /// # Examples
     ///
-    /// ```
-    /// use ocptv::output::TestResult;
-    /// use ocptv::output::TestRun;
-    /// use ocptv::output::TestStatus;
+    /// ```rust
+    /// # tokio_test::block_on(async {
+    /// # use ocptv::output::*;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// let step = test_run.step("step_name")?;
-    /// step.start()?;
-    /// step.error("symptom", "error message")?;
-    /// step.end(TestStatus::Complete)?;
+    /// step.start().await?;
+    /// step.error_with_msg("symptom", "error message").await?;
+    /// step.end(TestStatus::Complete).await?;
+    ///
+    /// # Ok::<(), WriterError>(())
+    /// # });
     /// ```
     ///
     /// ## Using macros
     ///  
-    /// ```
-    /// use ocptv::ocptv_log_info;
-    /// use ocptv::output::LogSeverity;
-    /// use ocptv::output::TestRun;
-    /// use ocptv::output::TestStatus;
+    /// ```rust
+    /// # tokio_test::block_on(async {
+    /// # use ocptv::output::*;
+    ///
+    /// use ocptv::ocptv_error;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// test_run.start().await?;
     /// let step = test_run.step("step_name")?;
-    /// step.start()?;
-    /// ocptv_error!(step, "symptom", "error message")?;
-    /// step.end(TestStatus::Complete)?;
+    /// step.start().await?;
+    /// ocptv_error!(step, "symptom", "error message").await?;
+    /// step.end(TestStatus::Complete).await?;
+    ///
+    /// # Ok::<(), WriterError>(())
+    /// # });
     /// ```
     pub async fn error_with_msg(
         &self,
@@ -859,24 +898,24 @@ impl TestStep {
     ///
     /// # Examples
     ///
-    /// ```
-    /// use ocptv::output::Error;
-    /// use ocptv::output::SoftwareInfo;
-    /// use ocptv::output::TestResult;
-    /// use ocptv::output::TestRun;
-    /// use ocptv::output::TestStatus;
+    /// ```rust
+    /// # tokio_test::block_on(async {
+    /// # use ocptv::output::*;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// let step = test_run.step("step_name")?;
-    /// step.start()?;
+    /// step.start().await?;
     /// step.error_with_details(
     ///     &Error::builder("symptom")
     ///         .message("Error message")
     ///         .source("file", 1)
     ///         .add_software_info(&SoftwareInfo::builder("id", "name").build())
     ///         .build(),
-    /// )?;
-    /// step.end(TestStatus::Complete)?;
+    /// ).await?;
+    /// step.end(TestStatus::Complete).await?;
+    ///
+    /// # Ok::<(), WriterError>(())
+    /// # });
     /// ```
     pub async fn error_with_details(
         &self,
@@ -897,16 +936,18 @@ impl TestStep {
     ///
     /// # Examples
     ///
-    /// ```
-    /// use ocptv::output::TestResult;
-    /// use ocptv::output::TestRun;
-    /// use ocptv::output::TestStatus;
+    /// ```rust
+    /// # tokio_test::block_on(async {
+    /// # use ocptv::output::*;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// let step = test_run.step("step_name")?;
-    /// step.start()?;
-    /// step.add_measurement("name", Value::from(50))?;
-    /// step.end(TestStatus::Complete)?;
+    /// step.start().await?;
+    /// step.add_measurement("name", 50.into()).await?;
+    /// step.end(TestStatus::Complete).await?;
+    ///
+    /// # Ok::<(), WriterError>(())
+    /// # });
     /// ```
     pub async fn add_measurement(
         &self,
@@ -930,26 +971,26 @@ impl TestStep {
     ///
     /// # Examples
     ///
-    /// ```
-    /// use ocptv::output::Measurement;
-    /// use ocptv::output::SoftwareInfo;
-    /// use ocptv::output::Subcomponent;
-    /// use ocptv::output::TestResult;
-    /// use ocptv::output::TestRun;
-    /// use ocptv::output::TestStatus;
-    /// use ocptv::output::Validator;
+    /// ```rust
+    /// # tokio_test::block_on(async {
+    /// # use ocptv::output::*;
     ///
+    /// let hwinfo = HardwareInfo::builder("id", "fan").build();
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// let step = test_run.step("step_name")?;
-    /// step.start()?;
-    /// let measurement = Measurement::builder("name", Value::from(50))
-    ///     .hardware_info_id("id")
-    ///     .add_validator(&Validator::builder(models::ValidatorType::Equal, Value::from(30)).build())
-    ///     .add_metadata("key", Value::from("value"))
+    /// step.start().await?;
+    ///
+    /// let measurement = Measurement::builder("name", 5000.into())
+    ///     .hardware_info(&hwinfo)
+    ///     .add_validator(&Validator::builder(ValidatorType::Equal, Value::from(30)).build())
+    ///     .add_metadata("key", "value".into())
     ///     .subcomponent(&Subcomponent::builder("name").build())
     ///     .build();
-    /// step.add_measurement_with_details(&measurement)?;
-    /// step.end(TestStatus::Complete)?;
+    /// step.add_measurement_with_details(&measurement).await?;
+    /// step.end(TestStatus::Complete).await?;
+    ///
+    /// # Ok::<(), WriterError>(())
+    /// # });
     /// ```
     pub async fn add_measurement_with_details(
         &self,
@@ -972,13 +1013,17 @@ impl TestStep {
     ///
     /// # Examples
     ///
-    /// ```
-    /// use ocptv::output::TestRun;
+    /// ```rust
+    /// # tokio_test::block_on(async {
+    /// # use ocptv::output::*;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// let step = test_run.step("step_name")?;
-    /// step.start()?;
-    /// let series = step.measurement_series("series_id", "name");
+    /// step.start().await?;
+    /// let series = step.measurement_series("name");
+    ///
+    /// # Ok::<(), WriterError>(())
+    /// # });
     /// ```
     pub fn measurement_series(&self, name: &str) -> MeasurementSeries {
         self.measurement_id_no
@@ -998,15 +1043,18 @@ impl TestStep {
     ///
     /// # Examples
     ///
-    /// ```
-    /// use ocptv::output::MeasurementSeriesStart;
-    /// use ocptv::output::TestRun;
+    /// ```rust
+    /// # tokio_test::block_on(async {
+    /// # use ocptv::output::*;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// let step = test_run.step("step_name")?;
-    /// step.start()?;
+    /// step.start().await?;
     /// let series =
     ///     step.measurement_series_with_details(MeasurementSeriesStart::new("name", "series_id"));
+    ///
+    /// # Ok::<(), WriterError>(())
+    /// # });
     /// ```
     pub fn measurement_series_with_details(
         &self,
@@ -1063,15 +1111,21 @@ impl MeasurementSeries {
     ///
     /// # Examples
     ///
-    /// ```
-    /// use ocptv::output::TestRun;
+    /// ```rust
+    /// # tokio_test::block_on(async {
+    /// # use ocptv::output::*;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// test_run.start().await?;
+    ///
     /// let step = test_run.step("step_name")?;
-    /// step.start()?;
-    /// let series = step.measurement_series("series_id", "name");
-    /// series.start()?;
+    /// step.start().await?;
+    ///
+    /// let series = step.measurement_series("name");
+    /// series.start().await?;
+    ///
+    /// # Ok::<(), WriterError>(())
+    /// # });
     /// ```
     pub async fn start(&self) -> Result<(), emitters::WriterError> {
         self.state
@@ -1089,16 +1143,22 @@ impl MeasurementSeries {
     ///
     /// # Examples
     ///
-    /// ```
-    /// use ocptv::output::TestRun;
+    /// ```rust
+    /// # tokio_test::block_on(async {
+    /// # use ocptv::output::*;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// test_run.start().await?;
+    ///
     /// let step = test_run.step("step_name")?;
-    /// step.start()?;
-    /// let series = step.measurement_series("series_id", "name");
-    /// series.start()?;
-    /// series.end()?;
+    /// step.start().await?;
+    ///
+    /// let series = step.measurement_series("name");
+    /// series.start().await?;
+    /// series.end().await?;
+    ///
+    /// # Ok::<(), WriterError>(())
+    /// # });
     /// ```
     pub async fn end(&self) -> Result<(), emitters::WriterError> {
         let end = objects::MeasurementSeriesEnd::new(
@@ -1120,17 +1180,22 @@ impl MeasurementSeries {
     ///
     /// # Examples
     ///
-    /// ```
-    /// use ocptv::output::TestRun;
-    /// use ocptv::output::Value;
+    /// ```rust
+    /// # tokio_test::block_on(async {
+    /// # use ocptv::output::*;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// test_run.start().await?;
+    ///
     /// let step = test_run.step("step_name")?;
-    /// step.start()?;
-    /// let series = step.measurement_series("series_id", "name");
-    /// series.start()?;
-    /// series.add_measurement(Value::from(60))?;
+    /// step.start().await?;
+    ///
+    /// let series = step.measurement_series("name");
+    /// series.start().await?;
+    /// series.add_measurement(Value::from(60)).await?;
+    ///
+    /// # Ok::<(), WriterError>(())
+    /// # });
     /// ```
     pub async fn add_measurement(&self, value: Value) -> Result<(), emitters::WriterError> {
         let element = objects::MeasurementSeriesElement::new(
@@ -1156,17 +1221,22 @@ impl MeasurementSeries {
     ///
     /// # Examples
     ///
-    /// ```
-    /// use ocptv::output::TestRun;
-    /// use ocptv::output::Value;
+    /// ```rust
+    /// # tokio_test::block_on(async {
+    /// # use ocptv::output::*;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// test_run.start().await?;
+    ///
     /// let step = test_run.step("step_name")?;
-    /// step.start()?;
-    /// let series = step.measurement_series("series_id", "name");
-    /// series.start()?;
-    /// series.add_measurement_with_metadata(Value::from(60), vec![("key", Value::from("value"))])?;
+    /// step.start().await?;
+    ///
+    /// let series = step.measurement_series("name");
+    /// series.start().await?;
+    /// series.add_measurement_with_metadata(Value::from(60), vec![("key", Value::from("value"))]).await?;
+    ///
+    /// # Ok::<(), WriterError>(())
+    /// # });
     /// ```
     pub async fn add_measurement_with_metadata(
         &self,
@@ -1200,22 +1270,27 @@ impl MeasurementSeries {
     ///
     /// # Examples
     ///
-    /// ```
-    /// use ocptv::output::TestRun;
-    /// use ocptv::output::Value;
+    /// ```rust
+    /// # tokio_test::block_on(async {
+    /// # use ocptv::output::*;
     ///
     /// let test_run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// test_run.start().await?;
+    ///
     /// let step = test_run.step("step_name")?;
-    /// step.start()?;
-    /// let series = step.measurement_series("series_id", "name");
-    /// series.start()?;
-    /// series.scope(|s| {
-    ///     s.add_measurement(Value::from(60))?;
-    ///     s.add_measurement(Value::from(70))?;
-    ///     s.add_measurement(Value::from(80))?;
+    /// step.start().await?;
+    ///
+    /// let series = step.measurement_series("name");
+    /// series.start().await?;
+    /// series.scope(|s| async {
+    ///     s.add_measurement(Value::from(60)).await?;
+    ///     s.add_measurement(Value::from(70)).await?;
+    ///     s.add_measurement(Value::from(80)).await?;
     ///     Ok(())
-    /// })?;
+    /// }).await?;
+    ///
+    /// # Ok::<(), WriterError>(())
+    /// # });
     /// ```
     pub async fn scope<'a, F, R>(&'a self, func: F) -> Result<(), emitters::WriterError>
     where
@@ -1231,7 +1306,6 @@ impl MeasurementSeries {
 
 #[cfg(test)]
 mod tests {
-
     use std::sync::Arc;
 
     use anyhow::Result;

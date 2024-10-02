@@ -21,42 +21,36 @@
 ///
 /// ## Passing only symptom
 ///
-/// ```
-/// use std::io::Write;
-/// use std::io::{self};
+/// ```rust
+/// # tokio_test::block_on(async {
+/// # use ocptv::output::*;
 ///
 /// use ocptv::ocptv_error;
-/// use ocptv::output::Error;
-/// use ocptv::output::TestResult;
-/// use ocptv::output::TestRun;
-/// use ocptv::output::TestStatus;
 ///
 /// let test_run = TestRun::new("run_name", "my_dut", "1.0");
-/// test_run.start().unwrap();
+/// test_run.start().await?;
 /// ocptv_error!(test_run, "symptom");
-/// test_run
-///     .end(TestStatus::Complete, TestResult::Pass)
-///     .unwrap();
+/// test_run.end(TestStatus::Complete, TestResult::Pass).await?;
+///
+/// # Ok::<(), WriterError>(())
+/// # });
 /// ```
 ///
 /// ## Passing both symptom and message
 ///
-/// ```
-/// use std::io::Write;
-/// use std::io::{self};
+/// ```rust
+/// # tokio_test::block_on(async {
+/// # use ocptv::output::*;
 ///
 /// use ocptv::ocptv_error;
-/// use ocptv::output::Error;
-/// use ocptv::output::TestResult;
-/// use ocptv::output::TestRun;
-/// use ocptv::output::TestStatus;
 ///
 /// let test_run = TestRun::new("run_name", "my_dut", "1.0");
-/// test_run.start().unwrap();
+/// test_run.start().await?;
 /// ocptv_error!(test_run, "symptom", "Error message");
-/// test_run
-///     .end(TestStatus::Complete, TestResult::Pass)
-///     .unwrap();
+/// test_run.end(TestStatus::Complete, TestResult::Pass).await?;
+///
+/// # Ok::<(), WriterError>(())
+/// # });
 /// ```
 #[macro_export]
 macro_rules! ocptv_error {
@@ -99,26 +93,19 @@ macro_rules! ocptv_error {
 ///
 /// ## DEBUG
 ///
-/// ```
-/// use std::io::Write;
-/// use std::io::{self};
+/// ```rust
+/// # tokio_test::block_on(async {
+/// # use ocptv::output::*;
 ///
 /// use ocptv::ocptv_log_debug;
-/// use ocptv::ocptv_log_error;
-/// use ocptv::ocptv_log_fatal;
-/// use ocptv::ocptv_log_info;
-/// use ocptv::ocptv_log_warning;
-/// use ocptv::output::LogSeverity;
-/// use ocptv::output::TestResult;
-/// use ocptv::output::TestRun;
-/// use ocptv::output::TestStatus;
 ///
 /// let test_run = TestRun::new("run_name", "my_dut", "1.0");
-/// test_run.start().unwrap();
+/// test_run.start().await?;
 /// ocptv_log_debug!(test_run, "Log message");
-/// test_run
-///     .end(TestStatus::Complete, TestResult::Pass)
-///     .unwrap();
+/// test_run.end(TestStatus::Complete, TestResult::Pass).await?;
+///
+/// # Ok::<(), WriterError>(())
+/// # });
 /// ```
 
 #[macro_export]
@@ -203,7 +190,6 @@ macro_rules! ocptv_log_fatal {
 
 #[cfg(test)]
 mod tests {
-
     use std::sync::Arc;
 
     use anyhow::Result;
