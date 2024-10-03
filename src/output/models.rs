@@ -38,7 +38,7 @@ mod rfc3339_format {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, PartialEq, Clone)]
 pub enum TestRunArtifactDescendant {
     #[serde(rename = "testRunStart")]
     TestRunStart(TestRunStartSpec),
@@ -50,7 +50,7 @@ pub enum TestRunArtifactDescendant {
     Error(ErrorSpec),
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, PartialEq, Clone)]
 pub enum OutputArtifactDescendant {
     #[serde(rename = "schemaVersion")]
     SchemaVersion(SchemaVersionSpec),
@@ -61,7 +61,7 @@ pub enum OutputArtifactDescendant {
 }
 
 #[allow(clippy::large_enum_variant)]
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, PartialEq, Clone)]
 pub enum TestStepArtifactDescendant {
     #[serde(rename = "testStepStart")]
     TestStepStart(TestStepStartSpec),
@@ -87,7 +87,7 @@ pub enum TestStepArtifactDescendant {
     Extension(ExtensionSpec),
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Clone, PartialEq)]
 pub enum ValidatorType {
     #[serde(rename = "EQUAL")]
     Equal,
@@ -111,7 +111,7 @@ pub enum ValidatorType {
     NotInSet,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Clone, PartialEq)]
 pub enum SubcomponentType {
     #[serde(rename = "UNSPECIFIED")]
     Unspecified,
@@ -127,7 +127,7 @@ pub enum SubcomponentType {
     Connector,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, PartialEq, Clone)]
 pub enum ExtensionContentType {
     #[serde(rename = "float")]
     Float(f64),
@@ -143,7 +143,7 @@ pub enum ExtensionContentType {
 /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#diagnosistype
 /// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/diagnosis.json
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/diagnosis/$defs/type
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, PartialEq, Clone)]
 pub enum DiagnosisType {
     #[serde(rename = "PASS")]
     Pass,
@@ -157,7 +157,7 @@ pub enum DiagnosisType {
 /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#teststatus
 /// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/test_status.json
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/testStatus
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename = "testStatus")]
 pub enum TestStatus {
     #[serde(rename = "COMPLETE")]
@@ -172,7 +172,7 @@ pub enum TestStatus {
 /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#testresult
 /// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/test_run_end.json
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/testRunEnd/$defs/testResult
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename = "testResult")]
 pub enum TestResult {
     #[serde(rename = "PASS")]
@@ -186,7 +186,7 @@ pub enum TestResult {
 /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#severity
 /// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/log.json
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/log/$defs/severity
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Clone, PartialEq)]
 pub enum LogSeverity {
     #[serde(rename = "DEBUG")]
     Debug,
@@ -204,7 +204,7 @@ pub enum LogSeverity {
 /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#softwaretype
 /// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/dut_info.json
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/dutInfo/$defs/softwareInfo/properties/softwareType
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename = "softwareType")]
 pub enum SoftwareType {
     #[serde(rename = "UNSPECIFIED")]
@@ -217,7 +217,7 @@ pub enum SoftwareType {
     Application,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Clone)]
 pub struct OutputArtifactSpec {
     #[serde(flatten)]
     pub descendant: OutputArtifactDescendant,
@@ -234,7 +234,7 @@ pub struct OutputArtifactSpec {
 /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#schemaversion
 /// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/root.json
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/output/$defs/schemaVersion
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename = "schemaVersion")]
 pub struct SchemaVersionSpec {
     #[serde(rename = "major")]
@@ -248,7 +248,7 @@ pub struct SchemaVersionSpec {
 /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#test-run-artifacts
 /// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/test_run_artifact.json
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/testRunArtifact
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, PartialEq, Clone)]
 pub struct TestRunArtifactSpec {
     #[serde(flatten)]
     pub descendant: TestRunArtifactDescendant,
@@ -259,7 +259,7 @@ pub struct TestRunArtifactSpec {
 /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#testrunstart
 /// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/test_run_start.json
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/testRunStart
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename = "testRunStart")]
 pub struct TestRunStartSpec {
     #[serde(rename = "name")]
@@ -281,7 +281,7 @@ pub struct TestRunStartSpec {
 /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#dutinfo
 /// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/dut_info.json
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/dutInfo
-#[derive(Debug, Serialize, Deserialize, Default, Clone, PartialEq)]
+#[derive(Debug, Serialize, Default, Clone, PartialEq)]
 #[serde(rename = "dutInfo")]
 pub struct DutInfoSpec {
     #[serde(rename = "dutInfoId")]
@@ -303,7 +303,7 @@ pub struct DutInfoSpec {
 /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#platforminfo
 /// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/dut_info.json
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/dutInfo/$defs/platformInfo
-#[derive(Debug, Serialize, Deserialize, Default, Clone, PartialEq)]
+#[derive(Debug, Serialize, Default, Clone, PartialEq)]
 #[serde(rename = "platformInfo")]
 pub struct PlatformInfoSpec {
     #[serde(rename = "info")]
@@ -315,7 +315,7 @@ pub struct PlatformInfoSpec {
 /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#softwareinfo
 /// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/dut_info.json
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/dutInfo/$defs/softwareInfo
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename = "softwareInfo")]
 pub struct SoftwareInfoSpec {
     #[serde(rename = "softwareInfoId")]
@@ -337,7 +337,7 @@ pub struct SoftwareInfoSpec {
 /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#hardwareinfo
 /// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/dut_info.json
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/dutInfo/$defs/hardwareInfo
-#[derive(Debug, Serialize, Deserialize, Default, Clone, PartialEq)]
+#[derive(Debug, Serialize, Default, Clone, PartialEq)]
 #[serde(rename = "hardwareInfo")]
 pub struct HardwareInfoSpec {
     #[serde(rename = "hardwareInfoId")]
@@ -371,7 +371,7 @@ pub struct HardwareInfoSpec {
 /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#testrunend
 /// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/test_run_end.json
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/testRunEnd
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename = "testRunEnd")]
 pub struct TestRunEndSpec {
     #[serde(rename = "status")]
@@ -386,7 +386,7 @@ pub struct TestRunEndSpec {
 /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#error
 /// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/error.json
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/error
-#[derive(Debug, Serialize, Deserialize, Default, Clone, PartialEq)]
+#[derive(Debug, Serialize, Default, Clone, PartialEq)]
 #[serde(rename = "error")]
 pub struct ErrorSpec {
     #[serde(rename = "symptom")]
@@ -405,7 +405,7 @@ pub struct ErrorSpec {
 /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#log
 /// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/log.json
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/log
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename = "log")]
 pub struct LogSpec {
     #[serde(rename = "severity")]
@@ -421,7 +421,7 @@ pub struct LogSpec {
 /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#sourcelocation
 /// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/source_location.json
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/sourceLocation
-#[derive(Debug, Serialize, Deserialize, Clone, Default, PartialEq)]
+#[derive(Debug, Serialize, Clone, Default, PartialEq)]
 #[serde(rename = "sourceLocation")]
 pub struct SourceLocationSpec {
     #[serde(rename = "file")]
@@ -435,7 +435,7 @@ pub struct SourceLocationSpec {
 /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#test-step-artifacts
 /// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/test_step_artifact.json
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/testStepArtifact
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, PartialEq, Clone)]
 pub struct TestStepArtifactSpec {
     #[serde(flatten)]
     pub descendant: TestStepArtifactDescendant,
@@ -446,7 +446,7 @@ pub struct TestStepArtifactSpec {
 /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#teststepstart
 /// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/test_step_start.json
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/testStepStart
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, PartialEq, Clone)]
 #[serde(rename = "testStepStart")]
 pub struct TestStepStartSpec {
     #[serde(rename = "name")]
@@ -458,7 +458,7 @@ pub struct TestStepStartSpec {
 /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#teststepend
 /// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/test_step_end.json
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/testStepEnd
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, PartialEq, Clone)]
 #[serde(rename = "testStepEnd")]
 pub struct TestStepEndSpec {
     #[serde(rename = "status")]
@@ -470,7 +470,7 @@ pub struct TestStepEndSpec {
 /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#measurement
 /// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/measurement.json
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/measurement
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, PartialEq, Clone)]
 #[serde(rename = "measurement")]
 pub struct MeasurementSpec {
     #[serde(rename = "name")]
@@ -494,7 +494,7 @@ pub struct MeasurementSpec {
 /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#validator
 /// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/validator.json
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/validator
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename = "validator")]
 pub struct ValidatorSpec {
     #[serde(rename = "name")]
@@ -512,7 +512,7 @@ pub struct ValidatorSpec {
 /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#subcomponent
 /// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/subcomponent.json
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/subcomponent
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename = "subcomponent")]
 pub struct SubcomponentSpec {
     #[serde(rename = "type")]
@@ -532,7 +532,7 @@ pub struct SubcomponentSpec {
 /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#measurementseriesstart
 /// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/measurement_series_start.json
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/measurementSeriesStart
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, PartialEq, Clone)]
 #[serde(rename = "measurementSeriesStart")]
 pub struct MeasurementSeriesStartSpec {
     #[serde(rename = "name")]
@@ -556,7 +556,7 @@ pub struct MeasurementSeriesStartSpec {
 /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#measurementseriesend
 /// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/measurement_series_end.json
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/measurementSeriesEnd
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, PartialEq, Clone)]
 #[serde(rename = "measurementSeriesEnd")]
 pub struct MeasurementSeriesEndSpec {
     #[serde(rename = "measurementSeriesId")]
@@ -590,7 +590,7 @@ pub struct MeasurementSeriesElementSpec {
 /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#diagnosis
 /// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/diagnosis.json
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/diagnosis
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, PartialEq, Clone)]
 #[serde(rename = "diagnosis")]
 pub struct DiagnosisSpec {
     #[serde(rename = "verdict")]
@@ -612,7 +612,7 @@ pub struct DiagnosisSpec {
 /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#file
 /// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/file.json
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/file
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, PartialEq, Clone)]
 #[serde(rename = "file")]
 pub struct FileSpec {
     #[serde(rename = "name")]
@@ -634,7 +634,7 @@ pub struct FileSpec {
 /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#extension
 /// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/test_step_artifact.json
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/testStepArtifact/$defs/extension
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, PartialEq, Clone)]
 #[serde(rename = "extension")]
 pub struct ExtensionSpec {
     #[serde(rename = "name")]
