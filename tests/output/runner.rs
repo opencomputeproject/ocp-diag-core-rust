@@ -4,13 +4,16 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
+use std::fs;
 use std::sync::Arc;
 
 use anyhow::Result;
+use assert_fs::prelude::*;
 use assert_json_diff::assert_json_include;
 use futures::future::BoxFuture;
 use futures::future::Future;
 use futures::FutureExt;
+use predicates::prelude::*;
 use serde_json::json;
 use tokio::sync::Mutex;
 
@@ -1196,6 +1199,63 @@ async fn test_step_with_measurement_series_scope() -> Result<()> {
         .boxed()
     })
     .await
+}
+
+// reasoning: the coverage(off) attribute is experimental in llvm-cov, so because we cannot
+// disable the coverage itself, only run this test when in coverage mode because assert_fs
+// does ultimately assume there's a real filesystem somewhere
+#[cfg(coverage)]
+#[tokio::test]
+async fn test_config_builder_with_file() -> Result<()> {
+    let expected = [
+        json_schema_version(),
+        json_run_default_start(),
+        json!({
+            "testRunArtifact": {
+                "error": {
+                    "message": "Error message",
+                    "symptom": "symptom"
+                }
+            },
+            "sequenceNumber": 3
+        }),
+        json_run_pass(4),
+    ];
+
+    let fs = assert_fs::TempDir::new()?;
+    let output_file = fs.child("output.jsonl");
+
+    let dut = DutInfo::builder("dut_id").build();
+
+    let run = TestRun::builder("run_name", &dut, "1.0")
+        .config(
+            Config::builder()
+                .timezone(chrono_tz::Europe::Rome)
+                .with_file_output(output_file.path())
+                .await?
+                .build(),
+        )
+        .build();
+
+    run.scope(|r| async {
+        r.error_with_msg("symptom", "Error message").await?;
+
+        Ok(TestRunOutcome {
+            status: TestStatus::Complete,
+            result: TestResult::Pass,
+        })
+    })
+    .await?;
+
+    output_file.assert(predicate::path::exists());
+    let content = fs::read_to_string(output_file.path())?;
+
+    for (idx, entry) in content.lines().enumerate() {
+        let value = serde_json::from_str::<serde_json::Value>(entry).unwrap();
+        assert_json_include!(actual: value, expected: &expected[idx]);
+    }
+
+    Ok(())
 }
 
 #[tokio::test]
