@@ -53,27 +53,20 @@
 #[macro_export]
 macro_rules! ocptv_error {
     ($runner:expr, $symptom:expr, $msg:expr) => {
-        async {
-            $runner
-                .error_with_details(
-                    &$crate::output::Error::builder($symptom)
-                        .message($msg)
-                        .source(file!(), line!() as i32)
-                        .build(),
-                )
-                .await
-        }
+        $runner.error_with_details(
+            &$crate::output::Error::builder($symptom)
+                .message($msg)
+                .source(file!(), line!() as i32)
+                .build(),
+        )
     };
+
     ($runner:expr, $symptom:expr) => {
-        async {
-            $runner
-                .error_with_details(
-                    &$crate::output::Error::builder($symptom)
-                        .source(file!(), line!() as i32)
-                        .build(),
-                )
-                .await
-        }
+        $runner.error_with_details(
+            &$crate::output::Error::builder($symptom)
+                .source(file!(), line!() as i32)
+                .build(),
+        )
     };
 }
 
@@ -97,93 +90,35 @@ macro_rules! ocptv_error {
 ///
 /// use ocptv::ocptv_log_debug;
 ///
-/// let test_run = TestRun::new("run_name", "my_dut", "1.0").start().await?;
-/// ocptv_log_debug!(test_run, "Log message");
-/// test_run.end(TestStatus::Complete, TestResult::Pass).await?;
+/// let run = TestRun::new("run_name", "my_dut", "1.0").start().await?;
+/// ocptv_log_debug!(run, "Log message");
+/// run.end(TestStatus::Complete, TestResult::Pass).await?;
 ///
 /// # Ok::<(), WriterError>(())
 /// # });
 /// ```
 
-#[macro_export]
-macro_rules! ocptv_log_debug {
-    ($runner:expr, $msg:expr) => {
-        async {
-            $runner
-                .log_with_details(
+macro_rules! ocptv_log {
+    ($name:ident, $severity:ident) => {
+        #[macro_export]
+        macro_rules! $name {
+            ($artifact:expr, $msg:expr) => {
+                $artifact.log_with_details(
                     &$crate::output::Log::builder($msg)
-                        .severity($crate::output::LogSeverity::Debug)
+                        .severity($crate::output::LogSeverity::$severity)
                         .source(file!(), line!() as i32)
                         .build(),
                 )
-                .await
+            };
         }
     };
 }
 
-#[macro_export]
-macro_rules! ocptv_log_info {
-    ($runner:expr, $msg:expr) => {
-        async {
-            $runner
-                .log_with_details(
-                    &$crate::output::Log::builder($msg)
-                        .severity($crate::output::LogSeverity::Info)
-                        .source(file!(), line!() as i32)
-                        .build(),
-                )
-                .await
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! ocptv_log_warning {
-    ($runner:expr, $msg:expr) => {
-        async {
-            $runner
-                .log_with_details(
-                    &$crate::output::Log::builder($msg)
-                        .severity($crate::output::LogSeverity::Warning)
-                        .source(file!(), line!() as i32)
-                        .build(),
-                )
-                .await
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! ocptv_log_error {
-    ($runner:expr, $msg:expr) => {
-        async {
-            $runner
-                .log_with_details(
-                    &$crate::output::Log::builder($msg)
-                        .severity($crate::output::LogSeverity::Error)
-                        .source(file!(), line!() as i32)
-                        .build(),
-                )
-                .await
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! ocptv_log_fatal {
-    ($runner:expr, $msg:expr) => {
-        async {
-            $runner
-                .log_with_details(
-                    &$crate::output::Log::builder($msg)
-                        .severity($crate::output::LogSeverity::Fatal)
-                        .source(file!(), line!() as i32)
-                        .build(),
-                )
-                .await
-        }
-    };
-}
+ocptv_log!(ocptv_log_debug, Debug);
+ocptv_log!(ocptv_log_info, Info);
+ocptv_log!(ocptv_log_warning, Warning);
+ocptv_log!(ocptv_log_error, Error);
+ocptv_log!(ocptv_log_fatal, Fatal);
 
 #[cfg(test)]
 mod tests {
