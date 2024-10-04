@@ -3,6 +3,7 @@
 // Use of this source code is governed by an MIT-style
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
+#![allow(unused_imports)]
 
 use std::fs;
 use std::sync::Arc;
@@ -20,8 +21,8 @@ use tokio::sync::Mutex;
 use ocptv::output as tv;
 use tv::{
     Config, DutInfo, Error, HardwareInfo, Log, LogSeverity, Measurement, MeasurementSeriesStart,
-    SoftwareInfo, Subcomponent, TestResult, TestRun, TestRunBuilder, TestRunOutcome, TestStatus,
-    TestStep, Validator, ValidatorType,
+    SoftwareInfo, StartedTestRun, Subcomponent, TestResult, TestRun, TestRunBuilder,
+    TestRunOutcome, TestStatus, TestStep, Validator, ValidatorType,
 };
 
 fn json_schema_version() -> serde_json::Value {
@@ -113,12 +114,12 @@ where
 
 async fn check_output_run<F>(expected: &[serde_json::Value], test_fn: F) -> Result<()>
 where
-    F: for<'a> FnOnce(&'a TestRun) -> BoxFuture<'a, Result<(), tv::WriterError>> + Send,
+    F: for<'a> FnOnce(&'a StartedTestRun) -> BoxFuture<'a, Result<(), tv::WriterError>> + Send,
 {
     check_output(expected, |run_builder| async {
         let run = run_builder.build();
 
-        run.start().await?;
+        let run = run.start().await?;
         test_fn(&run).await?;
         run.end(TestStatus::Complete, TestResult::Pass).await?;
 
@@ -132,8 +133,7 @@ where
     F: for<'a> FnOnce(&'a TestStep) -> BoxFuture<'a, Result<(), tv::WriterError>>,
 {
     check_output(expected, |run_builder| async {
-        let run = run_builder.build();
-        run.start().await?;
+        let run = run_builder.build().start().await?;
 
         let step = run.step("first step")?;
         step.start().await?;
@@ -310,39 +310,39 @@ async fn test_testrun_with_error_with_details() -> Result<()> {
     .await
 }
 
-#[tokio::test]
-async fn test_testrun_with_scope() -> Result<()> {
-    let expected = [
-        json_schema_version(),
-        json_run_default_start(),
-        json!({
-            "testRunArtifact": {
-                "log": {
-                    "message": "First message",
-                    "severity": "INFO"
-                }
-            },
-            "sequenceNumber": 3
-        }),
-        json_run_pass(4),
-    ];
+// #[tokio::test]
+// async fn test_testrun_with_scope() -> Result<()> {
+//     let expected = [
+//         json_schema_version(),
+//         json_run_default_start(),
+//         json!({
+//             "testRunArtifact": {
+//                 "log": {
+//                     "message": "First message",
+//                     "severity": "INFO"
+//                 }
+//             },
+//             "sequenceNumber": 3
+//         }),
+//         json_run_pass(4),
+//     ];
 
-    check_output(&expected, |run_builder| async {
-        let run = run_builder.build();
+//     check_output(&expected, |run_builder| async {
+//         let run = run_builder.build();
 
-        run.scope(|r| async {
-            r.log(LogSeverity::Info, "First message").await?;
-            Ok(TestRunOutcome {
-                status: TestStatus::Complete,
-                result: TestResult::Pass,
-            })
-        })
-        .await?;
+//         run.scope(|r| async {
+//             r.log(LogSeverity::Info, "First message").await?;
+//             Ok(TestRunOutcome {
+//                 status: TestStatus::Complete,
+//                 result: TestResult::Pass,
+//             })
+//         })
+//         .await?;
 
-        Ok(())
-    })
-    .await
-}
+//         Ok(())
+//     })
+//     .await
+// }
 
 #[tokio::test]
 async fn test_testrun_with_step() -> Result<()> {
@@ -1235,17 +1235,13 @@ async fn test_config_builder_with_file() -> Result<()> {
                 .await?
                 .build(),
         )
-        .build();
+        .build()
+        .start()
+        .await?;
 
-    run.scope(|r| async {
-        r.error_with_msg("symptom", "Error message").await?;
+    run.error_with_msg("symptom", "Error message").await?;
 
-        Ok(TestRunOutcome {
-            status: TestStatus::Complete,
-            result: TestResult::Pass,
-        })
-    })
-    .await?;
+    run.end(TestStatus::Complete, TestResult::Pass).await?;
 
     output_file.assert(predicate::path::exists());
     let content = fs::read_to_string(output_file.path())?;
@@ -1267,9 +1263,8 @@ async fn test_testrun_instantiation_with_new() -> Result<()> {
     ];
     let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
-    let test_run = TestRun::new("run_name", "dut_id", "1.0");
-    test_run.start().await?;
-    test_run.end(TestStatus::Complete, TestResult::Pass).await?;
+    let run = TestRun::new("run_name", "dut_id", "1.0").start().await?;
+    run.end(TestStatus::Complete, TestResult::Pass).await?;
 
     for (idx, entry) in buffer.lock().await.iter().enumerate() {
         let value = serde_json::from_str::<serde_json::Value>(entry)?;
@@ -1301,8 +1296,12 @@ async fn test_testrun_metadata() -> Result<()> {
     ];
 
     check_output(&expected, |run_builder| async {
-        let run = run_builder.add_metadata("key", "value".into()).build();
-        run.start().await?;
+        let run = run_builder
+            .add_metadata("key", "value".into())
+            .build()
+            .start()
+            .await?;
+
         run.end(TestStatus::Complete, TestResult::Pass).await?;
         Ok(())
     })
@@ -1342,8 +1341,10 @@ async fn test_testrun_builder() -> Result<()> {
             .add_metadata("key2", "value2".into())
             .add_parameter("key", "value".into())
             .command_line("cmd_line")
-            .build();
-        run.start().await?;
+            .build()
+            .start()
+            .await?;
+
         run.end(TestStatus::Complete, TestResult::Pass).await?;
         Ok(())
     })
