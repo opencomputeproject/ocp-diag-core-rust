@@ -5,7 +5,7 @@
 // https://opensource.org/licenses/MIT.
 
 use serde_json::Value;
-use std::sync::atomic;
+use std::sync::atomic::{self, Ordering};
 use std::sync::Arc;
 
 use crate::output as tv;
@@ -62,7 +62,7 @@ impl TestStep {
 
         Ok(StartedTestStep {
             step: self,
-            measurement_id_no: Arc::new(atomic::AtomicU64::new(0)),
+            measurement_id_seqno: Arc::new(atomic::AtomicU64::new(0)),
         })
     }
 
@@ -107,7 +107,7 @@ impl TestStep {
 
 pub struct StartedTestStep {
     step: TestStep,
-    measurement_id_no: Arc<atomic::AtomicU64>,
+    measurement_id_seqno: Arc<atomic::AtomicU64>,
 }
 
 impl StartedTestStep {
@@ -464,11 +464,9 @@ impl StartedTestStep {
     /// # });
     /// ```
     pub fn measurement_series(&self, name: &str) -> MeasurementSeries {
-        self.measurement_id_no
-            .fetch_add(1, atomic::Ordering::SeqCst);
         let series_id: String = format!(
             "series_{}",
-            self.measurement_id_no.load(atomic::Ordering::SeqCst)
+            self.measurement_id_seqno.fetch_add(1, Ordering::AcqRel)
         );
 
         MeasurementSeries::new(&series_id, name, Arc::clone(&self.step.emitter))

@@ -9,7 +9,7 @@ use std::clone::Clone;
 use std::io;
 use std::io::Write;
 use std::path::Path;
-use std::sync::atomic;
+use std::sync::atomic::{self, Ordering};
 use std::sync::Arc;
 
 use tokio::fs::File;
@@ -104,14 +104,13 @@ impl JsonEmitter {
         let root = spec::Root {
             artifact: object.clone(),
             timestamp: now_tz,
-            seqno: self.next_sequence_no(),
+            seqno: self.incr_seqno(),
         };
         serde_json::json!(root)
     }
 
-    fn next_sequence_no(&self) -> u64 {
-        self.seqno.fetch_add(1, atomic::Ordering::SeqCst);
-        self.seqno.load(atomic::Ordering::SeqCst)
+    fn incr_seqno(&self) -> u64 {
+        self.seqno.fetch_add(1, Ordering::AcqRel)
     }
 
     pub async fn emit(&self, object: &spec::RootImpl) -> Result<(), WriterError> {
@@ -140,7 +139,7 @@ mod tests {
                 "major": spec::SPEC_VERSION.0,
                 "minor": spec::SPEC_VERSION.1,
             },
-            "sequenceNumber": 1
+            "sequenceNumber": 0
         });
 
         let buffer = Arc::new(Mutex::new(vec![]));
@@ -168,14 +167,14 @@ mod tests {
                 "major": spec::SPEC_VERSION.0,
                 "minor": spec::SPEC_VERSION.1,
             },
-            "sequenceNumber": 1
+            "sequenceNumber": 0
         });
         let expected_2 = json!({
             "schemaVersion": {
                 "major": spec::SPEC_VERSION.0,
                 "minor": spec::SPEC_VERSION.1,
             },
-            "sequenceNumber": 2
+            "sequenceNumber": 1
         });
 
         let buffer = Arc::new(Mutex::new(vec![]));

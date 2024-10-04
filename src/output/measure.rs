@@ -5,12 +5,11 @@
 // https://opensource.org/licenses/MIT.
 
 use std::future::Future;
-use std::sync::atomic;
+use std::sync::atomic::{self, Ordering};
 use std::sync::Arc;
 
 use serde_json::Map;
 use serde_json::Value;
-use tokio::sync::Mutex;
 
 use crate::output as tv;
 use crate::spec;
@@ -23,7 +22,7 @@ use tv::{dut, emitter, step};
 pub struct MeasurementSeries {
     emitter: Arc<step::StepEmitter>,
 
-    seq_no: Arc<Mutex<atomic::AtomicU64>>,
+    seq_no: Arc<atomic::AtomicU64>,
     start: MeasurementSeriesStart,
 }
 
@@ -31,7 +30,7 @@ impl MeasurementSeries {
     pub(crate) fn new(series_id: &str, name: &str, emitter: Arc<step::StepEmitter>) -> Self {
         Self {
             emitter,
-            seq_no: Arc::new(Mutex::new(atomic::AtomicU64::new(0))),
+            seq_no: Arc::new(atomic::AtomicU64::new(0)),
             start: MeasurementSeriesStart::new(name, series_id),
         }
     }
@@ -42,20 +41,13 @@ impl MeasurementSeries {
     ) -> Self {
         Self {
             emitter,
-            seq_no: Arc::new(Mutex::new(atomic::AtomicU64::new(0))),
+            seq_no: Arc::new(atomic::AtomicU64::new(0)),
             start,
         }
     }
 
-    async fn current_sequence_no(&self) -> u64 {
-        self.seq_no.lock().await.load(atomic::Ordering::SeqCst)
-    }
-
-    async fn increment_sequence_no(&self) {
-        self.seq_no
-            .lock()
-            .await
-            .fetch_add(1, atomic::Ordering::SeqCst);
+    fn incr_seqno(&self) -> u64 {
+        self.seq_no.fetch_add(1, Ordering::AcqRel)
     }
 
     /// Starts the measurement series.
@@ -109,7 +101,7 @@ impl MeasurementSeries {
     pub async fn end(&self) -> Result<(), emitter::WriterError> {
         let end = spec::MeasurementSeriesEnd {
             series_id: self.start.series_id.clone(),
-            total_count: self.current_sequence_no().await,
+            total_count: self.seq_no.load(Ordering::Acquire),
         };
 
         self.emitter
@@ -141,13 +133,12 @@ impl MeasurementSeries {
     /// ```
     pub async fn add_measurement(&self, value: Value) -> Result<(), emitter::WriterError> {
         let element = spec::MeasurementSeriesElement {
-            index: self.current_sequence_no().await,
+            index: self.incr_seqno(),
             value: value.clone(),
             timestamp: chrono::Local::now().with_timezone(&chrono_tz::Tz::UTC),
             series_id: self.start.series_id.clone(),
             metadata: None,
         };
-        self.increment_sequence_no().await;
 
         self.emitter
             .emit(&spec::TestStepArtifactImpl::MeasurementSeriesElement(
@@ -185,7 +176,7 @@ impl MeasurementSeries {
         metadata: Vec<(&str, Value)>,
     ) -> Result<(), emitter::WriterError> {
         let element = spec::MeasurementSeriesElement {
-            index: self.current_sequence_no().await,
+            index: self.incr_seqno(),
             value: value.clone(),
             timestamp: chrono::Local::now().with_timezone(&chrono_tz::Tz::UTC),
             series_id: self.start.series_id.clone(),
@@ -193,7 +184,6 @@ impl MeasurementSeries {
                 metadata.iter().map(|(k, v)| (k.to_string(), v.clone())),
             )),
         };
-        self.increment_sequence_no().await;
 
         self.emitter
             .emit(&spec::TestStepArtifactImpl::MeasurementSeriesElement(

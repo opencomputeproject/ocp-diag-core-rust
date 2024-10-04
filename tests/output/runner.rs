@@ -26,18 +26,18 @@ use tv::{
 };
 
 fn json_schema_version() -> serde_json::Value {
-    // seqno for schemaVersion is always 1
+    // seqno for schemaVersion is always 0
     json!({
         "schemaVersion": {
             "major": tv::SPEC_VERSION.0,
             "minor": tv::SPEC_VERSION.1
         },
-        "sequenceNumber": 1
+        "sequenceNumber": 0
     })
 }
 
 fn json_run_default_start() -> serde_json::Value {
-    // seqno for the default test run start is always 2
+    // seqno for the default test run start is always 1
     json!({
         "testRunArtifact": {
             "testRunStart": {
@@ -49,7 +49,7 @@ fn json_run_default_start() -> serde_json::Value {
                 "version": "1.0"
             }
         },
-        "sequenceNumber": 2
+        "sequenceNumber": 1
     })
 }
 
@@ -66,14 +66,14 @@ fn json_run_pass(seqno: i32) -> serde_json::Value {
 }
 
 fn json_step_default_start() -> serde_json::Value {
-    // seqno for the default test run start is always 3
+    // seqno for the default test run start is always 2
     json!({
         "testStepArtifact": {
             "testStepStart": {
                 "name": "first step"
             }
         },
-        "sequenceNumber": 3
+        "sequenceNumber": 2
     })
 }
 
@@ -151,7 +151,7 @@ async fn test_testrun_start_and_end() -> Result<()> {
     let expected = [
         json_schema_version(),
         json_run_default_start(),
-        json_run_pass(3),
+        json_run_pass(2),
     ];
 
     check_output_run(&expected, |_| async { Ok(()) }.boxed()).await
@@ -169,9 +169,9 @@ async fn test_testrun_with_log() -> Result<()> {
                     "severity": "INFO"
                 }
             },
-            "sequenceNumber": 3
+            "sequenceNumber": 2
         }),
-        json_run_pass(4),
+        json_run_pass(3),
     ];
 
     check_output_run(&expected, |run| {
@@ -203,9 +203,9 @@ async fn test_testrun_with_log_with_details() -> Result<()> {
                     }
                 }
             },
-            "sequenceNumber": 3
+            "sequenceNumber": 2
         }),
-        json_run_pass(4),
+        json_run_pass(3),
     ];
 
     check_output_run(&expected, |run| {
@@ -234,9 +234,9 @@ async fn test_testrun_with_error() -> Result<()> {
                     "symptom": "symptom"
                 }
             },
-            "sequenceNumber": 3
+            "sequenceNumber": 2
         }),
-        json_run_pass(4),
+        json_run_pass(3),
     ];
 
     check_output_run(&expected, |run| {
@@ -257,9 +257,9 @@ async fn test_testrun_with_error_with_message() -> Result<()> {
                     "symptom": "symptom"
                 }
             },
-            "sequenceNumber": 3
+            "sequenceNumber": 2
         }),
-        json_run_pass(4),
+        json_run_pass(3),
     ];
 
     check_output_run(&expected, |run| {
@@ -288,9 +288,9 @@ async fn test_testrun_with_error_with_details() -> Result<()> {
                     "symptom": "symptom"
                 }
             },
-            "sequenceNumber": 3
+            "sequenceNumber": 2
         }),
-        json_run_pass(4),
+        json_run_pass(3),
     ];
 
     check_output_run(&expected, |run| {
@@ -321,9 +321,9 @@ async fn test_testrun_with_error_with_details() -> Result<()> {
 //                     "severity": "INFO"
 //                 }
 //             },
-//             "sequenceNumber": 3
+//             "sequenceNumber": 2
 //         }),
-//         json_run_pass(4),
+//         json_run_pass(3),
 //     ];
 
 //     check_output(&expected, |run_builder| async {
@@ -349,8 +349,8 @@ async fn test_testrun_with_step() -> Result<()> {
         json_schema_version(),
         json_run_default_start(),
         json_step_default_start(),
-        json_step_complete(4),
-        json_run_pass(5),
+        json_step_complete(3),
+        json_run_pass(4),
     ];
 
     check_output_step(&expected, |_| async { Ok(()) }.boxed()).await
@@ -369,10 +369,10 @@ async fn test_testrun_step_log() -> Result<()> {
                     "severity": "INFO"
                 }
             },
-            "sequenceNumber": 4
+            "sequenceNumber": 3
         }),
-        json_step_complete(5),
-        json_run_pass(6),
+        json_step_complete(4),
+        json_run_pass(5),
     ];
 
     check_output_step(&expected, |step| {
@@ -397,7 +397,6 @@ async fn test_testrun_step_log_with_details() -> Result<()> {
         json_run_default_start(),
         json_step_default_start(),
         json!({
-            "sequenceNumber": 4,
             "testStepArtifact": {
                 "log": {
                     "message": "This is a log message with INFO severity",
@@ -407,10 +406,11 @@ async fn test_testrun_step_log_with_details() -> Result<()> {
                         "line": 1
                     }
                 }
-            }
+            },
+            "sequenceNumber": 3
         }),
-        json_step_complete(5),
-        json_run_pass(6),
+        json_step_complete(4),
+        json_run_pass(5),
     ];
 
     check_output_step(&expected, |step| {
@@ -437,15 +437,15 @@ async fn test_testrun_step_error() -> Result<()> {
         json_run_default_start(),
         json_step_default_start(),
         json!({
-            "sequenceNumber": 4,
             "testStepArtifact": {
                 "error": {
                     "symptom": "symptom"
                 }
-            }
+            },
+            "sequenceNumber": 3
         }),
-        json_step_complete(5),
-        json_run_pass(6),
+        json_step_complete(4),
+        json_run_pass(5),
     ];
 
     check_output_step(&expected, |step| {
@@ -466,16 +466,16 @@ async fn test_testrun_step_error_with_message() -> Result<()> {
         json_run_default_start(),
         json_step_default_start(),
         json!({
-            "sequenceNumber": 4,
             "testStepArtifact": {
                 "error": {
                     "message": "Error message",
                     "symptom": "symptom"
                 }
-            }
+            },
+            "sequenceNumber": 3
         }),
-        json_step_complete(5),
-        json_run_pass(6),
+        json_step_complete(4),
+        json_run_pass(5),
     ];
 
     check_output_step(&expected, |step| {
@@ -496,7 +496,6 @@ async fn test_testrun_step_error_with_details() -> Result<()> {
         json_run_default_start(),
         json_step_default_start(),
         json!({
-            "sequenceNumber": 4,
             "testStepArtifact": {
                 "testStepId": "step_0",
                 "error": {
@@ -511,10 +510,11 @@ async fn test_testrun_step_error_with_details() -> Result<()> {
                     },
                     "symptom": "symptom"
                 }
-            }
+            },
+            "sequenceNumber": 3
         }),
-        json_step_complete(5),
-        json_run_pass(6),
+        json_step_complete(4),
+        json_run_pass(5),
     ];
 
     check_output_step(&expected, |step| {
@@ -542,7 +542,7 @@ async fn test_testrun_step_error_with_details() -> Result<()> {
 //         json_run_default_start(),
 //         json_step_default_start(),
 //         json!({
-//             "sequenceNumber": 4,
+//             "sequenceNumber": 3,
 //             "testStepArtifact": {
 //                 "log": {
 //                     "message": "This is a log message with INFO severity",
@@ -550,8 +550,8 @@ async fn test_testrun_step_error_with_details() -> Result<()> {
 //                 }
 //             }
 //         }),
-//         json_step_complete(5),
-//         json_run_pass(6),
+//         json_step_complete(4),
+//         json_run_pass(5),
 //     ];
 
 //     check_output_run(&expected, |run| {
@@ -587,10 +587,10 @@ async fn test_step_with_measurement() -> Result<()> {
                     "value": 50
                 }
             },
-            "sequenceNumber": 4
+            "sequenceNumber": 3,
         }),
-        json_step_complete(5),
-        json_run_pass(6),
+        json_step_complete(4),
+        json_run_pass(5),
     ];
 
     check_output_step(&expected, |step| {
@@ -613,7 +613,6 @@ async fn test_step_with_measurement_builder() -> Result<()> {
         json_run_default_start(),
         json_step_default_start(),
         json!({
-            "sequenceNumber": 4,
             "testStepArtifact": {
                 "measurement": {
                     "hardwareInfoId": "id",
@@ -630,10 +629,11 @@ async fn test_step_with_measurement_builder() -> Result<()> {
                     }],
                     "value": 50
                 }
-            }
+            },
+            "sequenceNumber": 3
         }),
-        json_step_complete(5),
-        json_run_pass(6),
+        json_step_complete(4),
+        json_run_pass(5),
     ];
 
     check_output_step(&expected, |step| {
@@ -660,26 +660,25 @@ async fn test_step_with_measurement_series() -> Result<()> {
         json_run_default_start(),
         json_step_default_start(),
         json!({
-            "sequenceNumber": 4,
             "testStepArtifact": {
                 "measurementSeriesStart": {
-                    "measurementSeriesId": "series_1",
+                    "measurementSeriesId": "series_0",
                     "name": "name"
                 }
-            }
+            },
+            "sequenceNumber": 3
         }),
         json!({
-            "sequenceNumber": 5,
             "testStepArtifact": {
                 "measurementSeriesEnd": {
-                    "measurementSeriesId":
-                    "series_1",
+                    "measurementSeriesId": "series_0",
                     "totalCount": 0
                 }
-            }
+            },
+            "sequenceNumber": 4,
         }),
-        json_step_complete(6),
-        json_run_pass(7),
+        json_step_complete(5),
+        json_run_pass(6),
     ];
 
     check_output_step(&expected, |step| {
@@ -702,43 +701,43 @@ async fn test_step_with_multiple_measurement_series() -> Result<()> {
         json_run_default_start(),
         json_step_default_start(),
         json!({
-            "sequenceNumber": 4,
+            "testStepArtifact": {
+                "measurementSeriesStart": {
+                    "measurementSeriesId": "series_0",
+                    "name": "name"
+                }
+            },
+            "sequenceNumber": 3
+        }),
+        json!({
+            "testStepArtifact": {
+                "measurementSeriesEnd": {
+                    "measurementSeriesId": "series_0",
+                    "totalCount": 0
+                }
+            },
+            "sequenceNumber": 4
+        }),
+        json!({
             "testStepArtifact": {
                 "measurementSeriesStart": {
                     "measurementSeriesId": "series_1",
                     "name": "name"
                 }
-            }
+            },
+            "sequenceNumber": 5
         }),
         json!({
-            "sequenceNumber": 5,
             "testStepArtifact": {
                 "measurementSeriesEnd": {
                     "measurementSeriesId": "series_1",
                     "totalCount": 0
                 }
-            }
+            },
+            "sequenceNumber": 6
         }),
-        json!({
-            "sequenceNumber": 6,
-            "testStepArtifact": {
-                "measurementSeriesStart": {
-                    "measurementSeriesId": "series_2",
-                    "name": "name"
-                }
-            }
-        }),
-        json!({
-            "sequenceNumber": 7,
-            "testStepArtifact": {
-                "measurementSeriesEnd": {
-                    "measurementSeriesId": "series_2",
-                    "totalCount": 0
-                }
-            }
-        }),
-        json_step_complete(8),
-        json_run_pass(9),
+        json_step_complete(7),
+        json_run_pass(8),
     ];
 
     check_output_step(&expected, |step| {
@@ -765,23 +764,23 @@ async fn test_step_with_measurement_series_with_details() -> Result<()> {
         json_run_default_start(),
         json_step_default_start(),
         json!({
-            "sequenceNumber": 4,
             "testStepArtifact": {
                 "measurementSeriesStart": {
                     "measurementSeriesId": "series_id", "name": "name"
                 }
-            }
+            },
+            "sequenceNumber": 3
         }),
         json!({
-            "sequenceNumber": 5,
             "testStepArtifact": {
                 "measurementSeriesEnd": {
                     "measurementSeriesId": "series_id", "totalCount": 0
                 }
-            }
+            },
+            "sequenceNumber": 4
         }),
-        json_step_complete(6),
-        json_run_pass(7),
+        json_step_complete(5),
+        json_run_pass(6),
     ];
 
     check_output_step(&expected, |step| {
@@ -805,7 +804,6 @@ async fn test_step_with_measurement_series_with_details_and_start_builder() -> R
         json_run_default_start(),
         json_step_default_start(),
         json!({
-            "sequenceNumber": 4,
             "testStepArtifact": {
                 "measurementSeriesStart": {
                     "hardwareInfoId": {
@@ -825,19 +823,20 @@ async fn test_step_with_measurement_series_with_details_and_start_builder() -> R
                         "value": 30
                     }]
                 }
-            }
+            },
+            "sequenceNumber": 3
         }),
         json!({
-            "sequenceNumber": 5,
             "testStepArtifact": {
                 "measurementSeriesEnd": {
                     "measurementSeriesId": "series_id",
                     "totalCount": 0
                 }
-            }
+            },
+            "sequenceNumber": 4
         }),
-        json_step_complete(6),
-        json_run_pass(7),
+        json_step_complete(5),
+        json_run_pass(6),
     ];
 
     check_output_step(&expected, |step| {
@@ -867,35 +866,35 @@ async fn test_step_with_measurement_series_element() -> Result<()> {
         json_run_default_start(),
         json_step_default_start(),
         json!({
-            "sequenceNumber": 4,
             "testStepArtifact": {
                 "measurementSeriesStart": {
-                    "measurementSeriesId": "series_1",
+                    "measurementSeriesId": "series_0",
                     "name": "name"
                 }
-            }
+            },
+            "sequenceNumber": 3
         }),
         json!({
-            "sequenceNumber": 5,
             "testStepArtifact": {
                 "measurementSeriesElement": {
                     "index": 0,
-                    "measurementSeriesId": "series_1",
+                    "measurementSeriesId": "series_0",
                     "value": 60
                 }
-            }
+            },
+            "sequenceNumber": 4
         }),
         json!({
-            "sequenceNumber": 6,
             "testStepArtifact": {
                 "measurementSeriesEnd": {
-                    "measurementSeriesId": "series_1",
+                    "measurementSeriesId": "series_0",
                     "totalCount": 1
                 }
-            }
+            },
+            "sequenceNumber": 5
         }),
-        json_step_complete(7),
-        json_run_pass(8),
+        json_step_complete(6),
+        json_run_pass(7),
     ];
 
     check_output_step(&expected, |step| {
@@ -919,55 +918,55 @@ async fn test_step_with_measurement_series_element_index_no() -> Result<()> {
         json_run_default_start(),
         json_step_default_start(),
         json!({
-            "sequenceNumber": 4,
             "testStepArtifact": {
                 "measurementSeriesStart": {
-                    "measurementSeriesId": "series_1",
+                    "measurementSeriesId": "series_0",
                     "name": "name"
                 }
-            }
+            },
+            "sequenceNumber": 3
         }),
         json!({
-            "sequenceNumber": 5,
             "testStepArtifact": {
                 "measurementSeriesElement": {
                     "index": 0,
-                    "measurementSeriesId": "series_1",
+                    "measurementSeriesId": "series_0",
                     "value": 60
                 }
-            }
+            },
+            "sequenceNumber": 4
         }),
         json!({
-            "sequenceNumber": 6,
             "testStepArtifact": {
                 "measurementSeriesElement": {
                     "index": 1,
-                    "measurementSeriesId": "series_1",
+                    "measurementSeriesId": "series_0",
                     "value": 70
                 }
-            }
+            },
+            "sequenceNumber": 5
         }),
         json!({
-            "sequenceNumber": 7,
             "testStepArtifact": {
                 "measurementSeriesElement": {
                     "index": 2,
-                    "measurementSeriesId": "series_1",
+                    "measurementSeriesId": "series_0",
                     "value": 80
                 }
-            }
+            },
+            "sequenceNumber": 6
         }),
         json!({
-            "sequenceNumber": 8,
             "testStepArtifact": {
                 "measurementSeriesEnd": {
-                    "measurementSeriesId": "series_1",
+                    "measurementSeriesId": "series_0",
                     "totalCount": 3
                 }
-            }
+            },
+            "sequenceNumber": 7
         }),
-        json_step_complete(9),
-        json_run_pass(10),
+        json_step_complete(8),
+        json_run_pass(9),
     ];
 
     check_output_step(&expected, |step| {
@@ -994,38 +993,38 @@ async fn test_step_with_measurement_series_element_with_metadata() -> Result<()>
         json_run_default_start(),
         json_step_default_start(),
         json!({
-            "sequenceNumber": 4,
             "testStepArtifact": {
                 "measurementSeriesStart": {
-                    "measurementSeriesId": "series_1",
+                    "measurementSeriesId": "series_0",
                     "name": "name"
                 }
-            }
+            },
+            "sequenceNumber": 3,
         }),
         json!({
-            "sequenceNumber": 5,
             "testStepArtifact": {
                 "measurementSeriesElement": {
                     "index": 0,
-                    "measurementSeriesId": "series_1",
+                    "measurementSeriesId": "series_0",
                     "metadata": {
                         "key": "value"
                     },
                     "value": 60
                 }
-            }
+            },
+            "sequenceNumber": 4
         }),
         json!({
-            "sequenceNumber": 6,
             "testStepArtifact": {
                 "measurementSeriesEnd": {
-                    "measurementSeriesId": "series_1",
+                    "measurementSeriesId": "series_0",
                     "totalCount": 1
                 }
-            }
+            },
+            "sequenceNumber": 5
         }),
-        json_step_complete(7),
-        json_run_pass(8),
+        json_step_complete(6),
+        json_run_pass(7),
     ];
 
     check_output_step(&expected, |step| {
@@ -1051,58 +1050,58 @@ async fn test_step_with_measurement_series_element_with_metadata_index_no() -> R
         json_run_default_start(),
         json_step_default_start(),
         json!({
-            "sequenceNumber": 4,
             "testStepArtifact": {
                 "measurementSeriesStart": {
-                    "measurementSeriesId": "series_1",
+                    "measurementSeriesId": "series_0",
                     "name": "name"
                 }
-            }
+            },
+            "sequenceNumber": 3
         }),
         json!({
-            "sequenceNumber": 5,
             "testStepArtifact": {
                 "measurementSeriesElement": {
                     "index": 0,
-                    "measurementSeriesId": "series_1",
+                    "measurementSeriesId": "series_0",
                     "metadata": {"key": "value"},
                     "value": 60
                 }
-            }
+            },
+            "sequenceNumber": 4
         }),
         json!({
-            "sequenceNumber": 6,
             "testStepArtifact": {
                 "measurementSeriesElement": {
                     "index": 1,
-                    "measurementSeriesId": "series_1",
+                    "measurementSeriesId": "series_0",
                     "metadata": {"key2": "value2"},
                     "value": 70
                 }
-            }
+            },
+            "sequenceNumber": 5
         }),
         json!({
-            "sequenceNumber": 7,
             "testStepArtifact": {
                 "measurementSeriesElement": {
                     "index": 2,
-                    "measurementSeriesId": "series_1",
+                    "measurementSeriesId": "series_0",
                     "metadata": {"key3": "value3"},
                     "value": 80
                 }
-            }
+            },
+            "sequenceNumber": 6
         }),
         json!({
-            "sequenceNumber": 8,
             "testStepArtifact": {
                 "measurementSeriesEnd": {
-                    "measurementSeriesId": "series_1",
+                    "measurementSeriesId": "series_0",
                     "totalCount": 3
                 }
-            }
+            },
+            "sequenceNumber": 7
         }),
-        json_step_complete(9),
-        json_run_pass(10),
+        json_step_complete(8),
+        json_run_pass(9),
     ];
 
     check_output_step(&expected, |step| {
@@ -1135,55 +1134,55 @@ async fn test_step_with_measurement_series_scope() -> Result<()> {
         json_run_default_start(),
         json_step_default_start(),
         json!({
-            "sequenceNumber": 4,
             "testStepArtifact": {
                 "measurementSeriesStart": {
-                    "measurementSeriesId": "series_1",
+                    "measurementSeriesId": "series_0",
                     "name": "name"
                 }
-            }
+            },
+            "sequenceNumber": 3
         }),
         json!({
-            "sequenceNumber": 5,
             "testStepArtifact": {
                 "measurementSeriesElement": {
                     "index": 0,
-                    "measurementSeriesId": "series_1",
+                    "measurementSeriesId": "series_0",
                     "value": 60
                 }
-            }
+            },
+            "sequenceNumber": 4
         }),
         json!({
-            "sequenceNumber": 6,
             "testStepArtifact": {
                 "measurementSeriesElement": {
                     "index": 1,
-                    "measurementSeriesId": "series_1",
+                    "measurementSeriesId": "series_0",
                     "value": 70
                 }
-            }
+            },
+            "sequenceNumber": 5
         }),
         json!({
-            "sequenceNumber": 7,
             "testStepArtifact": {
                 "measurementSeriesElement": {
                     "index": 2,
-                    "measurementSeriesId": "series_1",
+                    "measurementSeriesId": "series_0",
                     "value": 80
                 }
-            }
+            },
+            "sequenceNumber": 6
         }),
         json!({
-            "sequenceNumber": 8,
             "testStepArtifact": {
                 "measurementSeriesEnd": {
-                    "measurementSeriesId": "series_1",
+                    "measurementSeriesId": "series_0",
                     "totalCount": 3
                 }
-            }
+            },
+            "sequenceNumber": 7
         }),
-        json_step_complete(9),
-        json_run_pass(10),
+        json_step_complete(8),
+        json_run_pass(9),
     ];
 
     check_output_step(&expected, |step| {
@@ -1222,9 +1221,9 @@ async fn test_config_builder_with_file() -> Result<()> {
                     "symptom": "symptom"
                 }
             },
-            "sequenceNumber": 3
+            "sequenceNumber": 2
         }),
-        json_run_pass(4),
+        json_run_pass(3),
     ];
 
     let fs = assert_fs::TempDir::new()?;
@@ -1264,7 +1263,7 @@ async fn test_testrun_instantiation_with_new() -> Result<()> {
     let expected = [
         json_schema_version(),
         json_run_default_start(),
-        json_run_pass(3),
+        json_run_pass(2),
     ];
     let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
@@ -1284,7 +1283,6 @@ async fn test_testrun_metadata() -> Result<()> {
     let expected = [
         json_schema_version(),
         json!({
-            "sequenceNumber": 2,
             "testRunArtifact": {
                 "testRunStart": {
                     "dutInfo": {
@@ -1295,9 +1293,10 @@ async fn test_testrun_metadata() -> Result<()> {
                     "parameters": {},
                     "version": "1.0"
                 }
-            }
+            },
+            "sequenceNumber": 1
         }),
-        json_run_pass(3),
+        json_run_pass(2),
     ];
 
     check_output(&expected, |run_builder| async {
@@ -1335,9 +1334,9 @@ async fn test_testrun_builder() -> Result<()> {
                     "version": "1.0"
                 }
             },
-            "sequenceNumber": 2
+            "sequenceNumber": 1
         }),
-        json_run_pass(3),
+        json_run_pass(2),
     ];
 
     check_output(&expected, |run_builder| async {
