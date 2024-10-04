@@ -10,8 +10,8 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 
 use crate::output as tv;
-use tv::measurement_series::MeasurementSeries;
-use tv::{emitters, models, objects, state};
+use tv::measurement::MeasurementSeries;
+use tv::{emitters, error, log, measurement, models, run, state, step};
 
 /// A single test step in the scope of a [`TestRun`].
 ///
@@ -46,7 +46,7 @@ impl TestStep {
     /// # });
     /// ```
     pub async fn start(self) -> Result<StartedTestStep, emitters::WriterError> {
-        let start = objects::TestStepStart::new(&self.name);
+        let start = step::TestStepStart::new(&self.name);
         self.state
             .lock()
             .await
@@ -124,7 +124,7 @@ impl StartedTestStep {
     /// # });
     /// ```
     pub async fn end(&self, status: models::TestStatus) -> Result<(), emitters::WriterError> {
-        let end = objects::TestStepEnd::new(status);
+        let end = step::TestStepEnd::new(status);
         self.step
             .state
             .lock()
@@ -181,13 +181,13 @@ impl StartedTestStep {
         severity: models::LogSeverity,
         msg: &str,
     ) -> Result<(), emitters::WriterError> {
-        let log = objects::Log::builder(msg).severity(severity).build();
+        let log = log::Log::builder(msg).severity(severity).build();
         self.step
             .state
             .lock()
             .await
             .emitter
-            .emit(&log.to_artifact(objects::ArtifactContext::TestStep))
+            .emit(&log.to_artifact(run::ArtifactContext::TestStep))
             .await?;
         Ok(())
     }
@@ -217,13 +217,13 @@ impl StartedTestStep {
     /// # Ok::<(), WriterError>(())
     /// # });
     /// ```
-    pub async fn log_with_details(&self, log: &objects::Log) -> Result<(), emitters::WriterError> {
+    pub async fn log_with_details(&self, log: &log::Log) -> Result<(), emitters::WriterError> {
         self.step
             .state
             .lock()
             .await
             .emitter
-            .emit(&log.to_artifact(objects::ArtifactContext::TestStep))
+            .emit(&log.to_artifact(run::ArtifactContext::TestStep))
             .await?;
         Ok(())
     }
@@ -267,13 +267,13 @@ impl StartedTestStep {
     /// # });
     /// ```
     pub async fn error(&self, symptom: &str) -> Result<(), emitters::WriterError> {
-        let error = objects::Error::builder(symptom).build();
+        let error = error::Error::builder(symptom).build();
         self.step
             .state
             .lock()
             .await
             .emitter
-            .emit(&error.to_artifact(objects::ArtifactContext::TestStep))
+            .emit(&error.to_artifact(run::ArtifactContext::TestStep))
             .await?;
         Ok(())
     }
@@ -322,13 +322,13 @@ impl StartedTestStep {
         symptom: &str,
         msg: &str,
     ) -> Result<(), emitters::WriterError> {
-        let error = objects::Error::builder(symptom).message(msg).build();
+        let error = error::Error::builder(symptom).message(msg).build();
         self.step
             .state
             .lock()
             .await
             .emitter
-            .emit(&error.to_artifact(objects::ArtifactContext::TestStep))
+            .emit(&error.to_artifact(run::ArtifactContext::TestStep))
             .await?;
         Ok(())
     }
@@ -361,14 +361,14 @@ impl StartedTestStep {
     /// ```
     pub async fn error_with_details(
         &self,
-        error: &objects::Error,
+        error: &error::Error,
     ) -> Result<(), emitters::WriterError> {
         self.step
             .state
             .lock()
             .await
             .emitter
-            .emit(&error.to_artifact(objects::ArtifactContext::TestStep))
+            .emit(&error.to_artifact(run::ArtifactContext::TestStep))
             .await?;
         Ok(())
     }
@@ -397,7 +397,7 @@ impl StartedTestStep {
         name: &str,
         value: Value,
     ) -> Result<(), emitters::WriterError> {
-        let measurement = objects::Measurement::new(name, value);
+        let measurement = measurement::Measurement::new(name, value);
         self.step
             .state
             .lock()
@@ -437,7 +437,7 @@ impl StartedTestStep {
     /// ```
     pub async fn add_measurement_with_details(
         &self,
-        measurement: &objects::Measurement,
+        measurement: &measurement::Measurement,
     ) -> Result<(), emitters::WriterError> {
         self.step
             .state
@@ -500,8 +500,51 @@ impl StartedTestStep {
     /// ```
     pub fn measurement_series_with_details(
         &self,
-        start: objects::MeasurementSeriesStart,
+        start: measurement::MeasurementSeriesStart,
     ) -> MeasurementSeries {
         MeasurementSeries::new_with_details(start, self.step.state.clone())
     }
 }
+
+pub struct TestStepStart {
+    name: String,
+}
+
+impl TestStepStart {
+    pub fn new(name: &str) -> TestStepStart {
+        TestStepStart {
+            name: name.to_string(),
+        }
+    }
+
+    pub fn to_artifact(&self) -> models::OutputArtifactDescendant {
+        models::OutputArtifactDescendant::TestStepArtifact(models::TestStepArtifactSpec {
+            descendant: models::TestStepArtifactDescendant::TestStepStart(
+                models::TestStepStartSpec {
+                    name: self.name.clone(),
+                },
+            ),
+        })
+    }
+}
+
+pub struct TestStepEnd {
+    status: models::TestStatus,
+}
+
+impl TestStepEnd {
+    pub fn new(status: models::TestStatus) -> TestStepEnd {
+        TestStepEnd { status }
+    }
+
+    pub fn to_artifact(&self) -> models::OutputArtifactDescendant {
+        models::OutputArtifactDescendant::TestStepArtifact(models::TestStepArtifactSpec {
+            descendant: models::TestStepArtifactDescendant::TestStepEnd(models::TestStepEndSpec {
+                status: self.status.clone(),
+            }),
+        })
+    }
+}
+
+#[cfg(test)]
+mod tests {}

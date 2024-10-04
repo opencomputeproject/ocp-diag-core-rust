@@ -12,12 +12,8 @@ use serde_json::Value;
 use tokio::sync::Mutex;
 
 use crate::output as tv;
-use tv::config;
-use tv::emitters;
-use tv::models;
-use tv::objects;
-use tv::state;
 use tv::step::TestStep;
+use tv::{config, dut, emitters, error, log, models, run, state};
 
 /// The outcome of a TestRun.
 /// It's returned when the scope method of the [`TestRun`] object is used.
@@ -35,7 +31,7 @@ pub struct TestRun {
     name: String,
     version: String,
     parameters: Map<String, Value>,
-    dut: objects::DutInfo,
+    dut: dut::DutInfo,
     command_line: String,
     metadata: Option<Map<String, Value>>,
     state: Arc<Mutex<state::TestState>>,
@@ -52,7 +48,7 @@ impl TestRun {
     /// let dut = DutInfo::builder("my_dut").build();
     /// let builder = TestRun::builder("run_name", &dut, "1.0");
     /// ```
-    pub fn builder(name: &str, dut: &objects::DutInfo, version: &str) -> TestRunBuilder {
+    pub fn builder(name: &str, dut: &dut::DutInfo, version: &str) -> TestRunBuilder {
         TestRunBuilder::new(name, dut, version)
     }
 
@@ -66,7 +62,7 @@ impl TestRun {
     /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// ```
     pub fn new(name: &str, dut_id: &str, version: &str) -> TestRun {
-        let dut = objects::DutInfo::new(dut_id);
+        let dut = dut::DutInfo::new(dut_id);
         TestRunBuilder::new(name, &dut, version).build()
     }
 
@@ -88,7 +84,7 @@ impl TestRun {
     /// # });
     /// ```
     pub async fn start(self) -> Result<StartedTestRun, emitters::WriterError> {
-        let version = objects::SchemaVersion::new();
+        let version = SchemaVersion::new();
         self.state
             .lock()
             .await
@@ -96,7 +92,7 @@ impl TestRun {
             .emit(&version.to_artifact())
             .await?;
 
-        let mut builder = objects::TestRunStart::builder(
+        let mut builder = run::TestRunStart::builder(
             &self.name,
             &self.version,
             &self.command_line,
@@ -165,7 +161,7 @@ impl TestRun {
 /// Builder for the [`TestRun`] object.
 pub struct TestRunBuilder {
     name: String,
-    dut: objects::DutInfo,
+    dut: dut::DutInfo,
     version: String,
     parameters: Map<String, Value>,
     command_line: String,
@@ -174,7 +170,7 @@ pub struct TestRunBuilder {
 }
 
 impl TestRunBuilder {
-    pub fn new(name: &str, dut: &objects::DutInfo, version: &str) -> Self {
+    pub fn new(name: &str, dut: &dut::DutInfo, version: &str) -> Self {
         Self {
             name: name.to_string(),
             dut: dut.clone(),
@@ -310,7 +306,7 @@ impl StartedTestRun {
         status: models::TestStatus,
         result: models::TestResult,
     ) -> Result<(), emitters::WriterError> {
-        let end = objects::TestRunEnd::builder()
+        let end = run::TestRunEnd::builder()
             .status(status)
             .result(result)
             .build();
@@ -348,12 +344,12 @@ impl StartedTestRun {
         severity: models::LogSeverity,
         msg: &str,
     ) -> Result<(), emitters::WriterError> {
-        let log = objects::Log::builder(msg).severity(severity).build();
+        let log = log::Log::builder(msg).severity(severity).build();
 
         let emitter = &self.run.state.lock().await.emitter;
 
         emitter
-            .emit(&log.to_artifact(objects::ArtifactContext::TestRun))
+            .emit(&log.to_artifact(ArtifactContext::TestRun))
             .await?;
         Ok(())
     }
@@ -381,11 +377,11 @@ impl StartedTestRun {
     /// # Ok::<(), WriterError>(())
     /// # });
     /// ```
-    pub async fn log_with_details(&self, log: &objects::Log) -> Result<(), emitters::WriterError> {
+    pub async fn log_with_details(&self, log: &log::Log) -> Result<(), emitters::WriterError> {
         let emitter = &self.run.state.lock().await.emitter;
 
         emitter
-            .emit(&log.to_artifact(objects::ArtifactContext::TestRun))
+            .emit(&log.to_artifact(ArtifactContext::TestRun))
             .await?;
         Ok(())
     }
@@ -409,11 +405,11 @@ impl StartedTestRun {
     /// # });
     /// ```
     pub async fn error(&self, symptom: &str) -> Result<(), emitters::WriterError> {
-        let error = objects::Error::builder(symptom).build();
+        let error = error::Error::builder(symptom).build();
         let emitter = &self.run.state.lock().await.emitter;
 
         emitter
-            .emit(&error.to_artifact(objects::ArtifactContext::TestRun))
+            .emit(&error.to_artifact(ArtifactContext::TestRun))
             .await?;
         Ok(())
     }
@@ -442,11 +438,11 @@ impl StartedTestRun {
         symptom: &str,
         msg: &str,
     ) -> Result<(), emitters::WriterError> {
-        let error = objects::Error::builder(symptom).message(msg).build();
+        let error = error::Error::builder(symptom).message(msg).build();
         let emitter = &self.run.state.lock().await.emitter;
 
         emitter
-            .emit(&error.to_artifact(objects::ArtifactContext::TestRun))
+            .emit(&error.to_artifact(ArtifactContext::TestRun))
             .await?;
         Ok(())
     }
@@ -477,17 +473,203 @@ impl StartedTestRun {
     /// ```
     pub async fn error_with_details(
         &self,
-        error: &objects::Error,
+        error: &error::Error,
     ) -> Result<(), emitters::WriterError> {
         let emitter = &self.run.state.lock().await.emitter;
 
         emitter
-            .emit(&error.to_artifact(objects::ArtifactContext::TestRun))
+            .emit(&error.to_artifact(ArtifactContext::TestRun))
             .await?;
         Ok(())
     }
 
     pub fn step(&self, name: &str) -> TestStep {
         TestStep::new(name, self.run.state.clone())
+    }
+}
+
+pub struct TestRunStart {
+    name: String,
+    version: String,
+    command_line: String,
+    parameters: Map<String, Value>,
+    metadata: Option<Map<String, Value>>,
+    dut_info: dut::DutInfo,
+}
+
+impl TestRunStart {
+    pub fn builder(
+        name: &str,
+        version: &str,
+        command_line: &str,
+        parameters: &Map<String, Value>,
+        dut_info: &dut::DutInfo,
+    ) -> TestRunStartBuilder {
+        TestRunStartBuilder::new(name, version, command_line, parameters, dut_info)
+    }
+
+    pub fn to_artifact(&self) -> models::OutputArtifactDescendant {
+        models::OutputArtifactDescendant::TestRunArtifact(models::TestRunArtifactSpec {
+            descendant: models::TestRunArtifactDescendant::TestRunStart(models::TestRunStartSpec {
+                name: self.name.clone(),
+                version: self.version.clone(),
+                command_line: self.command_line.clone(),
+                parameters: self.parameters.clone(),
+                metadata: self.metadata.clone(),
+                dut_info: self.dut_info.to_spec(),
+            }),
+        })
+    }
+}
+
+pub struct TestRunStartBuilder {
+    name: String,
+    version: String,
+    command_line: String,
+    parameters: Map<String, Value>,
+    metadata: Option<Map<String, Value>>,
+    dut_info: dut::DutInfo,
+}
+
+impl TestRunStartBuilder {
+    pub fn new(
+        name: &str,
+        version: &str,
+        command_line: &str,
+        parameters: &Map<String, Value>,
+        dut_info: &dut::DutInfo,
+    ) -> TestRunStartBuilder {
+        TestRunStartBuilder {
+            name: name.to_string(),
+            version: version.to_string(),
+            command_line: command_line.to_string(),
+            parameters: parameters.clone(),
+            metadata: None,
+            dut_info: dut_info.clone(),
+        }
+    }
+
+    pub fn add_metadata(mut self, key: &str, value: Value) -> TestRunStartBuilder {
+        self.metadata = match self.metadata {
+            Some(mut metadata) => {
+                metadata.insert(key.to_string(), value.clone());
+                Some(metadata)
+            }
+            None => {
+                let mut metadata = Map::new();
+                metadata.insert(key.to_string(), value.clone());
+                Some(metadata)
+            }
+        };
+        self
+    }
+
+    pub fn build(self) -> TestRunStart {
+        TestRunStart {
+            name: self.name,
+            version: self.version,
+            command_line: self.command_line,
+            parameters: self.parameters,
+            metadata: self.metadata,
+            dut_info: self.dut_info,
+        }
+    }
+}
+
+pub struct TestRunEnd {
+    status: models::TestStatus,
+    result: models::TestResult,
+}
+
+impl TestRunEnd {
+    pub fn builder() -> TestRunEndBuilder {
+        TestRunEndBuilder::new()
+    }
+
+    pub fn to_artifact(&self) -> models::OutputArtifactDescendant {
+        models::OutputArtifactDescendant::TestRunArtifact(models::TestRunArtifactSpec {
+            descendant: models::TestRunArtifactDescendant::TestRunEnd(models::TestRunEndSpec {
+                status: self.status.clone(),
+                result: self.result.clone(),
+            }),
+        })
+    }
+}
+
+#[derive(Debug)]
+pub struct TestRunEndBuilder {
+    status: models::TestStatus,
+    result: models::TestResult,
+}
+
+#[allow(clippy::new_without_default)]
+impl TestRunEndBuilder {
+    pub fn new() -> TestRunEndBuilder {
+        TestRunEndBuilder {
+            status: models::TestStatus::Complete,
+            result: models::TestResult::Pass,
+        }
+    }
+    pub fn status(mut self, value: models::TestStatus) -> TestRunEndBuilder {
+        self.status = value;
+        self
+    }
+
+    pub fn result(mut self, value: models::TestResult) -> TestRunEndBuilder {
+        self.result = value;
+        self
+    }
+
+    pub fn build(self) -> TestRunEnd {
+        TestRunEnd {
+            status: self.status,
+            result: self.result,
+        }
+    }
+}
+
+// TODO: move this away from here
+pub enum ArtifactContext {
+    TestRun,
+    TestStep,
+}
+
+// TODO: this likely will go into the emitter since it's not the run's job to emit the schema version
+pub struct SchemaVersion {
+    major: i8,
+    minor: i8,
+}
+
+#[allow(clippy::new_without_default)]
+impl SchemaVersion {
+    pub fn new() -> SchemaVersion {
+        SchemaVersion {
+            major: models::SPEC_VERSION.0,
+            minor: models::SPEC_VERSION.1,
+        }
+    }
+
+    pub fn to_artifact(&self) -> models::OutputArtifactDescendant {
+        models::OutputArtifactDescendant::SchemaVersion(models::SchemaVersionSpec {
+            major: self.major,
+            minor: self.minor,
+        })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use anyhow::Result;
+
+    use super::*;
+    use crate::output as tv;
+    use tv::models;
+
+    #[test]
+    fn test_schema_creation_from_builder() -> Result<()> {
+        let version = SchemaVersion::new();
+        assert_eq!(version.major, models::SPEC_VERSION.0);
+        assert_eq!(version.minor, models::SPEC_VERSION.1);
+        Ok(())
     }
 }

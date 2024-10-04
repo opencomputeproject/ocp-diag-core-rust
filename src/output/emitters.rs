@@ -127,13 +127,13 @@ impl JsonEmitter {
 
 #[cfg(test)]
 mod tests {
-    use anyhow::anyhow;
-    use anyhow::Result;
+    use anyhow::{anyhow, Result};
     use assert_json_diff::assert_json_include;
     use serde_json::json;
 
     use super::*;
-    use crate::output::objects::*;
+    use crate::output as tv;
+    use tv::run::SchemaVersion;
 
     #[tokio::test]
     async fn test_emit_using_buffer_writer() -> Result<()> {
