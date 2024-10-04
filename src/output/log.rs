@@ -5,7 +5,7 @@
 // https://opensource.org/licenses/MIT.
 
 use crate::output as tv;
-use tv::{models, run::ArtifactContext};
+use tv::models;
 
 pub struct Log {
     severity: models::LogSeverity,
@@ -18,26 +18,11 @@ impl Log {
         LogBuilder::new(message)
     }
 
-    pub fn to_artifact(&self, context: ArtifactContext) -> models::OutputArtifactDescendant {
-        match context {
-            ArtifactContext::TestRun => {
-                models::OutputArtifactDescendant::TestRunArtifact(models::TestRunArtifactSpec {
-                    descendant: models::TestRunArtifactDescendant::Log(models::LogSpec {
-                        severity: self.severity.clone(),
-                        message: self.message.clone(),
-                        source_location: self.source_location.clone(),
-                    }),
-                })
-            }
-            ArtifactContext::TestStep => {
-                models::OutputArtifactDescendant::TestStepArtifact(models::TestStepArtifactSpec {
-                    descendant: models::TestStepArtifactDescendant::Log(models::LogSpec {
-                        severity: self.severity.clone(),
-                        message: self.message.clone(),
-                        source_location: self.source_location.clone(),
-                    }),
-                })
-            }
+    pub fn to_artifact(&self) -> models::LogSpec {
+        models::LogSpec {
+            severity: self.severity.clone(),
+            message: self.message.clone(),
+            source_location: self.source_location.clone(),
         }
     }
 }
@@ -92,16 +77,14 @@ mod tests {
             .severity(models::LogSeverity::Info)
             .build();
 
-        let artifact = log.to_artifact(ArtifactContext::TestRun);
+        let artifact = log.to_artifact();
         assert_eq!(
             artifact,
-            models::OutputArtifactDescendant::TestRunArtifact(models::TestRunArtifactSpec {
-                descendant: models::TestRunArtifactDescendant::Log(models::LogSpec {
-                    severity: log.severity.clone(),
-                    message: log.message.clone(),
-                    source_location: log.source_location.clone(),
-                }),
-            })
+            models::LogSpec {
+                severity: log.severity.clone(),
+                message: log.message.clone(),
+                source_location: log.source_location.clone(),
+            },
         );
 
         Ok(())
@@ -113,16 +96,14 @@ mod tests {
             .severity(models::LogSeverity::Info)
             .build();
 
-        let artifact = log.to_artifact(ArtifactContext::TestStep);
+        let artifact = log.to_artifact();
         assert_eq!(
             artifact,
-            models::OutputArtifactDescendant::TestStepArtifact(models::TestStepArtifactSpec {
-                descendant: models::TestStepArtifactDescendant::Log(models::LogSpec {
-                    severity: log.severity.clone(),
-                    message: log.message.clone(),
-                    source_location: log.source_location.clone(),
-                }),
-            })
+            models::LogSpec {
+                severity: log.severity.clone(),
+                message: log.message.clone(),
+                source_location: log.source_location.clone(),
+            }
         );
 
         Ok(())

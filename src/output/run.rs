@@ -348,9 +348,13 @@ impl StartedTestRun {
 
         let emitter = &self.run.state.lock().await.emitter;
 
+        let artifact = models::TestRunArtifactSpec {
+            descendant: models::TestRunArtifactDescendant::Log(log.to_artifact()),
+        };
         emitter
-            .emit(&log.to_artifact(ArtifactContext::TestRun))
+            .emit(&models::OutputArtifactDescendant::TestRunArtifact(artifact))
             .await?;
+
         Ok(())
     }
 
@@ -380,9 +384,13 @@ impl StartedTestRun {
     pub async fn log_with_details(&self, log: &log::Log) -> Result<(), emitters::WriterError> {
         let emitter = &self.run.state.lock().await.emitter;
 
+        let artifact = models::TestRunArtifactSpec {
+            descendant: models::TestRunArtifactDescendant::Log(log.to_artifact()),
+        };
         emitter
-            .emit(&log.to_artifact(ArtifactContext::TestRun))
+            .emit(&models::OutputArtifactDescendant::TestRunArtifact(artifact))
             .await?;
+
         Ok(())
     }
 
@@ -408,9 +416,13 @@ impl StartedTestRun {
         let error = error::Error::builder(symptom).build();
         let emitter = &self.run.state.lock().await.emitter;
 
+        let artifact = models::TestRunArtifactSpec {
+            descendant: models::TestRunArtifactDescendant::Error(error.to_artifact()),
+        };
         emitter
-            .emit(&error.to_artifact(ArtifactContext::TestRun))
+            .emit(&models::OutputArtifactDescendant::TestRunArtifact(artifact))
             .await?;
+
         Ok(())
     }
 
@@ -441,9 +453,13 @@ impl StartedTestRun {
         let error = error::Error::builder(symptom).message(msg).build();
         let emitter = &self.run.state.lock().await.emitter;
 
+        let artifact = models::TestRunArtifactSpec {
+            descendant: models::TestRunArtifactDescendant::Error(error.to_artifact()),
+        };
         emitter
-            .emit(&error.to_artifact(ArtifactContext::TestRun))
+            .emit(&models::OutputArtifactDescendant::TestRunArtifact(artifact))
             .await?;
+
         Ok(())
     }
 
@@ -477,9 +493,13 @@ impl StartedTestRun {
     ) -> Result<(), emitters::WriterError> {
         let emitter = &self.run.state.lock().await.emitter;
 
+        let artifact = models::TestRunArtifactSpec {
+            descendant: models::TestRunArtifactDescendant::Error(error.to_artifact()),
+        };
         emitter
-            .emit(&error.to_artifact(ArtifactContext::TestRun))
+            .emit(&models::OutputArtifactDescendant::TestRunArtifact(artifact))
             .await?;
+
         Ok(())
     }
 
@@ -626,12 +646,6 @@ impl TestRunEndBuilder {
             result: self.result,
         }
     }
-}
-
-// TODO: move this away from here
-pub enum ArtifactContext {
-    TestRun,
-    TestStep,
 }
 
 // TODO: this likely will go into the emitter since it's not the run's job to emit the schema version

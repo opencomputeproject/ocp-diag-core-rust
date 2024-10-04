@@ -11,7 +11,7 @@ use tokio::sync::Mutex;
 
 use crate::output as tv;
 use tv::measurement::MeasurementSeries;
-use tv::{emitters, error, log, measurement, models, run, state, step};
+use tv::{emitters, error, log, measurement, models, state, step};
 
 /// A single test step in the scope of a [`TestRun`].
 ///
@@ -182,13 +182,17 @@ impl StartedTestStep {
         msg: &str,
     ) -> Result<(), emitters::WriterError> {
         let log = log::Log::builder(msg).severity(severity).build();
-        self.step
-            .state
-            .lock()
-            .await
-            .emitter
-            .emit(&log.to_artifact(run::ArtifactContext::TestStep))
+        let emitter = &self.step.state.lock().await.emitter;
+
+        let artifact = models::TestStepArtifactSpec {
+            descendant: models::TestStepArtifactDescendant::Log(log.to_artifact()),
+        };
+        emitter
+            .emit(&models::OutputArtifactDescendant::TestStepArtifact(
+                artifact,
+            ))
             .await?;
+
         Ok(())
     }
 
@@ -218,13 +222,17 @@ impl StartedTestStep {
     /// # });
     /// ```
     pub async fn log_with_details(&self, log: &log::Log) -> Result<(), emitters::WriterError> {
-        self.step
-            .state
-            .lock()
-            .await
-            .emitter
-            .emit(&log.to_artifact(run::ArtifactContext::TestStep))
+        let emitter = &self.step.state.lock().await.emitter;
+
+        let artifact = models::TestStepArtifactSpec {
+            descendant: models::TestStepArtifactDescendant::Log(log.to_artifact()),
+        };
+        emitter
+            .emit(&models::OutputArtifactDescendant::TestStepArtifact(
+                artifact,
+            ))
             .await?;
+
         Ok(())
     }
 
@@ -268,13 +276,17 @@ impl StartedTestStep {
     /// ```
     pub async fn error(&self, symptom: &str) -> Result<(), emitters::WriterError> {
         let error = error::Error::builder(symptom).build();
-        self.step
-            .state
-            .lock()
-            .await
-            .emitter
-            .emit(&error.to_artifact(run::ArtifactContext::TestStep))
+        let emitter = &self.step.state.lock().await.emitter;
+
+        let artifact = models::TestStepArtifactSpec {
+            descendant: models::TestStepArtifactDescendant::Error(error.to_artifact()),
+        };
+        emitter
+            .emit(&models::OutputArtifactDescendant::TestStepArtifact(
+                artifact,
+            ))
             .await?;
+
         Ok(())
     }
 
@@ -323,13 +335,17 @@ impl StartedTestStep {
         msg: &str,
     ) -> Result<(), emitters::WriterError> {
         let error = error::Error::builder(symptom).message(msg).build();
-        self.step
-            .state
-            .lock()
-            .await
-            .emitter
-            .emit(&error.to_artifact(run::ArtifactContext::TestStep))
+        let emitter = &self.step.state.lock().await.emitter;
+
+        let artifact = models::TestStepArtifactSpec {
+            descendant: models::TestStepArtifactDescendant::Error(error.to_artifact()),
+        };
+        emitter
+            .emit(&models::OutputArtifactDescendant::TestStepArtifact(
+                artifact,
+            ))
             .await?;
+
         Ok(())
     }
 
@@ -363,13 +379,17 @@ impl StartedTestStep {
         &self,
         error: &error::Error,
     ) -> Result<(), emitters::WriterError> {
-        self.step
-            .state
-            .lock()
-            .await
-            .emitter
-            .emit(&error.to_artifact(run::ArtifactContext::TestStep))
+        let emitter = &self.step.state.lock().await.emitter;
+
+        let artifact = models::TestStepArtifactSpec {
+            descendant: models::TestStepArtifactDescendant::Error(error.to_artifact()),
+        };
+        emitter
+            .emit(&models::OutputArtifactDescendant::TestStepArtifact(
+                artifact,
+            ))
             .await?;
+
         Ok(())
     }
 

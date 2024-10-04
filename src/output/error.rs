@@ -5,7 +5,7 @@
 // https://opensource.org/licenses/MIT.
 
 use crate::output as tv;
-use tv::{dut, models, run::ArtifactContext};
+use tv::{dut, models};
 
 pub struct Error {
     symptom: String,
@@ -19,28 +19,12 @@ impl Error {
         ErrorBuilder::new(symptom)
     }
 
-    pub fn to_artifact(&self, context: ArtifactContext) -> models::OutputArtifactDescendant {
-        match context {
-            ArtifactContext::TestRun => {
-                models::OutputArtifactDescendant::TestRunArtifact(models::TestRunArtifactSpec {
-                    descendant: models::TestRunArtifactDescendant::Error(models::ErrorSpec {
-                        symptom: self.symptom.clone(),
-                        message: self.message.clone(),
-                        software_infos: self.software_infos.clone(),
-                        source_location: self.source_location.clone(),
-                    }),
-                })
-            }
-            ArtifactContext::TestStep => {
-                models::OutputArtifactDescendant::TestStepArtifact(models::TestStepArtifactSpec {
-                    descendant: models::TestStepArtifactDescendant::Error(models::ErrorSpec {
-                        symptom: self.symptom.clone(),
-                        message: self.message.clone(),
-                        software_infos: self.software_infos.clone(),
-                        source_location: self.source_location.clone(),
-                    }),
-                })
-            }
+    pub fn to_artifact(&self) -> models::ErrorSpec {
+        models::ErrorSpec {
+            symptom: self.symptom.clone(),
+            message: self.message.clone(),
+            software_infos: self.software_infos.clone(),
+            source_location: self.source_location.clone(),
         }
     }
 }
@@ -112,17 +96,15 @@ mod tests {
             .source("", 1)
             .build();
 
-        let artifact = error.to_artifact(ArtifactContext::TestRun);
+        let artifact = error.to_artifact();
         assert_eq!(
             artifact,
-            models::OutputArtifactDescendant::TestRunArtifact(models::TestRunArtifactSpec {
-                descendant: models::TestRunArtifactDescendant::Error(models::ErrorSpec {
-                    symptom: error.symptom.clone(),
-                    message: error.message.clone(),
-                    software_infos: error.software_infos.clone(),
-                    source_location: error.source_location.clone(),
-                }),
-            })
+            models::ErrorSpec {
+                symptom: error.symptom.clone(),
+                message: error.message.clone(),
+                software_infos: error.software_infos.clone(),
+                source_location: error.source_location.clone(),
+            }
         );
 
         Ok(())
@@ -136,17 +118,15 @@ mod tests {
             .source("", 1)
             .build();
 
-        let artifact = error.to_artifact(ArtifactContext::TestStep);
+        let artifact = error.to_artifact();
         assert_eq!(
             artifact,
-            models::OutputArtifactDescendant::TestStepArtifact(models::TestStepArtifactSpec {
-                descendant: models::TestStepArtifactDescendant::Error(models::ErrorSpec {
-                    symptom: error.symptom.clone(),
-                    message: error.message.clone(),
-                    software_infos: error.software_infos.clone(),
-                    source_location: error.source_location.clone(),
-                }),
-            })
+            models::ErrorSpec {
+                symptom: error.symptom.clone(),
+                message: error.message.clone(),
+                software_infos: error.software_infos.clone(),
+                source_location: error.source_location.clone(),
+            }
         );
 
         Ok(())
@@ -155,60 +135,52 @@ mod tests {
     #[test]
     fn test_error() -> Result<()> {
         let expected_run = serde_json::json!({
-            "testRunArtifact": {
-                "error": {
-                    "message": "message",
-                    "softwareInfoIds": [
-                        {
-                            "computerSystem": null,
-                            "name": "name",
-                            "revision": null,
-                            "softwareInfoId":
-                            "software_id",
-                            "softwareType": null,
-                            "version": null
-                        },
-                        {
-                            "computerSystem": null,
-                            "name": "name",
-                            "revision": null,
-                            "softwareInfoId":
-                            "software_id",
-                            "softwareType": null,
-                            "version": null
-                        }
-                    ],
-                    "sourceLocation": {"file": "file.rs", "line": 1},
-                    "symptom": "symptom"
+            "message": "message",
+            "softwareInfoIds": [
+                {
+                    "computerSystem": null,
+                    "name": "name",
+                    "revision": null,
+                    "softwareInfoId":
+                    "software_id",
+                    "softwareType": null,
+                    "version": null
+                },
+                {
+                    "computerSystem": null,
+                    "name": "name",
+                    "revision": null,
+                    "softwareInfoId":
+                    "software_id",
+                    "softwareType": null,
+                    "version": null
                 }
-            }
+            ],
+            "sourceLocation": {"file": "file.rs", "line": 1},
+            "symptom": "symptom"
         });
         let expected_step = serde_json::json!({
-            "testStepArtifact": {
-                "error": {
-                    "message": "message",
-                    "softwareInfoIds": [
-                        {
-                            "computerSystem": null,
-                            "name": "name",
-                            "revision": null,
-                            "softwareInfoId": "software_id",
-                            "softwareType": null,
-                            "version": null
-                        },
-                        {
-                            "computerSystem": null,
-                            "name": "name",
-                            "revision": null,
-                            "softwareInfoId": "software_id",
-                            "softwareType": null,
-                            "version": null
-                        }
-                    ],
-                    "sourceLocation": {"file":"file.rs","line":1},
-                    "symptom":"symptom"
+            "message": "message",
+            "softwareInfoIds": [
+                {
+                    "computerSystem": null,
+                    "name": "name",
+                    "revision": null,
+                    "softwareInfoId": "software_id",
+                    "softwareType": null,
+                    "version": null
+                },
+                {
+                    "computerSystem": null,
+                    "name": "name",
+                    "revision": null,
+                    "softwareInfoId": "software_id",
+                    "softwareType": null,
+                    "version": null
                 }
-            }
+            ],
+            "sourceLocation": {"file":"file.rs","line":1},
+            "symptom":"symptom"
         });
 
         let software = dut::SoftwareInfo::builder("software_id", "name").build();
@@ -219,11 +191,11 @@ mod tests {
             .add_software_info(&software)
             .build();
 
-        let spec_error = error.to_artifact(ArtifactContext::TestRun);
+        let spec_error = error.to_artifact();
         let actual = serde_json::json!(spec_error);
         assert_json_include!(actual: actual, expected: &expected_run);
 
-        let spec_error = error.to_artifact(ArtifactContext::TestStep);
+        let spec_error = error.to_artifact();
         let actual = serde_json::json!(spec_error);
         assert_json_include!(actual: actual, expected: &expected_step);
 
