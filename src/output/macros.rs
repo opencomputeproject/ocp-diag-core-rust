@@ -27,8 +27,7 @@
 ///
 /// use ocptv::ocptv_error;
 ///
-/// let test_run = TestRun::new("run_name", "my_dut", "1.0");
-/// test_run.start().await?;
+/// let test_run = TestRun::new("run_name", "my_dut", "1.0").start().await?;
 /// ocptv_error!(test_run, "symptom");
 /// test_run.end(TestStatus::Complete, TestResult::Pass).await?;
 ///
@@ -44,8 +43,7 @@
 ///
 /// use ocptv::ocptv_error;
 ///
-/// let test_run = TestRun::new("run_name", "my_dut", "1.0");
-/// test_run.start().await?;
+/// let test_run = TestRun::new("run_name", "my_dut", "1.0").start().await?;
 /// ocptv_error!(test_run, "symptom", "Error message");
 /// test_run.end(TestStatus::Complete, TestResult::Pass).await?;
 ///
@@ -54,7 +52,7 @@
 /// ```
 #[macro_export]
 macro_rules! ocptv_error {
-    ($runner:expr , $symptom:expr, $msg:expr) => {
+    ($runner:expr, $symptom:expr, $msg:expr) => {
         async {
             $runner
                 .error_with_details(
@@ -99,8 +97,7 @@ macro_rules! ocptv_error {
 ///
 /// use ocptv::ocptv_log_debug;
 ///
-/// let test_run = TestRun::new("run_name", "my_dut", "1.0");
-/// test_run.start().await?;
+/// let test_run = TestRun::new("run_name", "my_dut", "1.0").start().await?;
 /// ocptv_log_debug!(test_run, "Log message");
 /// test_run.end(TestStatus::Complete, TestResult::Pass).await?;
 ///
@@ -210,23 +207,25 @@ mod tests {
                     "symptom": "symptom"
                 }
             },
-            "sequenceNumber": 1
+            "sequenceNumber": 3
         });
 
         let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
         let dut = DutInfo::builder("dut_id").build();
-        let test_run = TestRun::builder("run_name", &dut, "1.0")
+        let run = TestRun::builder("run_name", &dut, "1.0")
             .config(Config::builder().with_buffer_output(buffer.clone()).build())
-            .build();
+            .build()
+            .start()
+            .await?;
 
-        ocptv_error!(test_run, "symptom", "Error message").await?;
+        ocptv_error!(run, "symptom", "Error message").await?;
 
         let actual = serde_json::from_str::<serde_json::Value>(
-            buffer
+            &buffer
                 .lock()
                 .await
-                .first()
-                .ok_or(anyhow!("Buffer is empty"))?,
+                .first_chunk::<3>()
+                .ok_or(anyhow!("Buffer is missing error log message"))?[2],
         )?;
         assert_json_include!(actual: actual.clone(), expected: &expected);
 
@@ -252,23 +251,25 @@ mod tests {
                     "symptom": "symptom"
                 }
             },
-            "sequenceNumber": 1
+            "sequenceNumber": 3
         });
 
         let dut = DutInfo::builder("dut_id").build();
         let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
-        let test_run = TestRun::builder("run_name", &dut, "1.0")
+        let run = TestRun::builder("run_name", &dut, "1.0")
             .config(Config::builder().with_buffer_output(buffer.clone()).build())
-            .build();
+            .build()
+            .start()
+            .await?;
 
-        ocptv_error!(test_run, "symptom").await?;
+        ocptv_error!(run, "symptom").await?;
 
         let actual = serde_json::from_str::<serde_json::Value>(
-            buffer
+            &buffer
                 .lock()
                 .await
-                .first()
-                .ok_or(anyhow!("Buffer is empty"))?,
+                .first_chunk::<3>()
+                .ok_or(anyhow!("Buffer is missing error log message"))?[2],
         )?;
         assert_json_include!(actual: actual.clone(), expected: &expected);
 
@@ -295,23 +296,25 @@ mod tests {
                     "severity": "DEBUG"
                 }
             },
-            "sequenceNumber":1
+            "sequenceNumber": 3
         });
 
         let dut = DutInfo::builder("dut_id").build();
         let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
-        let test_run = TestRun::builder("run_name", &dut, "1.0")
+        let run = TestRun::builder("run_name", &dut, "1.0")
             .config(Config::builder().with_buffer_output(buffer.clone()).build())
-            .build();
+            .build()
+            .start()
+            .await?;
 
-        ocptv_log_debug!(test_run, "log message").await?;
+        ocptv_log_debug!(run, "log message").await?;
 
         let actual = serde_json::from_str::<serde_json::Value>(
-            buffer
+            &buffer
                 .lock()
                 .await
-                .first()
-                .ok_or(anyhow!("Buffer is empty"))?,
+                .first_chunk::<3>()
+                .ok_or(anyhow!("Buffer is missing the log message"))?[2],
         )?;
         assert_json_include!(actual: actual.clone(), expected: &expected);
 
@@ -338,23 +341,25 @@ mod tests {
                     "severity": "INFO"
                 }
             },
-            "sequenceNumber": 1
+            "sequenceNumber": 3
         });
 
         let dut = DutInfo::builder("dut_id").build();
         let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
-        let test_run = TestRun::builder("run_name", &dut, "1.0")
+        let run = TestRun::builder("run_name", &dut, "1.0")
             .config(Config::builder().with_buffer_output(buffer.clone()).build())
-            .build();
+            .build()
+            .start()
+            .await?;
 
-        ocptv_log_info!(test_run, "log message").await?;
+        ocptv_log_info!(run, "log message").await?;
 
         let actual = serde_json::from_str::<serde_json::Value>(
-            buffer
+            &buffer
                 .lock()
                 .await
-                .first()
-                .ok_or(anyhow!("Buffer is empty"))?,
+                .first_chunk::<3>()
+                .ok_or(anyhow!("Buffer is missing the log message"))?[2],
         )?;
         assert_json_include!(actual: actual.clone(), expected: &expected);
 
@@ -382,23 +387,25 @@ mod tests {
                     "severity": "WARNING"
                 }
             },
-            "sequenceNumber": 1
+            "sequenceNumber": 3
         });
 
         let dut = DutInfo::builder("dut_id").build();
         let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
-        let test_run = TestRun::builder("run_name", &dut, "1.0")
+        let run = TestRun::builder("run_name", &dut, "1.0")
             .config(Config::builder().with_buffer_output(buffer.clone()).build())
-            .build();
+            .build()
+            .start()
+            .await?;
 
-        ocptv_log_warning!(test_run, "log message").await?;
+        ocptv_log_warning!(run, "log message").await?;
 
         let actual = serde_json::from_str::<serde_json::Value>(
-            buffer
+            &buffer
                 .lock()
                 .await
-                .first()
-                .ok_or(anyhow!("Buffer is empty"))?,
+                .first_chunk::<3>()
+                .ok_or(anyhow!("Buffer is missing the log message"))?[2],
         )?;
         assert_json_include!(actual: actual.clone(), expected: &expected);
 
@@ -425,23 +432,25 @@ mod tests {
                     "severity": "ERROR"
                 }
             },
-            "sequenceNumber":1
+            "sequenceNumber": 3
         });
 
         let dut = DutInfo::builder("dut_id").build();
         let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
-        let test_run = TestRun::builder("run_name", &dut, "1.0")
+        let run = TestRun::builder("run_name", &dut, "1.0")
             .config(Config::builder().with_buffer_output(buffer.clone()).build())
-            .build();
+            .build()
+            .start()
+            .await?;
 
-        ocptv_log_error!(test_run, "log message").await?;
+        ocptv_log_error!(run, "log message").await?;
 
         let actual = serde_json::from_str::<serde_json::Value>(
-            buffer
+            &buffer
                 .lock()
                 .await
-                .first()
-                .ok_or(anyhow!("Buffer is empty"))?,
+                .first_chunk::<3>()
+                .ok_or(anyhow!("Buffer is missing the error message"))?[2],
         )?;
         assert_json_include!(actual: actual.clone(), expected: &expected);
 
@@ -468,23 +477,25 @@ mod tests {
                     "severity": "FATAL"
                 }
             },
-            "sequenceNumber": 1
+            "sequenceNumber": 3
         });
 
         let dut = DutInfo::builder("dut_id").build();
         let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
-        let test_run = TestRun::builder("run_name", &dut, "1.0")
+        let run = TestRun::builder("run_name", &dut, "1.0")
             .config(Config::builder().with_buffer_output(buffer.clone()).build())
-            .build();
+            .build()
+            .start()
+            .await?;
 
-        ocptv_log_fatal!(test_run, "log message").await?;
+        ocptv_log_fatal!(run, "log message").await?;
 
         let actual = serde_json::from_str::<serde_json::Value>(
-            buffer
+            &buffer
                 .lock()
                 .await
-                .first()
-                .ok_or(anyhow!("Buffer is empty"))?,
+                .first_chunk::<3>()
+                .ok_or(anyhow!("Buffer is missing the error message"))?[2],
         )?;
         assert_json_include!(actual: actual.clone(), expected: &expected);
 
@@ -511,25 +522,28 @@ mod tests {
                     "symptom":"symptom"
                 }
             },
-            "sequenceNumber": 1
+            "sequenceNumber": 3
         });
 
         let dut = DutInfo::builder("dut_id").build();
         let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
-        let test_run = TestRun::builder("run_name", &dut, "1.0")
-            .config(Config::builder().with_buffer_output(buffer.clone()).build())
-            .build();
 
-        let step = test_run.step("step_name")?;
+        let run = TestRun::builder("run_name", &dut, "1.0")
+            .config(Config::builder().with_buffer_output(buffer.clone()).build())
+            .build()
+            .start()
+            .await?;
+
+        let step = run.step("step_name")?;
 
         ocptv_error!(step, "symptom", "Error message").await?;
 
         let actual = serde_json::from_str::<serde_json::Value>(
-            buffer
+            &buffer
                 .lock()
                 .await
-                .first()
-                .ok_or(anyhow!("Buffer is empty"))?,
+                .first_chunk::<3>()
+                .ok_or(anyhow!("Buffer is missing the error message"))?[2],
         )?;
         assert_json_include!(actual: actual.clone(), expected: &expected);
 
@@ -555,25 +569,27 @@ mod tests {
                     "symptom": "symptom"
                 }
             },
-            "sequenceNumber": 1
+            "sequenceNumber": 3
         });
 
         let dut = DutInfo::builder("dut_id").build();
         let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
-        let test_run = TestRun::builder("run_name", &dut, "1.0")
+        let run = TestRun::builder("run_name", &dut, "1.0")
             .config(Config::builder().with_buffer_output(buffer.clone()).build())
-            .build();
+            .build()
+            .start()
+            .await?;
 
-        let step = test_run.step("step_name")?;
+        let step = run.step("step_name")?;
 
         ocptv_error!(step, "symptom").await?;
 
         let actual = serde_json::from_str::<serde_json::Value>(
-            buffer
+            &buffer
                 .lock()
                 .await
-                .first()
-                .ok_or(anyhow!("Buffer is empty"))?,
+                .first_chunk::<3>()
+                .ok_or(anyhow!("Buffer is missing the error message"))?[2],
         )?;
         assert_json_include!(actual: actual.clone(), expected: &expected);
 
@@ -600,24 +616,26 @@ mod tests {
                     "severity": "DEBUG"
                 }
             },
-            "sequenceNumber": 1
+            "sequenceNumber": 3
         });
 
         let dut = DutInfo::builder("dut_id").build();
         let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
-        let test_run = TestRun::builder("run_name", &dut, "1.0")
+        let run = TestRun::builder("run_name", &dut, "1.0")
             .config(Config::builder().with_buffer_output(buffer.clone()).build())
-            .build();
+            .build()
+            .start()
+            .await?;
 
-        let step = test_run.step("step_name")?;
+        let step = run.step("step_name")?;
         ocptv_log_debug!(step, "log message").await?;
 
         let actual = serde_json::from_str::<serde_json::Value>(
-            buffer
+            &buffer
                 .lock()
                 .await
-                .first()
-                .ok_or(anyhow!("Buffer is empty"))?,
+                .first_chunk::<3>()
+                .ok_or(anyhow!("Buffer is missing the log message"))?[2],
         )?;
         assert_json_include!(actual: actual.clone(), expected: &expected);
 
@@ -644,24 +662,26 @@ mod tests {
                     "severity": "INFO"
                 }
             },
-            "sequenceNumber": 1
+            "sequenceNumber": 3
         });
 
         let dut = DutInfo::builder("dut_id").build();
         let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
-        let test_run = TestRun::builder("run_name", &dut, "1.0")
+        let run = TestRun::builder("run_name", &dut, "1.0")
             .config(Config::builder().with_buffer_output(buffer.clone()).build())
-            .build();
+            .build()
+            .start()
+            .await?;
 
-        let step = test_run.step("step_name")?;
+        let step = run.step("step_name")?;
         ocptv_log_info!(step, "log message").await?;
 
         let actual = serde_json::from_str::<serde_json::Value>(
-            buffer
+            &buffer
                 .lock()
                 .await
-                .first()
-                .ok_or(anyhow!("Buffer is empty"))?,
+                .first_chunk::<3>()
+                .ok_or(anyhow!("Buffer is missing the log message"))?[2],
         )?;
         assert_json_include!(actual: actual.clone(), expected: &expected);
 
@@ -688,24 +708,26 @@ mod tests {
                     "severity":"WARNING"
                 }
             },
-            "sequenceNumber": 1
+            "sequenceNumber": 3
         });
 
         let dut = DutInfo::builder("dut_id").build();
         let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
-        let test_run = TestRun::builder("run_name", &dut, "1.0")
+        let run = TestRun::builder("run_name", &dut, "1.0")
             .config(Config::builder().with_buffer_output(buffer.clone()).build())
-            .build();
+            .build()
+            .start()
+            .await?;
 
-        let step = test_run.step("step_name")?;
+        let step = run.step("step_name")?;
         ocptv_log_warning!(step, "log message").await?;
 
         let actual = serde_json::from_str::<serde_json::Value>(
-            buffer
+            &buffer
                 .lock()
                 .await
-                .first()
-                .ok_or(anyhow!("Buffer is empty"))?,
+                .first_chunk::<3>()
+                .ok_or(anyhow!("Buffer is missing the log message"))?[2],
         )?;
         assert_json_include!(actual: actual.clone(), expected: &expected);
 
@@ -732,24 +754,26 @@ mod tests {
                     "severity": "ERROR"
                 }
             },
-            "sequenceNumber": 1
+            "sequenceNumber": 3
         });
 
         let dut = DutInfo::builder("dut_id").build();
         let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
-        let test_run = TestRun::builder("run_name", &dut, "1.0")
+        let run = TestRun::builder("run_name", &dut, "1.0")
             .config(Config::builder().with_buffer_output(buffer.clone()).build())
-            .build();
+            .build()
+            .start()
+            .await?;
 
-        let step = test_run.step("step_name")?;
+        let step = run.step("step_name")?;
         ocptv_log_error!(step, "log message").await?;
 
         let actual = serde_json::from_str::<serde_json::Value>(
-            buffer
+            &buffer
                 .lock()
                 .await
-                .first()
-                .ok_or(anyhow!("Buffer is empty"))?,
+                .first_chunk::<3>()
+                .ok_or(anyhow!("Buffer is missing the log message"))?[2],
         )?;
         assert_json_include!(actual: actual.clone(), expected: &expected);
 
@@ -776,24 +800,26 @@ mod tests {
                     "severity": "FATAL"
                 }
             },
-            "sequenceNumber": 1
+            "sequenceNumber": 3
         });
 
         let dut = DutInfo::builder("dut_id").build();
         let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
-        let test_run = TestRun::builder("run_name", &dut, "1.0")
+        let run = TestRun::builder("run_name", &dut, "1.0")
             .config(Config::builder().with_buffer_output(buffer.clone()).build())
-            .build();
+            .build()
+            .start()
+            .await?;
 
-        let step = test_run.step("step_name")?;
+        let step = run.step("step_name")?;
         ocptv_log_fatal!(step, "log message").await?;
 
         let actual = serde_json::from_str::<serde_json::Value>(
-            buffer
+            &buffer
                 .lock()
                 .await
-                .first()
-                .ok_or(anyhow!("Buffer is empty"))?,
+                .first_chunk::<3>()
+                .ok_or(anyhow!("Buffer is missing the log message"))?[2],
         )?;
         assert_json_include!(actual: actual.clone(), expected: &expected);
 
