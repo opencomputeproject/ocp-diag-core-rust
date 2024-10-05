@@ -12,7 +12,6 @@ mod log;
 mod macros;
 mod measure;
 mod run;
-mod state;
 mod step;
 
 pub use crate::spec::LogSeverity;

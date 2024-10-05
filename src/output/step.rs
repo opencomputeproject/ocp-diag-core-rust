@@ -7,14 +7,14 @@
 use serde_json::Value;
 use std::sync::atomic;
 use std::sync::Arc;
-use tokio::sync::Mutex;
 
 use crate::output as tv;
 use crate::spec::TestStepStart;
 use crate::spec::{self, TestStepArtifactImpl};
 use tv::measure::MeasurementSeries;
-use tv::{emitter, error, log, measure, state};
+use tv::{emitter, error, log, measure};
 
+use super::JsonEmitter;
 use super::WriterError;
 
 /// A single test step in the scope of a [`TestRun`].
@@ -23,17 +23,17 @@ use super::WriterError;
 pub struct TestStep {
     name: String,
 
-    emitter: StepEmitter,
+    emitter: Arc<StepEmitter>,
 }
 
 impl TestStep {
-    pub(crate) fn new(id: &str, name: &str, state: Arc<Mutex<state::TestState>>) -> TestStep {
+    pub(crate) fn new(id: &str, name: &str, run_emitter: Arc<JsonEmitter>) -> Self {
         TestStep {
             name: name.to_owned(),
-            emitter: StepEmitter {
-                state,
+            emitter: Arc::new(StepEmitter {
                 step_id: id.to_owned(),
-            },
+                run_emitter,
+            }),
         }
     }
 
@@ -471,7 +471,7 @@ impl StartedTestStep {
             self.measurement_id_no.load(atomic::Ordering::SeqCst)
         );
 
-        MeasurementSeries::new(&series_id, name, &self.step.emitter)
+        MeasurementSeries::new(&series_id, name, Arc::clone(&self.step.emitter))
     }
 
     /// Starts a Measurement Series (a time-series list of measurements).
@@ -497,16 +497,13 @@ impl StartedTestStep {
         &self,
         start: measure::MeasurementSeriesStart,
     ) -> MeasurementSeries {
-        MeasurementSeries::new_with_details(start, &self.step.emitter)
+        MeasurementSeries::new_with_details(start, Arc::clone(&self.step.emitter))
     }
 }
 
-// TODO: move this away from here; extract trait Emitter, dont rely on json
-// it will be used in measurement series
 pub struct StepEmitter {
-    // emitter: JsonEmitter,
-    state: Arc<Mutex<state::TestState>>,
     step_id: String,
+    run_emitter: Arc<JsonEmitter>,
 }
 
 impl StepEmitter {
@@ -516,7 +513,7 @@ impl StepEmitter {
             // TODO: can these copies be avoided?
             artifact: object.clone(),
         });
-        self.state.lock().await.emitter.emit(&root).await?;
+        self.run_emitter.emit(&root).await?;
 
         Ok(())
     }
