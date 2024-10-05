@@ -4,15 +4,15 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
-use crate::output::emitters;
+use crate::output::emitter;
 
 // TODO: will prob need some redesign
 pub struct TestState {
-    pub emitter: emitters::JsonEmitter,
+    pub emitter: emitter::JsonEmitter,
 }
 
 impl TestState {
-    pub fn new(emitter: emitters::JsonEmitter) -> TestState {
+    pub fn new(emitter: emitter::JsonEmitter) -> TestState {
         TestState { emitter }
     }
 }

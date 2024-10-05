@@ -6,7 +6,7 @@
 
 mod config;
 mod dut;
-mod emitters;
+mod emitter;
 mod error;
 mod log;
 mod macros;
@@ -18,7 +18,7 @@ mod step;
 
 pub use config::*;
 pub use dut::*;
-pub use emitters::*;
+pub use emitter::*;
 pub use error::*;
 pub use log::*;
 pub use measurement::*;

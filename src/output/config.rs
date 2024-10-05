@@ -8,12 +8,12 @@ use std::path::Path;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-use crate::output::emitters;
+use crate::output::emitter;
 
 /// The configuration repository for the TestRun.
 pub struct Config {
     pub(crate) timezone: chrono_tz::Tz,
-    pub(crate) writer: emitters::WriterType,
+    pub(crate) writer: emitter::WriterType,
 }
 
 impl Config {
@@ -33,14 +33,14 @@ impl Config {
 /// The builder for the [`Config`] object.
 pub struct ConfigBuilder {
     timezone: Option<chrono_tz::Tz>,
-    writer: Option<emitters::WriterType>,
+    writer: Option<emitter::WriterType>,
 }
 
 impl ConfigBuilder {
     fn new() -> Self {
         Self {
             timezone: None,
-            writer: Some(emitters::WriterType::Stdout(emitters::StdoutWriter::new())),
+            writer: Some(emitter::WriterType::Stdout(emitter::StdoutWriter::new())),
         }
     }
 
@@ -50,7 +50,7 @@ impl ConfigBuilder {
     }
 
     pub fn with_buffer_output(mut self, buffer: Arc<Mutex<Vec<String>>>) -> Self {
-        self.writer = Some(emitters::WriterType::Buffer(emitters::BufferWriter::new(
+        self.writer = Some(emitter::WriterType::Buffer(emitter::BufferWriter::new(
             buffer,
         )));
         self
@@ -59,9 +59,9 @@ impl ConfigBuilder {
     pub async fn with_file_output<P: AsRef<Path>>(
         mut self,
         path: P,
-    ) -> Result<Self, emitters::WriterError> {
-        self.writer = Some(emitters::WriterType::File(
-            emitters::FileWriter::new(path).await?,
+    ) -> Result<Self, emitter::WriterError> {
+        self.writer = Some(emitter::WriterType::File(
+            emitter::FileWriter::new(path).await?,
         ));
         Ok(self)
     }
@@ -71,7 +71,7 @@ impl ConfigBuilder {
             timezone: self.timezone.unwrap_or(chrono_tz::UTC),
             writer: self
                 .writer
-                .unwrap_or(emitters::WriterType::Stdout(emitters::StdoutWriter::new())),
+                .unwrap_or(emitter::WriterType::Stdout(emitter::StdoutWriter::new())),
         }
     }
 }

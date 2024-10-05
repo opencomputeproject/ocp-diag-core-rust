@@ -14,7 +14,7 @@ use serde_json::Value;
 use tokio::sync::Mutex;
 
 use crate::output as tv;
-use tv::{dut, emitters, models, state};
+use tv::{dut, emitter, models, state};
 
 /// The measurement series.
 /// A Measurement Series is a time-series list of measurements.
@@ -76,7 +76,7 @@ impl MeasurementSeries {
     /// # Ok::<(), WriterError>(())
     /// # });
     /// ```
-    pub async fn start(&self) -> Result<(), emitters::WriterError> {
+    pub async fn start(&self) -> Result<(), emitter::WriterError> {
         self.state
             .lock()
             .await
@@ -106,7 +106,7 @@ impl MeasurementSeries {
     /// # Ok::<(), WriterError>(())
     /// # });
     /// ```
-    pub async fn end(&self) -> Result<(), emitters::WriterError> {
+    pub async fn end(&self) -> Result<(), emitter::WriterError> {
         let end =
             MeasurementSeriesEnd::new(self.start.get_series_id(), self.current_sequence_no().await);
         self.state
@@ -138,7 +138,7 @@ impl MeasurementSeries {
     /// # Ok::<(), WriterError>(())
     /// # });
     /// ```
-    pub async fn add_measurement(&self, value: Value) -> Result<(), emitters::WriterError> {
+    pub async fn add_measurement(&self, value: Value) -> Result<(), emitter::WriterError> {
         let element = MeasurementSeriesElement::new(
             self.current_sequence_no().await,
             value,
@@ -180,7 +180,7 @@ impl MeasurementSeries {
         &self,
         value: Value,
         metadata: Vec<(&str, Value)>,
-    ) -> Result<(), emitters::WriterError> {
+    ) -> Result<(), emitter::WriterError> {
         let element = MeasurementSeriesElement::new(
             self.current_sequence_no().await,
             value,
@@ -227,9 +227,9 @@ impl MeasurementSeries {
     /// # Ok::<(), WriterError>(())
     /// # });
     /// ```
-    pub async fn scope<'a, F, R>(&'a self, func: F) -> Result<(), emitters::WriterError>
+    pub async fn scope<'a, F, R>(&'a self, func: F) -> Result<(), emitter::WriterError>
     where
-        R: Future<Output = Result<(), emitters::WriterError>>,
+        R: Future<Output = Result<(), emitter::WriterError>>,
         F: std::ops::FnOnce(&'a MeasurementSeries) -> R,
     {
         self.start().await?;
@@ -405,8 +405,8 @@ impl Measurement {
     /// let measurement = Measurement::new("name", 50.into());
     /// let _ = measurement.to_artifact();
     /// ```
-    pub fn to_artifact(&self) -> models::OutputArtifactDescendant {
-        models::OutputArtifactDescendant::TestStepArtifact(models::TestStepArtifactSpec {
+    pub fn to_artifact(&self) -> models::RootArtifactSpec {
+        models::RootArtifactSpec::TestStepArtifact(models::TestStepArtifactSpec {
             descendant: models::TestStepArtifactDescendant::Measurement(models::MeasurementSpec {
                 name: self.name.clone(),
                 unit: self.unit.clone(),
@@ -633,8 +633,8 @@ impl MeasurementSeriesStart {
         MeasurementSeriesStartBuilder::new(name, series_id)
     }
 
-    pub fn to_artifact(&self) -> models::OutputArtifactDescendant {
-        models::OutputArtifactDescendant::TestStepArtifact(models::TestStepArtifactSpec {
+    pub fn to_artifact(&self) -> models::RootArtifactSpec {
+        models::RootArtifactSpec::TestStepArtifact(models::TestStepArtifactSpec {
             descendant: models::TestStepArtifactDescendant::MeasurementSeriesStart(
                 models::MeasurementSeriesStartSpec {
                     name: self.name.clone(),
@@ -758,8 +758,8 @@ impl MeasurementSeriesEnd {
         }
     }
 
-    pub fn to_artifact(&self) -> models::OutputArtifactDescendant {
-        models::OutputArtifactDescendant::TestStepArtifact(models::TestStepArtifactSpec {
+    pub fn to_artifact(&self) -> models::RootArtifactSpec {
+        models::RootArtifactSpec::TestStepArtifact(models::TestStepArtifactSpec {
             descendant: models::TestStepArtifactDescendant::MeasurementSeriesEnd(
                 models::MeasurementSeriesEndSpec {
                     series_id: self.series_id.clone(),
@@ -794,8 +794,8 @@ impl MeasurementSeriesElement {
         }
     }
 
-    pub fn to_artifact(&self) -> models::OutputArtifactDescendant {
-        models::OutputArtifactDescendant::TestStepArtifact(models::TestStepArtifactSpec {
+    pub fn to_artifact(&self) -> models::RootArtifactSpec {
+        models::RootArtifactSpec::TestStepArtifact(models::TestStepArtifactSpec {
             descendant: models::TestStepArtifactDescendant::MeasurementSeriesElement(
                 models::MeasurementSeriesElementSpec {
                     index: self.index,
@@ -827,7 +827,7 @@ mod tests {
         let artifact = measurement.to_artifact();
         assert_eq!(
             artifact,
-            models::OutputArtifactDescendant::TestStepArtifact(models::TestStepArtifactSpec {
+            models::RootArtifactSpec::TestStepArtifact(models::TestStepArtifactSpec {
                 descendant: models::TestStepArtifactDescendant::Measurement(
                     models::MeasurementSpec {
                         name: name.to_string(),
@@ -874,7 +874,7 @@ mod tests {
         let artifact = measurement.to_artifact();
         assert_eq!(
             artifact,
-            models::OutputArtifactDescendant::TestStepArtifact(models::TestStepArtifactSpec {
+            models::RootArtifactSpec::TestStepArtifact(models::TestStepArtifactSpec {
                 descendant: models::TestStepArtifactDescendant::Measurement(
                     models::MeasurementSpec {
                         name,
@@ -901,7 +901,7 @@ mod tests {
         let artifact = series.to_artifact();
         assert_eq!(
             artifact,
-            models::OutputArtifactDescendant::TestStepArtifact(models::TestStepArtifactSpec {
+            models::RootArtifactSpec::TestStepArtifact(models::TestStepArtifactSpec {
                 descendant: models::TestStepArtifactDescendant::MeasurementSeriesStart(
                     models::MeasurementSeriesStartSpec {
                         name: name.to_string(),
@@ -940,7 +940,7 @@ mod tests {
         let artifact = series.to_artifact();
         assert_eq!(
             artifact,
-            models::OutputArtifactDescendant::TestStepArtifact(models::TestStepArtifactSpec {
+            models::RootArtifactSpec::TestStepArtifact(models::TestStepArtifactSpec {
                 descendant: models::TestStepArtifactDescendant::MeasurementSeriesStart(
                     models::MeasurementSeriesStartSpec {
                         name,
@@ -969,7 +969,7 @@ mod tests {
         let artifact = series.to_artifact();
         assert_eq!(
             artifact,
-            models::OutputArtifactDescendant::TestStepArtifact(models::TestStepArtifactSpec {
+            models::RootArtifactSpec::TestStepArtifact(models::TestStepArtifactSpec {
                 descendant: models::TestStepArtifactDescendant::MeasurementSeriesEnd(
                     models::MeasurementSeriesEndSpec {
                         series_id: series_id.to_string(),

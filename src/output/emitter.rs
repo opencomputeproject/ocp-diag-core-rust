@@ -98,13 +98,13 @@ impl JsonEmitter {
         }
     }
 
-    fn serialize_artifact(&self, object: &models::OutputArtifactDescendant) -> serde_json::Value {
+    fn serialize_artifact(&self, object: &models::RootArtifactSpec) -> serde_json::Value {
         let now = chrono::Local::now();
         let now_tz = now.with_timezone(&self.timezone);
-        let out_artifact = models::OutputArtifactSpec {
-            descendant: object.clone(),
-            now: now_tz,
-            sequence_number: self.next_sequence_no(),
+        let out_artifact = models::RootSpec {
+            artifact: object.clone(),
+            timestamp: now_tz,
+            seqno: self.next_sequence_no(),
         };
         serde_json::json!(out_artifact)
     }
@@ -114,7 +114,7 @@ impl JsonEmitter {
         self.sequence_no.load(atomic::Ordering::SeqCst)
     }
 
-    pub async fn emit(&self, object: &models::OutputArtifactDescendant) -> Result<(), WriterError> {
+    pub async fn emit(&self, object: &models::RootArtifactSpec) -> Result<(), WriterError> {
         let serialized = self.serialize_artifact(object);
         match self.writer {
             WriterType::File(ref file) => file.write(&serialized.to_string()).await?,

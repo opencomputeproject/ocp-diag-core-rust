@@ -13,7 +13,7 @@ use tokio::sync::Mutex;
 
 use crate::output as tv;
 use tv::step::TestStep;
-use tv::{config, dut, emitters, error, log, models, run, state};
+use tv::{config, dut, emitter, error, log, models, run, state};
 
 /// The outcome of a TestRun.
 /// It's returned when the scope method of the [`TestRun`] object is used.
@@ -83,7 +83,7 @@ impl TestRun {
     /// # Ok::<(), WriterError>(())
     /// # });
     /// ```
-    pub async fn start(self) -> Result<StartedTestRun, emitters::WriterError> {
+    pub async fn start(self) -> Result<StartedTestRun, emitter::WriterError> {
         let version = SchemaVersion::new();
         self.state
             .lock()
@@ -263,7 +263,7 @@ impl TestRunBuilder {
 
     pub fn build(self) -> TestRun {
         let config = self.config.unwrap_or(config::Config::builder().build());
-        let emitter = emitters::JsonEmitter::new(config.timezone, config.writer);
+        let emitter = emitter::JsonEmitter::new(config.timezone, config.writer);
         let state = state::TestState::new(emitter);
         TestRun {
             name: self.name,
@@ -305,7 +305,7 @@ impl StartedTestRun {
         &self,
         status: models::TestStatus,
         result: models::TestResult,
-    ) -> Result<(), emitters::WriterError> {
+    ) -> Result<(), emitter::WriterError> {
         let end = run::TestRunEnd::builder()
             .status(status)
             .result(result)
@@ -343,16 +343,16 @@ impl StartedTestRun {
         &self,
         severity: models::LogSeverity,
         msg: &str,
-    ) -> Result<(), emitters::WriterError> {
+    ) -> Result<(), emitter::WriterError> {
         let log = log::Log::builder(msg).severity(severity).build();
 
         let emitter = &self.run.state.lock().await.emitter;
 
         let artifact = models::TestRunArtifactSpec {
-            descendant: models::TestRunArtifactDescendant::Log(log.to_artifact()),
+            artifact: models::TestRunArtifactDescendant::Log(log.to_artifact()),
         };
         emitter
-            .emit(&models::OutputArtifactDescendant::TestRunArtifact(artifact))
+            .emit(&models::RootArtifactSpec::TestRunArtifact(artifact))
             .await?;
 
         Ok(())
@@ -381,14 +381,14 @@ impl StartedTestRun {
     /// # Ok::<(), WriterError>(())
     /// # });
     /// ```
-    pub async fn log_with_details(&self, log: &log::Log) -> Result<(), emitters::WriterError> {
+    pub async fn log_with_details(&self, log: &log::Log) -> Result<(), emitter::WriterError> {
         let emitter = &self.run.state.lock().await.emitter;
 
         let artifact = models::TestRunArtifactSpec {
-            descendant: models::TestRunArtifactDescendant::Log(log.to_artifact()),
+            artifact: models::TestRunArtifactDescendant::Log(log.to_artifact()),
         };
         emitter
-            .emit(&models::OutputArtifactDescendant::TestRunArtifact(artifact))
+            .emit(&models::RootArtifactSpec::TestRunArtifact(artifact))
             .await?;
 
         Ok(())
@@ -412,15 +412,15 @@ impl StartedTestRun {
     /// # Ok::<(), WriterError>(())
     /// # });
     /// ```
-    pub async fn error(&self, symptom: &str) -> Result<(), emitters::WriterError> {
+    pub async fn error(&self, symptom: &str) -> Result<(), emitter::WriterError> {
         let error = error::Error::builder(symptom).build();
         let emitter = &self.run.state.lock().await.emitter;
 
         let artifact = models::TestRunArtifactSpec {
-            descendant: models::TestRunArtifactDescendant::Error(error.to_artifact()),
+            artifact: models::TestRunArtifactDescendant::Error(error.to_artifact()),
         };
         emitter
-            .emit(&models::OutputArtifactDescendant::TestRunArtifact(artifact))
+            .emit(&models::RootArtifactSpec::TestRunArtifact(artifact))
             .await?;
 
         Ok(())
@@ -449,15 +449,15 @@ impl StartedTestRun {
         &self,
         symptom: &str,
         msg: &str,
-    ) -> Result<(), emitters::WriterError> {
+    ) -> Result<(), emitter::WriterError> {
         let error = error::Error::builder(symptom).message(msg).build();
         let emitter = &self.run.state.lock().await.emitter;
 
         let artifact = models::TestRunArtifactSpec {
-            descendant: models::TestRunArtifactDescendant::Error(error.to_artifact()),
+            artifact: models::TestRunArtifactDescendant::Error(error.to_artifact()),
         };
         emitter
-            .emit(&models::OutputArtifactDescendant::TestRunArtifact(artifact))
+            .emit(&models::RootArtifactSpec::TestRunArtifact(artifact))
             .await?;
 
         Ok(())
@@ -490,14 +490,14 @@ impl StartedTestRun {
     pub async fn error_with_details(
         &self,
         error: &error::Error,
-    ) -> Result<(), emitters::WriterError> {
+    ) -> Result<(), emitter::WriterError> {
         let emitter = &self.run.state.lock().await.emitter;
 
         let artifact = models::TestRunArtifactSpec {
-            descendant: models::TestRunArtifactDescendant::Error(error.to_artifact()),
+            artifact: models::TestRunArtifactDescendant::Error(error.to_artifact()),
         };
         emitter
-            .emit(&models::OutputArtifactDescendant::TestRunArtifact(artifact))
+            .emit(&models::RootArtifactSpec::TestRunArtifact(artifact))
             .await?;
 
         Ok(())
@@ -528,9 +528,9 @@ impl TestRunStart {
         TestRunStartBuilder::new(name, version, command_line, parameters, dut_info)
     }
 
-    pub fn to_artifact(&self) -> models::OutputArtifactDescendant {
-        models::OutputArtifactDescendant::TestRunArtifact(models::TestRunArtifactSpec {
-            descendant: models::TestRunArtifactDescendant::TestRunStart(models::TestRunStartSpec {
+    pub fn to_artifact(&self) -> models::RootArtifactSpec {
+        models::RootArtifactSpec::TestRunArtifact(models::TestRunArtifactSpec {
+            artifact: models::TestRunArtifactDescendant::TestRunStart(models::TestRunStartSpec {
                 name: self.name.clone(),
                 version: self.version.clone(),
                 command_line: self.command_line.clone(),
@@ -606,9 +606,9 @@ impl TestRunEnd {
         TestRunEndBuilder::new()
     }
 
-    pub fn to_artifact(&self) -> models::OutputArtifactDescendant {
-        models::OutputArtifactDescendant::TestRunArtifact(models::TestRunArtifactSpec {
-            descendant: models::TestRunArtifactDescendant::TestRunEnd(models::TestRunEndSpec {
+    pub fn to_artifact(&self) -> models::RootArtifactSpec {
+        models::RootArtifactSpec::TestRunArtifact(models::TestRunArtifactSpec {
+            artifact: models::TestRunArtifactDescendant::TestRunEnd(models::TestRunEndSpec {
                 status: self.status.clone(),
                 result: self.result.clone(),
             }),
@@ -663,8 +663,8 @@ impl SchemaVersion {
         }
     }
 
-    pub fn to_artifact(&self) -> models::OutputArtifactDescendant {
-        models::OutputArtifactDescendant::SchemaVersion(models::SchemaVersionSpec {
+    pub fn to_artifact(&self) -> models::RootArtifactSpec {
+        models::RootArtifactSpec::SchemaVersion(models::SchemaVersionSpec {
             major: self.major,
             minor: self.minor,
         })

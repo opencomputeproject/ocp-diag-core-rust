@@ -42,20 +42,25 @@ mod rfc3339_format {
 pub enum TestRunArtifactDescendant {
     #[serde(rename = "testRunStart")]
     TestRunStart(TestRunStartSpec),
+
     #[serde(rename = "testRunEnd")]
     TestRunEnd(TestRunEndSpec),
+
     #[serde(rename = "log")]
     Log(LogSpec),
+
     #[serde(rename = "error")]
     Error(ErrorSpec),
 }
 
 #[derive(Debug, Serialize, PartialEq, Clone)]
-pub enum OutputArtifactDescendant {
+pub enum RootArtifactSpec {
     #[serde(rename = "schemaVersion")]
     SchemaVersion(SchemaVersionSpec),
+
     #[serde(rename = "testRunArtifact")]
     TestRunArtifact(TestRunArtifactSpec),
+
     #[serde(rename = "testStepArtifact")]
     TestStepArtifact(TestStepArtifactSpec),
 }
@@ -65,24 +70,34 @@ pub enum OutputArtifactDescendant {
 pub enum TestStepArtifactDescendant {
     #[serde(rename = "testStepStart")]
     TestStepStart(TestStepStartSpec),
+
     #[serde(rename = "testStepEnd")]
     TestStepEnd(TestStepEndSpec),
+
     #[serde(rename = "measurement")]
     Measurement(MeasurementSpec),
+
     #[serde(rename = "measurementSeriesStart")]
     MeasurementSeriesStart(MeasurementSeriesStartSpec),
+
     #[serde(rename = "measurementSeriesEnd")]
     MeasurementSeriesEnd(MeasurementSeriesEndSpec),
+
     #[serde(rename = "measurementSeriesElement")]
     MeasurementSeriesElement(MeasurementSeriesElementSpec),
+
     #[serde(rename = "diagnosis")]
     Diagnosis(DiagnosisSpec),
+
     #[serde(rename = "log")]
     Log(LogSpec),
+
     #[serde(rename = "error")]
     Error(ErrorSpec),
+
     #[serde(rename = "file")]
     File(FileSpec),
+
     #[serde(rename = "extension")]
     Extension(ExtensionSpec),
 }
@@ -127,6 +142,7 @@ pub enum SubcomponentType {
     Connector,
 }
 
+// TODO: this should be better typed
 #[derive(Debug, Serialize, PartialEq, Clone)]
 pub enum ExtensionContentType {
     #[serde(rename = "float")]
@@ -218,15 +234,17 @@ pub enum SoftwareType {
 }
 
 #[derive(Debug, Serialize, Clone)]
-pub struct OutputArtifactSpec {
+pub struct RootSpec {
     #[serde(flatten)]
-    pub descendant: OutputArtifactDescendant,
+    pub artifact: RootArtifactSpec,
+
     // TODO : manage different timezones
     #[serde(rename = "timestamp")]
     #[serde(with = "rfc3339_format")]
-    pub now: DateTime<chrono_tz::Tz>,
+    pub timestamp: DateTime<chrono_tz::Tz>,
+
     #[serde(rename = "sequenceNumber")]
-    pub sequence_number: u64,
+    pub seqno: u64,
 }
 
 /// Low-level model for the `schemaVersion` spec object.
@@ -239,6 +257,7 @@ pub struct OutputArtifactSpec {
 pub struct SchemaVersionSpec {
     #[serde(rename = "major")]
     pub major: i8,
+
     #[serde(rename = "minor")]
     pub minor: i8,
 }
@@ -251,7 +270,7 @@ pub struct SchemaVersionSpec {
 #[derive(Debug, Serialize, PartialEq, Clone)]
 pub struct TestRunArtifactSpec {
     #[serde(flatten)]
-    pub descendant: TestRunArtifactDescendant,
+    pub artifact: TestRunArtifactDescendant,
 }
 
 /// Low-level model for the `testRunStart` spec object.
@@ -264,14 +283,19 @@ pub struct TestRunArtifactSpec {
 pub struct TestRunStartSpec {
     #[serde(rename = "name")]
     pub name: String,
+
     #[serde(rename = "version")]
     pub version: String,
+
     #[serde(rename = "commandLine")]
     pub command_line: String,
+
     #[serde(rename = "parameters")]
     pub parameters: Map<String, Value>,
+
     #[serde(rename = "dutInfo")]
     pub dut_info: DutInfoSpec,
+
     #[serde(rename = "metadata")]
     pub metadata: Option<Map<String, Value>>,
 }
@@ -286,14 +310,19 @@ pub struct TestRunStartSpec {
 pub struct DutInfoSpec {
     #[serde(rename = "dutInfoId")]
     pub id: String,
+
     #[serde(rename = "name")]
     pub name: Option<String>,
+
     #[serde(rename = "platformInfos")]
     pub platform_infos: Option<Vec<PlatformInfoSpec>>,
+
     #[serde(rename = "softwareInfos")]
     pub software_infos: Option<Vec<SoftwareInfoSpec>>,
+
     #[serde(rename = "hardwareInfos")]
     pub hardware_infos: Option<Vec<HardwareInfoSpec>>,
+
     #[serde(rename = "metadata")]
     pub metadata: Option<Map<String, Value>>,
 }
@@ -320,14 +349,19 @@ pub struct PlatformInfoSpec {
 pub struct SoftwareInfoSpec {
     #[serde(rename = "softwareInfoId")]
     pub id: String,
+
     #[serde(rename = "name")]
     pub name: String,
+
     #[serde(rename = "version")]
     pub version: Option<String>,
+
     #[serde(rename = "revision")]
     pub revision: Option<String>,
+
     #[serde(rename = "softwareType")]
     pub software_type: Option<SoftwareType>,
+
     #[serde(rename = "computerSystem")]
     pub computer_system: Option<String>,
 }
@@ -342,26 +376,37 @@ pub struct SoftwareInfoSpec {
 pub struct HardwareInfoSpec {
     #[serde(rename = "hardwareInfoId")]
     pub id: String,
+
     #[serde(rename = "name")]
     pub name: String,
+
     #[serde(rename = "version")]
     pub version: Option<String>,
+
     #[serde(rename = "revision")]
     pub revision: Option<String>,
+
     #[serde(rename = "location")]
     pub location: Option<String>,
+
     #[serde(rename = "serialNumber")]
     pub serial_no: Option<String>,
+
     #[serde(rename = "partNumber")]
     pub part_no: Option<String>,
+
     #[serde(rename = "manufacturer")]
     pub manufacturer: Option<String>,
+
     #[serde(rename = "manufacturerPartNumber")]
     pub manufacturer_part_no: Option<String>,
+
     #[serde(rename = "odataId")]
     pub odata_id: Option<String>,
+
     #[serde(rename = "computerSystem")]
     pub computer_system: Option<String>,
+
     #[serde(rename = "manager")]
     pub manager: Option<String>,
 }
@@ -376,6 +421,7 @@ pub struct HardwareInfoSpec {
 pub struct TestRunEndSpec {
     #[serde(rename = "status")]
     pub status: TestStatus,
+
     #[serde(rename = "result")]
     pub result: TestResult,
 }
@@ -391,11 +437,14 @@ pub struct TestRunEndSpec {
 pub struct ErrorSpec {
     #[serde(rename = "symptom")]
     pub symptom: String,
+
     #[serde(rename = "message")]
     pub message: Option<String>,
+
     // TODO: support this field during serialization to print only the id of SoftwareInfo struct
     #[serde(rename = "softwareInfoIds")]
     pub software_infos: Option<Vec<SoftwareInfoSpec>>,
+
     #[serde(rename = "sourceLocation")]
     pub source_location: Option<SourceLocationSpec>,
 }
@@ -410,8 +459,10 @@ pub struct ErrorSpec {
 pub struct LogSpec {
     #[serde(rename = "severity")]
     pub severity: LogSeverity,
+
     #[serde(rename = "message")]
     pub message: String,
+
     #[serde(rename = "sourceLocation")]
     pub source_location: Option<SourceLocationSpec>,
 }
@@ -426,6 +477,7 @@ pub struct LogSpec {
 pub struct SourceLocationSpec {
     #[serde(rename = "file")]
     pub file: String,
+
     #[serde(rename = "line")]
     pub line: i32,
 }
@@ -475,16 +527,22 @@ pub struct TestStepEndSpec {
 pub struct MeasurementSpec {
     #[serde(rename = "name")]
     pub name: String,
+
     #[serde(rename = "value")]
     pub value: Value,
+
     #[serde(rename = "unit")]
     pub unit: Option<String>,
+
     #[serde(rename = "validators")]
     pub validators: Option<Vec<ValidatorSpec>>,
+
     #[serde(rename = "hardwareInfoId")]
     pub hardware_info_id: Option<String>,
+
     #[serde(rename = "subcomponent")]
     pub subcomponent: Option<SubcomponentSpec>,
+
     #[serde(rename = "metadata")]
     pub metadata: Option<Map<String, Value>>,
 }
@@ -499,10 +557,13 @@ pub struct MeasurementSpec {
 pub struct ValidatorSpec {
     #[serde(rename = "name")]
     pub name: Option<String>,
+
     #[serde(rename = "type")]
     pub validator_type: ValidatorType,
+
     #[serde(rename = "value")]
     pub value: Value,
+
     #[serde(rename = "metadata")]
     pub metadata: Option<Map<String, Value>>,
 }
@@ -517,12 +578,16 @@ pub struct ValidatorSpec {
 pub struct SubcomponentSpec {
     #[serde(rename = "type")]
     pub subcomponent_type: Option<SubcomponentType>,
+
     #[serde(rename = "name")]
     pub name: String,
+
     #[serde(rename = "location")]
     pub location: Option<String>,
+
     #[serde(rename = "version")]
     pub version: Option<String>,
+
     #[serde(rename = "revision")]
     pub revision: Option<String>,
 }
@@ -537,16 +602,22 @@ pub struct SubcomponentSpec {
 pub struct MeasurementSeriesStartSpec {
     #[serde(rename = "name")]
     pub name: String,
+
     #[serde(rename = "unit")]
     pub unit: Option<String>,
+
     #[serde(rename = "measurementSeriesId")]
     pub series_id: String,
+
     #[serde(rename = "validators")]
     pub validators: Option<Vec<ValidatorSpec>>,
+
     #[serde(rename = "hardwareInfoId")]
     pub hardware_info: Option<HardwareInfoSpec>,
+
     #[serde(rename = "subComponent")]
     pub subcomponent: Option<SubcomponentSpec>,
+
     #[serde(rename = "metadata")]
     pub metadata: Option<Map<String, Value>>,
 }
@@ -561,6 +632,7 @@ pub struct MeasurementSeriesStartSpec {
 pub struct MeasurementSeriesEndSpec {
     #[serde(rename = "measurementSeriesId")]
     pub series_id: String,
+
     #[serde(rename = "totalCount")]
     pub total_count: u64,
 }
@@ -575,12 +647,16 @@ pub struct MeasurementSeriesEndSpec {
 pub struct MeasurementSeriesElementSpec {
     #[serde(rename = "index")]
     pub index: u64,
+
     #[serde(rename = "value")]
     pub value: Value,
+
     #[serde(with = "rfc3339_format")]
     pub timestamp: DateTime<chrono_tz::Tz>,
+
     #[serde(rename = "measurementSeriesId")]
     pub series_id: String,
+
     #[serde(rename = "metadata")]
     pub metadata: Option<Map<String, Value>>,
 }
@@ -595,14 +671,19 @@ pub struct MeasurementSeriesElementSpec {
 pub struct DiagnosisSpec {
     #[serde(rename = "verdict")]
     pub verdict: String,
+
     #[serde(rename = "type")]
     pub diagnosis_type: DiagnosisType,
+
     #[serde(rename = "message")]
     pub message: Option<String>,
+
     #[serde(rename = "validators")]
     pub hardware_info: Option<HardwareInfoSpec>,
+
     #[serde(rename = "subComponent")]
     pub subcomponent: Option<SubcomponentSpec>,
+
     #[serde(rename = "sourceLocation")]
     pub source_location: Option<SourceLocationSpec>,
 }
@@ -617,14 +698,19 @@ pub struct DiagnosisSpec {
 pub struct FileSpec {
     #[serde(rename = "name")]
     pub name: String,
+
     #[serde(rename = "uri")]
     pub uri: String,
+
     #[serde(rename = "isSnapshot")]
     pub is_snapshot: bool,
+
     #[serde(rename = "description")]
     pub description: Option<String>,
+
     #[serde(rename = "contentType")]
     pub content_type: Option<String>,
+
     #[serde(rename = "metadata")]
     pub metadata: Option<Map<String, Value>>,
 }
@@ -639,6 +725,7 @@ pub struct FileSpec {
 pub struct ExtensionSpec {
     #[serde(rename = "name")]
     pub name: String,
+
     #[serde(rename = "content")]
     pub content: ExtensionContentType,
 }
