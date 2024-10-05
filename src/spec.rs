@@ -38,70 +38,6 @@ mod rfc3339_format {
     }
 }
 
-#[derive(Debug, Serialize, PartialEq, Clone)]
-pub enum TestRunArtifactDescendant {
-    #[serde(rename = "testRunStart")]
-    TestRunStart(TestRunStart),
-
-    #[serde(rename = "testRunEnd")]
-    TestRunEnd(TestRunEnd),
-
-    #[serde(rename = "log")]
-    Log(Log),
-
-    #[serde(rename = "error")]
-    Error(Error),
-}
-
-#[derive(Debug, Serialize, PartialEq, Clone)]
-pub enum RootArtifact {
-    #[serde(rename = "schemaVersion")]
-    SchemaVersion(SchemaVersion),
-
-    #[serde(rename = "testRunArtifact")]
-    TestRunArtifact(TestRunArtifact),
-
-    #[serde(rename = "testStepArtifact")]
-    TestStepArtifact(TestStepArtifact),
-}
-
-#[allow(clippy::large_enum_variant)]
-#[derive(Debug, Serialize, PartialEq, Clone)]
-pub enum TestStepArtifactDescendant {
-    #[serde(rename = "testStepStart")]
-    TestStepStart(TestStepStart),
-
-    #[serde(rename = "testStepEnd")]
-    TestStepEnd(TestStepEnd),
-
-    #[serde(rename = "measurement")]
-    Measurement(Measurement),
-
-    #[serde(rename = "measurementSeriesStart")]
-    MeasurementSeriesStart(MeasurementSeriesStart),
-
-    #[serde(rename = "measurementSeriesEnd")]
-    MeasurementSeriesEnd(MeasurementSeriesEnd),
-
-    #[serde(rename = "measurementSeriesElement")]
-    MeasurementSeriesElement(MeasurementSeriesElement),
-
-    #[serde(rename = "diagnosis")]
-    Diagnosis(Diagnosis),
-
-    #[serde(rename = "log")]
-    Log(Log),
-
-    #[serde(rename = "error")]
-    Error(Error),
-
-    #[serde(rename = "file")]
-    File(File),
-
-    #[serde(rename = "extension")]
-    Extension(Extension),
-}
-
 #[derive(Debug, Serialize, Clone, PartialEq)]
 #[non_exhaustive]
 pub enum ValidatorType {
@@ -241,7 +177,7 @@ pub enum SoftwareType {
 #[derive(Debug, Serialize, Clone)]
 pub struct Root {
     #[serde(flatten)]
-    pub artifact: RootArtifact,
+    pub artifact: RootImpl,
 
     // TODO : manage different timezones
     #[serde(rename = "timestamp")]
@@ -250,6 +186,18 @@ pub struct Root {
 
     #[serde(rename = "sequenceNumber")]
     pub seqno: u64,
+}
+
+#[derive(Debug, Serialize, PartialEq, Clone)]
+pub enum RootImpl {
+    #[serde(rename = "schemaVersion")]
+    SchemaVersion(SchemaVersion),
+
+    #[serde(rename = "testRunArtifact")]
+    TestRunArtifact(TestRunArtifact),
+
+    #[serde(rename = "testStepArtifact")]
+    TestStepArtifact(TestStepArtifact),
 }
 
 /// Low-level model for the `schemaVersion` spec object.
@@ -267,6 +215,15 @@ pub struct SchemaVersion {
     pub minor: i8,
 }
 
+impl Default for SchemaVersion {
+    fn default() -> Self {
+        SchemaVersion {
+            major: SPEC_VERSION.0,
+            minor: SPEC_VERSION.1,
+        }
+    }
+}
+
 /// Low-level model for the `testRunArtifact` spec object.
 /// Container for the run level artifacts.
 /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#test-run-artifacts
@@ -275,7 +232,22 @@ pub struct SchemaVersion {
 #[derive(Debug, Serialize, PartialEq, Clone)]
 pub struct TestRunArtifact {
     #[serde(flatten)]
-    pub artifact: TestRunArtifactDescendant,
+    pub artifact: TestRunArtifactImpl,
+}
+
+#[derive(Debug, Serialize, PartialEq, Clone)]
+pub enum TestRunArtifactImpl {
+    #[serde(rename = "testRunStart")]
+    TestRunStart(TestRunStart),
+
+    #[serde(rename = "testRunEnd")]
+    TestRunEnd(TestRunEnd),
+
+    #[serde(rename = "log")]
+    Log(Log),
+
+    #[serde(rename = "error")]
+    Error(Error),
 }
 
 /// Low-level model for the `testRunStart` spec object.
@@ -498,7 +470,44 @@ pub struct TestStepArtifact {
     pub id: String,
 
     #[serde(flatten)]
-    pub descendant: TestStepArtifactDescendant,
+    pub artifact: TestStepArtifactImpl,
+}
+
+#[allow(clippy::large_enum_variant)]
+#[derive(Debug, Serialize, PartialEq, Clone)]
+pub enum TestStepArtifactImpl {
+    #[serde(rename = "testStepStart")]
+    TestStepStart(TestStepStart),
+
+    #[serde(rename = "testStepEnd")]
+    TestStepEnd(TestStepEnd),
+
+    #[serde(rename = "measurement")]
+    Measurement(Measurement),
+
+    #[serde(rename = "measurementSeriesStart")]
+    MeasurementSeriesStart(MeasurementSeriesStart),
+
+    #[serde(rename = "measurementSeriesEnd")]
+    MeasurementSeriesEnd(MeasurementSeriesEnd),
+
+    #[serde(rename = "measurementSeriesElement")]
+    MeasurementSeriesElement(MeasurementSeriesElement),
+
+    #[serde(rename = "diagnosis")]
+    Diagnosis(Diagnosis),
+
+    #[serde(rename = "log")]
+    Log(Log),
+
+    #[serde(rename = "error")]
+    Error(Error),
+
+    #[serde(rename = "file")]
+    File(File),
+
+    #[serde(rename = "extension")]
+    Extension(Extension),
 }
 
 /// Low-level model for the `testStepStart` spec object.

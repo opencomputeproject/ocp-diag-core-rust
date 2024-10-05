@@ -10,9 +10,10 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 
 use crate::output as tv;
-use crate::spec;
-use tv::measurement::MeasurementSeries;
-use tv::{emitter, error, log, measurement, state};
+use crate::spec::TestStepStart;
+use crate::spec::{self, TestStepArtifactImpl};
+use tv::measure::MeasurementSeries;
+use tv::{emitter, error, log, measure, state};
 
 use super::WriterError;
 
@@ -53,8 +54,11 @@ impl TestStep {
     /// # });
     /// ```
     pub async fn start(self) -> Result<StartedTestStep, emitter::WriterError> {
-        let start = TestStepStart::new(&self.name);
-        self.emitter.emit(&start.to_artifact()).await?;
+        self.emitter
+            .emit(&TestStepArtifactImpl::TestStepStart(TestStepStart {
+                name: self.name.clone(),
+            }))
+            .await?;
 
         Ok(StartedTestStep {
             step: self,
@@ -126,12 +130,13 @@ impl StartedTestStep {
     /// # });
     /// ```
     pub async fn end(&self, status: spec::TestStatus) -> Result<(), emitter::WriterError> {
-        let end = TestStepEnd::new(status);
-        self.step.emitter.emit(&end.to_artifact()).await?;
+        let end = TestStepArtifactImpl::TestStepEnd(spec::TestStepEnd { status });
+
+        self.step.emitter.emit(&end).await?;
         Ok(())
     }
 
-    /// Eemits Log message.
+    /// Emits Log message.
     /// This method accepts a [`models::LogSeverity`] to define the severity
     /// and a [`std::string::String`] for the message.
     ///
@@ -181,7 +186,7 @@ impl StartedTestStep {
 
         self.step
             .emitter
-            .emit(&spec::TestStepArtifactDescendant::Log(log.to_artifact()))
+            .emit(&TestStepArtifactImpl::Log(log.to_artifact()))
             .await?;
 
         Ok(())
@@ -215,7 +220,7 @@ impl StartedTestStep {
     pub async fn log_with_details(&self, log: &log::Log) -> Result<(), emitter::WriterError> {
         self.step
             .emitter
-            .emit(&spec::TestStepArtifactDescendant::Log(log.to_artifact()))
+            .emit(&TestStepArtifactImpl::Log(log.to_artifact()))
             .await?;
 
         Ok(())
@@ -264,9 +269,7 @@ impl StartedTestStep {
 
         self.step
             .emitter
-            .emit(&spec::TestStepArtifactDescendant::Error(
-                error.to_artifact(),
-            ))
+            .emit(&TestStepArtifactImpl::Error(error.to_artifact()))
             .await?;
 
         Ok(())
@@ -320,9 +323,7 @@ impl StartedTestStep {
 
         self.step
             .emitter
-            .emit(&spec::TestStepArtifactDescendant::Error(
-                error.to_artifact(),
-            ))
+            .emit(&TestStepArtifactImpl::Error(error.to_artifact()))
             .await?;
 
         Ok(())
@@ -360,9 +361,7 @@ impl StartedTestStep {
     ) -> Result<(), emitter::WriterError> {
         self.step
             .emitter
-            .emit(&spec::TestStepArtifactDescendant::Error(
-                error.to_artifact(),
-            ))
+            .emit(&TestStepArtifactImpl::Error(error.to_artifact()))
             .await?;
 
         Ok(())
@@ -392,11 +391,11 @@ impl StartedTestStep {
         name: &str,
         value: Value,
     ) -> Result<(), emitter::WriterError> {
-        let measurement = measurement::Measurement::new(name, value);
+        let measurement = measure::Measurement::new(name, value);
 
         self.step
             .emitter
-            .emit(&spec::TestStepArtifactDescendant::Measurement(
+            .emit(&TestStepArtifactImpl::Measurement(
                 measurement.to_artifact(),
             ))
             .await?;
@@ -433,11 +432,11 @@ impl StartedTestStep {
     /// ```
     pub async fn add_measurement_with_details(
         &self,
-        measurement: &measurement::Measurement,
+        measurement: &measure::Measurement,
     ) -> Result<(), emitter::WriterError> {
         self.step
             .emitter
-            .emit(&spec::TestStepArtifactDescendant::Measurement(
+            .emit(&spec::TestStepArtifactImpl::Measurement(
                 measurement.to_artifact(),
             ))
             .await?;
@@ -496,43 +495,9 @@ impl StartedTestStep {
     /// ```
     pub fn measurement_series_with_details(
         &self,
-        start: measurement::MeasurementSeriesStart,
+        start: measure::MeasurementSeriesStart,
     ) -> MeasurementSeries {
         MeasurementSeries::new_with_details(start, &self.step.emitter)
-    }
-}
-
-pub struct TestStepStart {
-    name: String,
-}
-
-impl TestStepStart {
-    pub fn new(name: &str) -> TestStepStart {
-        TestStepStart {
-            name: name.to_string(),
-        }
-    }
-
-    pub fn to_artifact(&self) -> spec::TestStepArtifactDescendant {
-        spec::TestStepArtifactDescendant::TestStepStart(spec::TestStepStart {
-            name: self.name.clone(),
-        })
-    }
-}
-
-pub struct TestStepEnd {
-    status: spec::TestStatus,
-}
-
-impl TestStepEnd {
-    pub fn new(status: spec::TestStatus) -> TestStepEnd {
-        TestStepEnd { status }
-    }
-
-    pub fn to_artifact(&self) -> spec::TestStepArtifactDescendant {
-        spec::TestStepArtifactDescendant::TestStepEnd(spec::TestStepEnd {
-            status: self.status.clone(),
-        })
     }
 }
 
@@ -545,17 +510,14 @@ pub struct StepEmitter {
 }
 
 impl StepEmitter {
-    pub async fn emit(&self, object: &spec::TestStepArtifactDescendant) -> Result<(), WriterError> {
-        let root = spec::RootArtifact::TestStepArtifact(spec::TestStepArtifact {
+    pub async fn emit(&self, object: &spec::TestStepArtifactImpl) -> Result<(), WriterError> {
+        let root = spec::RootImpl::TestStepArtifact(spec::TestStepArtifact {
             id: self.step_id.clone(),
             // TODO: can these copies be avoided?
-            descendant: object.clone(),
+            artifact: object.clone(),
         });
         self.state.lock().await.emitter.emit(&root).await?;
 
         Ok(())
     }
 }
-
-#[cfg(test)]
-mod tests {}

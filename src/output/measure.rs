@@ -8,7 +8,6 @@ use std::future::Future;
 use std::sync::atomic;
 use std::sync::Arc;
 
-use chrono::DateTime;
 use serde_json::Map;
 use serde_json::Value;
 use tokio::sync::Mutex;
@@ -82,7 +81,7 @@ impl<'a> MeasurementSeries<'a> {
     /// ```
     pub async fn start(&self) -> Result<(), emitter::WriterError> {
         self.emitter
-            .emit(&spec::TestStepArtifactDescendant::MeasurementSeriesStart(
+            .emit(&spec::TestStepArtifactImpl::MeasurementSeriesStart(
                 self.start.to_artifact(),
             ))
             .await?;
@@ -110,12 +109,13 @@ impl<'a> MeasurementSeries<'a> {
     /// # });
     /// ```
     pub async fn end(&self) -> Result<(), emitter::WriterError> {
-        let end =
-            MeasurementSeriesEnd::new(self.start.get_series_id(), self.current_sequence_no().await);
+        let end = spec::MeasurementSeriesEnd {
+            series_id: self.start.series_id.clone(),
+            total_count: self.current_sequence_no().await,
+        };
+
         self.emitter
-            .emit(&spec::TestStepArtifactDescendant::MeasurementSeriesEnd(
-                end.to_artifact(),
-            ))
+            .emit(&spec::TestStepArtifactImpl::MeasurementSeriesEnd(end))
             .await?;
 
         Ok(())
@@ -142,17 +142,18 @@ impl<'a> MeasurementSeries<'a> {
     /// # });
     /// ```
     pub async fn add_measurement(&self, value: Value) -> Result<(), emitter::WriterError> {
-        let element = MeasurementSeriesElement::new(
-            self.current_sequence_no().await,
-            value,
-            &self.start,
-            None,
-        );
+        let element = spec::MeasurementSeriesElement {
+            index: self.current_sequence_no().await,
+            value: value.clone(),
+            timestamp: chrono::Local::now().with_timezone(&chrono_tz::Tz::UTC),
+            series_id: self.start.series_id.clone(),
+            metadata: None,
+        };
         self.increment_sequence_no().await;
 
         self.emitter
-            .emit(&spec::TestStepArtifactDescendant::MeasurementSeriesElement(
-                element.to_artifact(),
+            .emit(&spec::TestStepArtifactImpl::MeasurementSeriesElement(
+                element,
             ))
             .await?;
 
@@ -185,19 +186,20 @@ impl<'a> MeasurementSeries<'a> {
         value: Value,
         metadata: Vec<(&str, Value)>,
     ) -> Result<(), emitter::WriterError> {
-        let element = MeasurementSeriesElement::new(
-            self.current_sequence_no().await,
-            value,
-            &self.start,
-            Some(Map::from_iter(
+        let element = spec::MeasurementSeriesElement {
+            index: self.current_sequence_no().await,
+            value: value.clone(),
+            timestamp: chrono::Local::now().with_timezone(&chrono_tz::Tz::UTC),
+            series_id: self.start.series_id.clone(),
+            metadata: Some(Map::from_iter(
                 metadata.iter().map(|(k, v)| (k.to_string(), v.clone())),
             )),
-        );
+        };
         self.increment_sequence_no().await;
 
         self.emitter
-            .emit(&spec::TestStepArtifactDescendant::MeasurementSeriesElement(
-                element.to_artifact(),
+            .emit(&spec::TestStepArtifactImpl::MeasurementSeriesElement(
+                element,
             ))
             .await?;
 
@@ -656,10 +658,6 @@ impl MeasurementSeriesStart {
             metadata: self.metadata.clone(),
         }
     }
-
-    pub fn get_series_id(&self) -> &str {
-        &self.series_id
-    }
 }
 
 pub struct MeasurementSeriesStartBuilder {
@@ -740,62 +738,6 @@ impl MeasurementSeriesStartBuilder {
             hardware_info: self.hardware_info,
             subcomponent: self.subcomponent,
             metadata: self.metadata,
-        }
-    }
-}
-
-pub struct MeasurementSeriesEnd {
-    series_id: String,
-    total_count: u64,
-}
-
-impl MeasurementSeriesEnd {
-    pub(crate) fn new(series_id: &str, total_count: u64) -> MeasurementSeriesEnd {
-        MeasurementSeriesEnd {
-            series_id: series_id.to_string(),
-            total_count,
-        }
-    }
-
-    pub fn to_artifact(&self) -> spec::MeasurementSeriesEnd {
-        spec::MeasurementSeriesEnd {
-            series_id: self.series_id.clone(),
-            total_count: self.total_count,
-        }
-    }
-}
-
-pub struct MeasurementSeriesElement {
-    index: u64,
-    value: Value,
-    timestamp: DateTime<chrono_tz::Tz>,
-    series_id: String,
-    metadata: Option<Map<String, Value>>,
-}
-
-impl MeasurementSeriesElement {
-    pub(crate) fn new(
-        index: u64,
-        value: Value,
-        series: &MeasurementSeriesStart,
-        metadata: Option<Map<String, Value>>,
-    ) -> MeasurementSeriesElement {
-        MeasurementSeriesElement {
-            index,
-            value: value.clone(),
-            timestamp: chrono::Local::now().with_timezone(&chrono_tz::Tz::UTC),
-            series_id: series.series_id.to_string(),
-            metadata,
-        }
-    }
-
-    pub fn to_artifact(&self) -> spec::MeasurementSeriesElement {
-        spec::MeasurementSeriesElement {
-            index: self.index,
-            value: self.value.clone(),
-            timestamp: self.timestamp,
-            series_id: self.series_id.clone(),
-            metadata: self.metadata.clone(),
         }
     }
 }
@@ -931,23 +873,6 @@ mod tests {
                     ("key".to_string(), "value".into()),
                     ("key2".to_string(), "value2".into())
                 ])),
-            }
-        );
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_measurement_series_end_to_artifact() -> Result<()> {
-        let series_id = "series_id".to_owned();
-        let series = MeasurementSeriesEnd::new(&series_id, 1);
-
-        let artifact = series.to_artifact();
-        assert_eq!(
-            artifact,
-            spec::MeasurementSeriesEnd {
-                series_id: series_id.to_string(),
-                total_count: 1,
             }
         );
 
