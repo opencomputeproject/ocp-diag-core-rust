@@ -103,6 +103,7 @@ pub enum TestStepArtifactDescendant {
 }
 
 #[derive(Debug, Serialize, Clone, PartialEq)]
+#[non_exhaustive]
 pub enum ValidatorType {
     #[serde(rename = "EQUAL")]
     Equal,
@@ -175,6 +176,7 @@ pub enum DiagnosisType {
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/testStatus
 #[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename = "testStatus")]
+#[non_exhaustive]
 pub enum TestStatus {
     #[serde(rename = "COMPLETE")]
     Complete,
@@ -190,6 +192,7 @@ pub enum TestStatus {
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/testRunEnd/$defs/testResult
 #[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename = "testResult")]
+#[non_exhaustive]
 pub enum TestResult {
     #[serde(rename = "PASS")]
     Pass,
@@ -198,11 +201,13 @@ pub enum TestResult {
     #[serde(rename = "NOT_APPLICABLE")]
     NotApplicable,
 }
+
 /// Known log severity variants.
 /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#severity
 /// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/log.json
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/log/$defs/severity
 #[derive(Debug, Serialize, Clone, PartialEq)]
+#[non_exhaustive]
 pub enum LogSeverity {
     #[serde(rename = "DEBUG")]
     Debug,
