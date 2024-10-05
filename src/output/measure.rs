@@ -737,24 +737,6 @@ impl MeasurementSeriesStartBuilder {
     }
 }
 
-// pub struct MeasurementSeriesEmitter {
-//     series_id: String,
-//     step_emitter: Arc<step::StepEmitter>,
-// }
-
-// impl StepEmitter {
-//     pub async fn emit(&self, object: &spec::TestStepArtifactImpl) -> Result<(), WriterError> {
-//         let root = spec::RootImpl::TestStepArtifact(spec::TestStepArtifact {
-//             id: self.step_id.clone(),
-//             // TODO: can these copies be avoided?
-//             artifact: object.clone(),
-//         });
-//         self.run_emitter.emit(&root).await?;
-
-//         Ok(())
-//     }
-// }
-
 #[cfg(test)]
 mod tests {
     use super::*;
