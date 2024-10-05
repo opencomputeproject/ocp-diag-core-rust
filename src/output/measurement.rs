@@ -14,7 +14,8 @@ use serde_json::Value;
 use tokio::sync::Mutex;
 
 use crate::output as tv;
-use tv::{dut, emitter, models, state};
+use crate::spec;
+use tv::{dut, emitter, state};
 
 /// The measurement series.
 /// A Measurement Series is a time-series list of measurements.
@@ -242,17 +243,17 @@ impl MeasurementSeries {
 #[derive(Clone)]
 pub struct Validator {
     name: Option<String>,
-    validator_type: models::ValidatorType,
+    validator_type: spec::ValidatorType,
     value: Value,
     metadata: Option<Map<String, Value>>,
 }
 
 impl Validator {
-    pub fn builder(validator_type: models::ValidatorType, value: Value) -> ValidatorBuilder {
+    pub fn builder(validator_type: spec::ValidatorType, value: Value) -> ValidatorBuilder {
         ValidatorBuilder::new(validator_type, value)
     }
-    pub fn to_spec(&self) -> models::ValidatorSpec {
-        models::ValidatorSpec {
+    pub fn to_spec(&self) -> spec::Validator {
+        spec::Validator {
             name: self.name.clone(),
             validator_type: self.validator_type.clone(),
             value: self.value.clone(),
@@ -264,13 +265,13 @@ impl Validator {
 #[derive(Debug)]
 pub struct ValidatorBuilder {
     name: Option<String>,
-    validator_type: models::ValidatorType,
+    validator_type: spec::ValidatorType,
     value: Value,
     metadata: Option<Map<String, Value>>,
 }
 
 impl ValidatorBuilder {
-    fn new(validator_type: models::ValidatorType, value: Value) -> Self {
+    fn new(validator_type: spec::ValidatorType, value: Value) -> Self {
         ValidatorBuilder {
             validator_type,
             value: value.clone(),
@@ -405,9 +406,9 @@ impl Measurement {
     /// let measurement = Measurement::new("name", 50.into());
     /// let _ = measurement.to_artifact();
     /// ```
-    pub fn to_artifact(&self) -> models::RootArtifactSpec {
-        models::RootArtifactSpec::TestStepArtifact(models::TestStepArtifactSpec {
-            descendant: models::TestStepArtifactDescendant::Measurement(models::MeasurementSpec {
+    pub fn to_artifact(&self) -> spec::RootArtifact {
+        spec::RootArtifact::TestStepArtifact(spec::TestStepArtifact {
+            descendant: spec::TestStepArtifactDescendant::Measurement(spec::Measurement {
                 name: self.name.clone(),
                 unit: self.unit.clone(),
                 value: self.value.clone(),
@@ -633,10 +634,10 @@ impl MeasurementSeriesStart {
         MeasurementSeriesStartBuilder::new(name, series_id)
     }
 
-    pub fn to_artifact(&self) -> models::RootArtifactSpec {
-        models::RootArtifactSpec::TestStepArtifact(models::TestStepArtifactSpec {
-            descendant: models::TestStepArtifactDescendant::MeasurementSeriesStart(
-                models::MeasurementSeriesStartSpec {
+    pub fn to_artifact(&self) -> spec::RootArtifact {
+        spec::RootArtifact::TestStepArtifact(spec::TestStepArtifact {
+            descendant: spec::TestStepArtifactDescendant::MeasurementSeriesStart(
+                spec::MeasurementSeriesStart {
                     name: self.name.clone(),
                     unit: self.unit.clone(),
                     series_id: self.series_id.clone(),
@@ -758,10 +759,10 @@ impl MeasurementSeriesEnd {
         }
     }
 
-    pub fn to_artifact(&self) -> models::RootArtifactSpec {
-        models::RootArtifactSpec::TestStepArtifact(models::TestStepArtifactSpec {
-            descendant: models::TestStepArtifactDescendant::MeasurementSeriesEnd(
-                models::MeasurementSeriesEndSpec {
+    pub fn to_artifact(&self) -> spec::RootArtifact {
+        spec::RootArtifact::TestStepArtifact(spec::TestStepArtifact {
+            descendant: spec::TestStepArtifactDescendant::MeasurementSeriesEnd(
+                spec::MeasurementSeriesEnd {
                     series_id: self.series_id.clone(),
                     total_count: self.total_count,
                 },
@@ -794,10 +795,10 @@ impl MeasurementSeriesElement {
         }
     }
 
-    pub fn to_artifact(&self) -> models::RootArtifactSpec {
-        models::RootArtifactSpec::TestStepArtifact(models::TestStepArtifactSpec {
-            descendant: models::TestStepArtifactDescendant::MeasurementSeriesElement(
-                models::MeasurementSeriesElementSpec {
+    pub fn to_artifact(&self) -> spec::RootArtifact {
+        spec::RootArtifact::TestStepArtifact(spec::TestStepArtifact {
+            descendant: spec::TestStepArtifactDescendant::MeasurementSeriesElement(
+                spec::MeasurementSeriesElement {
                     index: self.index,
                     value: self.value.clone(),
                     timestamp: self.timestamp,
@@ -813,8 +814,9 @@ impl MeasurementSeriesElement {
 mod tests {
     use super::*;
     use crate::output as tv;
+    use crate::spec;
+    use tv::dut::*;
     use tv::ValidatorType;
-    use tv::{dut::*, models};
 
     use anyhow::{bail, Result};
 
@@ -827,18 +829,16 @@ mod tests {
         let artifact = measurement.to_artifact();
         assert_eq!(
             artifact,
-            models::RootArtifactSpec::TestStepArtifact(models::TestStepArtifactSpec {
-                descendant: models::TestStepArtifactDescendant::Measurement(
-                    models::MeasurementSpec {
-                        name: name.to_string(),
-                        unit: None,
-                        value,
-                        validators: None,
-                        hardware_info_id: None,
-                        subcomponent: None,
-                        metadata: None,
-                    }
-                ),
+            spec::RootArtifact::TestStepArtifact(spec::TestStepArtifact {
+                descendant: spec::TestStepArtifactDescendant::Measurement(spec::Measurement {
+                    name: name.to_string(),
+                    unit: None,
+                    value,
+                    validators: None,
+                    hardware_info_id: None,
+                    subcomponent: None,
+                    metadata: None,
+                }),
             })
         );
 
@@ -850,7 +850,7 @@ mod tests {
         let name = "name".to_owned();
         let value = Value::from(50000);
         let hardware_info = HardwareInfo::builder("id", "name").build();
-        let validator = Validator::builder(models::ValidatorType::Equal, 30.into()).build();
+        let validator = Validator::builder(spec::ValidatorType::Equal, 30.into()).build();
 
         let meta_key = "key";
         let meta_value = Value::from("value");
@@ -874,18 +874,16 @@ mod tests {
         let artifact = measurement.to_artifact();
         assert_eq!(
             artifact,
-            models::RootArtifactSpec::TestStepArtifact(models::TestStepArtifactSpec {
-                descendant: models::TestStepArtifactDescendant::Measurement(
-                    models::MeasurementSpec {
-                        name,
-                        unit: Some(unit.to_string()),
-                        value,
-                        validators: Some(vec![validator.to_spec(), validator.to_spec()]),
-                        hardware_info_id: Some(hardware_info.to_spec().id.clone()),
-                        subcomponent: Some(subcomponent.to_spec()),
-                        metadata: Some(metadata),
-                    }
-                ),
+            spec::RootArtifact::TestStepArtifact(spec::TestStepArtifact {
+                descendant: spec::TestStepArtifactDescendant::Measurement(spec::Measurement {
+                    name,
+                    unit: Some(unit.to_string()),
+                    value,
+                    validators: Some(vec![validator.to_spec(), validator.to_spec()]),
+                    hardware_info_id: Some(hardware_info.to_spec().id.clone()),
+                    subcomponent: Some(subcomponent.to_spec()),
+                    metadata: Some(metadata),
+                }),
             })
         );
 
@@ -901,9 +899,9 @@ mod tests {
         let artifact = series.to_artifact();
         assert_eq!(
             artifact,
-            models::RootArtifactSpec::TestStepArtifact(models::TestStepArtifactSpec {
-                descendant: models::TestStepArtifactDescendant::MeasurementSeriesStart(
-                    models::MeasurementSeriesStartSpec {
+            spec::RootArtifact::TestStepArtifact(spec::TestStepArtifact {
+                descendant: spec::TestStepArtifactDescendant::MeasurementSeriesStart(
+                    spec::MeasurementSeriesStart {
                         name: name.to_string(),
                         unit: None,
                         series_id: series_id.to_string(),
@@ -923,8 +921,8 @@ mod tests {
     fn test_measurement_series_start_builder_to_artifact() -> Result<()> {
         let name = "name".to_owned();
         let series_id = "series_id".to_owned();
-        let validator = Validator::builder(models::ValidatorType::Equal, 30.into()).build();
-        let validator2 = Validator::builder(models::ValidatorType::GreaterThen, 10.into()).build();
+        let validator = Validator::builder(spec::ValidatorType::Equal, 30.into()).build();
+        let validator2 = Validator::builder(spec::ValidatorType::GreaterThen, 10.into()).build();
         let hw_info = HardwareInfo::builder("id", "name").build();
         let subcomponent = Subcomponent::builder("name").build();
         let series = MeasurementSeriesStart::builder(&name, &series_id)
@@ -940,9 +938,9 @@ mod tests {
         let artifact = series.to_artifact();
         assert_eq!(
             artifact,
-            models::RootArtifactSpec::TestStepArtifact(models::TestStepArtifactSpec {
-                descendant: models::TestStepArtifactDescendant::MeasurementSeriesStart(
-                    models::MeasurementSeriesStartSpec {
+            spec::RootArtifact::TestStepArtifact(spec::TestStepArtifact {
+                descendant: spec::TestStepArtifactDescendant::MeasurementSeriesStart(
+                    spec::MeasurementSeriesStart {
                         name,
                         unit: Some("unit".to_string()),
                         series_id: series_id.to_string(),
@@ -969,9 +967,9 @@ mod tests {
         let artifact = series.to_artifact();
         assert_eq!(
             artifact,
-            models::RootArtifactSpec::TestStepArtifact(models::TestStepArtifactSpec {
-                descendant: models::TestStepArtifactDescendant::MeasurementSeriesEnd(
-                    models::MeasurementSeriesEndSpec {
+            spec::RootArtifact::TestStepArtifact(spec::TestStepArtifact {
+                descendant: spec::TestStepArtifactDescendant::MeasurementSeriesEnd(
+                    spec::MeasurementSeriesEnd {
                         series_id: series_id.to_string(),
                         total_count: 1,
                     }

@@ -4,13 +4,12 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
-use crate::output as tv;
-use tv::models;
+use crate::spec;
 
 pub struct Log {
-    severity: models::LogSeverity,
+    severity: spec::LogSeverity,
     message: String,
-    source_location: Option<models::SourceLocationSpec>,
+    source_location: Option<spec::SourceLocation>,
 }
 
 impl Log {
@@ -18,8 +17,8 @@ impl Log {
         LogBuilder::new(message)
     }
 
-    pub fn to_artifact(&self) -> models::LogSpec {
-        models::LogSpec {
+    pub fn to_artifact(&self) -> spec::Log {
+        spec::Log {
             severity: self.severity.clone(),
             message: self.message.clone(),
             source_location: self.source_location.clone(),
@@ -29,25 +28,25 @@ impl Log {
 
 #[derive(Debug)]
 pub struct LogBuilder {
-    severity: models::LogSeverity,
+    severity: spec::LogSeverity,
     message: String,
-    source_location: Option<models::SourceLocationSpec>,
+    source_location: Option<spec::SourceLocation>,
 }
 
 impl LogBuilder {
     fn new(message: &str) -> Self {
         LogBuilder {
-            severity: models::LogSeverity::Info,
+            severity: spec::LogSeverity::Info,
             message: message.to_string(),
             source_location: None,
         }
     }
-    pub fn severity(mut self, value: models::LogSeverity) -> LogBuilder {
+    pub fn severity(mut self, value: spec::LogSeverity) -> LogBuilder {
         self.severity = value;
         self
     }
     pub fn source(mut self, file: &str, line: i32) -> LogBuilder {
-        self.source_location = Some(models::SourceLocationSpec {
+        self.source_location = Some(spec::SourceLocation {
             file: file.to_string(),
             line,
         });
@@ -68,19 +67,18 @@ mod tests {
     use anyhow::Result;
 
     use super::*;
-    use crate::output as tv;
-    use tv::models;
+    use crate::spec;
 
     #[test]
     fn test_log_output_as_test_run_descendant_to_artifact() -> Result<()> {
         let log = Log::builder("test")
-            .severity(models::LogSeverity::Info)
+            .severity(spec::LogSeverity::Info)
             .build();
 
         let artifact = log.to_artifact();
         assert_eq!(
             artifact,
-            models::LogSpec {
+            spec::Log {
                 severity: log.severity.clone(),
                 message: log.message.clone(),
                 source_location: log.source_location.clone(),
@@ -93,13 +91,13 @@ mod tests {
     #[test]
     fn test_log_output_as_test_step_descendant_to_artifact() -> Result<()> {
         let log = Log::builder("test")
-            .severity(models::LogSeverity::Info)
+            .severity(spec::LogSeverity::Info)
             .build();
 
         let artifact = log.to_artifact();
         assert_eq!(
             artifact,
-            models::LogSpec {
+            spec::Log {
                 severity: log.severity.clone(),
                 message: log.message.clone(),
                 source_location: log.source_location.clone(),

@@ -5,3 +5,4 @@
 // https://opensource.org/licenses/MIT.
 
 pub mod output;
+mod spec;

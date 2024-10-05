@@ -10,8 +10,9 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 
 use crate::output as tv;
+use crate::spec;
 use tv::measurement::MeasurementSeries;
-use tv::{emitter, error, log, measurement, models, state, step};
+use tv::{emitter, error, log, measurement, state, step};
 
 /// A single test step in the scope of a [`TestRun`].
 ///
@@ -123,7 +124,7 @@ impl StartedTestStep {
     /// # Ok::<(), WriterError>(())
     /// # });
     /// ```
-    pub async fn end(&self, status: models::TestStatus) -> Result<(), emitter::WriterError> {
+    pub async fn end(&self, status: spec::TestStatus) -> Result<(), emitter::WriterError> {
         let end = step::TestStepEnd::new(status);
         self.step
             .state
@@ -178,17 +179,17 @@ impl StartedTestStep {
     /// ```
     pub async fn log(
         &self,
-        severity: models::LogSeverity,
+        severity: spec::LogSeverity,
         msg: &str,
     ) -> Result<(), emitter::WriterError> {
         let log = log::Log::builder(msg).severity(severity).build();
         let emitter = &self.step.state.lock().await.emitter;
 
-        let artifact = models::TestStepArtifactSpec {
-            descendant: models::TestStepArtifactDescendant::Log(log.to_artifact()),
+        let artifact = spec::TestStepArtifact {
+            descendant: spec::TestStepArtifactDescendant::Log(log.to_artifact()),
         };
         emitter
-            .emit(&models::RootArtifactSpec::TestStepArtifact(artifact))
+            .emit(&spec::RootArtifact::TestStepArtifact(artifact))
             .await?;
 
         Ok(())
@@ -222,11 +223,11 @@ impl StartedTestStep {
     pub async fn log_with_details(&self, log: &log::Log) -> Result<(), emitter::WriterError> {
         let emitter = &self.step.state.lock().await.emitter;
 
-        let artifact = models::TestStepArtifactSpec {
-            descendant: models::TestStepArtifactDescendant::Log(log.to_artifact()),
+        let artifact = spec::TestStepArtifact {
+            descendant: spec::TestStepArtifactDescendant::Log(log.to_artifact()),
         };
         emitter
-            .emit(&models::RootArtifactSpec::TestStepArtifact(artifact))
+            .emit(&spec::RootArtifact::TestStepArtifact(artifact))
             .await?;
 
         Ok(())
@@ -274,11 +275,11 @@ impl StartedTestStep {
         let error = error::Error::builder(symptom).build();
         let emitter = &self.step.state.lock().await.emitter;
 
-        let artifact = models::TestStepArtifactSpec {
-            descendant: models::TestStepArtifactDescendant::Error(error.to_artifact()),
+        let artifact = spec::TestStepArtifact {
+            descendant: spec::TestStepArtifactDescendant::Error(error.to_artifact()),
         };
         emitter
-            .emit(&models::RootArtifactSpec::TestStepArtifact(artifact))
+            .emit(&spec::RootArtifact::TestStepArtifact(artifact))
             .await?;
 
         Ok(())
@@ -331,11 +332,11 @@ impl StartedTestStep {
         let error = error::Error::builder(symptom).message(msg).build();
         let emitter = &self.step.state.lock().await.emitter;
 
-        let artifact = models::TestStepArtifactSpec {
-            descendant: models::TestStepArtifactDescendant::Error(error.to_artifact()),
+        let artifact = spec::TestStepArtifact {
+            descendant: spec::TestStepArtifactDescendant::Error(error.to_artifact()),
         };
         emitter
-            .emit(&models::RootArtifactSpec::TestStepArtifact(artifact))
+            .emit(&spec::RootArtifact::TestStepArtifact(artifact))
             .await?;
 
         Ok(())
@@ -373,11 +374,11 @@ impl StartedTestStep {
     ) -> Result<(), emitter::WriterError> {
         let emitter = &self.step.state.lock().await.emitter;
 
-        let artifact = models::TestStepArtifactSpec {
-            descendant: models::TestStepArtifactDescendant::Error(error.to_artifact()),
+        let artifact = spec::TestStepArtifact {
+            descendant: spec::TestStepArtifactDescendant::Error(error.to_artifact()),
         };
         emitter
-            .emit(&models::RootArtifactSpec::TestStepArtifact(artifact))
+            .emit(&spec::RootArtifact::TestStepArtifact(artifact))
             .await?;
 
         Ok(())
@@ -527,29 +528,27 @@ impl TestStepStart {
         }
     }
 
-    pub fn to_artifact(&self) -> models::RootArtifactSpec {
-        models::RootArtifactSpec::TestStepArtifact(models::TestStepArtifactSpec {
-            descendant: models::TestStepArtifactDescendant::TestStepStart(
-                models::TestStepStartSpec {
-                    name: self.name.clone(),
-                },
-            ),
+    pub fn to_artifact(&self) -> spec::RootArtifact {
+        spec::RootArtifact::TestStepArtifact(spec::TestStepArtifact {
+            descendant: spec::TestStepArtifactDescendant::TestStepStart(spec::TestStepStart {
+                name: self.name.clone(),
+            }),
         })
     }
 }
 
 pub struct TestStepEnd {
-    status: models::TestStatus,
+    status: spec::TestStatus,
 }
 
 impl TestStepEnd {
-    pub fn new(status: models::TestStatus) -> TestStepEnd {
+    pub fn new(status: spec::TestStatus) -> TestStepEnd {
         TestStepEnd { status }
     }
 
-    pub fn to_artifact(&self) -> models::RootArtifactSpec {
-        models::RootArtifactSpec::TestStepArtifact(models::TestStepArtifactSpec {
-            descendant: models::TestStepArtifactDescendant::TestStepEnd(models::TestStepEndSpec {
+    pub fn to_artifact(&self) -> spec::RootArtifact {
+        spec::RootArtifact::TestStepArtifact(spec::TestStepArtifact {
+            descendant: spec::TestStepArtifactDescendant::TestStepEnd(spec::TestStepEnd {
                 status: self.status.clone(),
             }),
         })

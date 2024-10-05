@@ -4,8 +4,7 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
-use crate::output as tv;
-use tv::models;
+use crate::spec;
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct DutInfo {
@@ -26,8 +25,8 @@ impl DutInfo {
         DutInfoBuilder::new(id).build()
     }
 
-    pub(crate) fn to_spec(&self) -> models::DutInfoSpec {
-        models::DutInfoSpec {
+    pub(crate) fn to_spec(&self) -> spec::DutInfo {
+        spec::DutInfo {
             id: self.id.clone(),
             name: self.name.clone(),
             platform_infos: self
@@ -153,8 +152,8 @@ impl HardwareInfo {
         HardwareInfoBuilder::new(id, name)
     }
 
-    pub fn to_spec(&self) -> models::HardwareInfoSpec {
-        models::HardwareInfoSpec {
+    pub fn to_spec(&self) -> spec::HardwareInfo {
+        spec::HardwareInfo {
             id: self.id.clone(),
             name: self.name.clone(),
             version: self.version.clone(),
@@ -269,7 +268,7 @@ impl HardwareInfoBuilder {
 
 #[derive(Debug, Clone)]
 pub struct Subcomponent {
-    subcomponent_type: Option<models::SubcomponentType>,
+    subcomponent_type: Option<spec::SubcomponentType>,
     name: String,
     location: Option<String>,
     version: Option<String>,
@@ -280,8 +279,8 @@ impl Subcomponent {
     pub fn builder(name: &str) -> SubcomponentBuilder {
         SubcomponentBuilder::new(name)
     }
-    pub fn to_spec(&self) -> models::SubcomponentSpec {
-        models::SubcomponentSpec {
+    pub fn to_spec(&self) -> spec::Subcomponent {
+        spec::Subcomponent {
             subcomponent_type: self.subcomponent_type.clone(),
             name: self.name.clone(),
             location: self.location.clone(),
@@ -293,7 +292,7 @@ impl Subcomponent {
 
 #[derive(Debug)]
 pub struct SubcomponentBuilder {
-    subcomponent_type: Option<models::SubcomponentType>,
+    subcomponent_type: Option<spec::SubcomponentType>,
     name: String,
     location: Option<String>,
     version: Option<String>,
@@ -310,7 +309,7 @@ impl SubcomponentBuilder {
             revision: None,
         }
     }
-    pub fn subcomponent_type(mut self, value: models::SubcomponentType) -> SubcomponentBuilder {
+    pub fn subcomponent_type(mut self, value: spec::SubcomponentType) -> SubcomponentBuilder {
         self.subcomponent_type = Some(value);
         self
     }
@@ -348,8 +347,8 @@ impl PlatformInfo {
         PlatformInfoBuilder::new(info)
     }
 
-    pub fn to_spec(&self) -> models::PlatformInfoSpec {
-        models::PlatformInfoSpec {
+    pub fn to_spec(&self) -> spec::PlatformInfo {
+        spec::PlatformInfo {
             info: self.info.clone(),
         }
     }
@@ -378,7 +377,7 @@ pub struct SoftwareInfo {
     name: String,
     version: Option<String>,
     revision: Option<String>,
-    software_type: Option<models::SoftwareType>,
+    software_type: Option<spec::SoftwareType>,
     computer_system: Option<String>,
 }
 
@@ -387,8 +386,8 @@ impl SoftwareInfo {
         SoftwareInfoBuilder::new(id, name)
     }
 
-    pub fn to_spec(&self) -> models::SoftwareInfoSpec {
-        models::SoftwareInfoSpec {
+    pub fn to_spec(&self) -> spec::SoftwareInfo {
+        spec::SoftwareInfo {
             id: self.id.clone(),
             name: self.name.clone(),
             version: self.version.clone(),
@@ -405,7 +404,7 @@ pub struct SoftwareInfoBuilder {
     name: String,
     version: Option<String>,
     revision: Option<String>,
-    software_type: Option<models::SoftwareType>,
+    software_type: Option<spec::SoftwareType>,
     computer_system: Option<String>,
 }
 
@@ -428,7 +427,7 @@ impl SoftwareInfoBuilder {
         self.revision = Some(value.to_string());
         self
     }
-    pub fn software_type(mut self, value: models::SoftwareType) -> SoftwareInfoBuilder {
+    pub fn software_type(mut self, value: spec::SoftwareType) -> SoftwareInfoBuilder {
         self.software_type = Some(value);
         self
     }
@@ -452,7 +451,7 @@ impl SoftwareInfoBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::output::models;
+    use crate::spec;
     use anyhow::{bail, Result};
 
     #[test]
@@ -569,7 +568,7 @@ mod tests {
         let info = SoftwareInfo::builder("software_id", "name")
             .version("version")
             .revision("revision")
-            .software_type(models::SoftwareType::Application)
+            .software_type(spec::SoftwareType::Application)
             .computer_system("system")
             .build();
 
@@ -581,7 +580,7 @@ mod tests {
         assert_eq!(spec_swinfo.revision, Some("revision".to_owned()));
         assert_eq!(
             spec_swinfo.software_type,
-            Some(models::SoftwareType::Application)
+            Some(spec::SoftwareType::Application)
         );
         assert_eq!(spec_swinfo.computer_system, Some("system".to_owned()));
 
@@ -599,7 +598,7 @@ mod tests {
     #[test]
     fn test_subcomponent() -> Result<()> {
         let sub = Subcomponent::builder("sub_name")
-            .subcomponent_type(models::SubcomponentType::Asic)
+            .subcomponent_type(spec::SubcomponentType::Asic)
             .version("version")
             .location("location")
             .revision("revision")
@@ -613,7 +612,7 @@ mod tests {
         assert_eq!(spec_subcomponent.location, Some("location".to_owned()));
         assert_eq!(
             spec_subcomponent.subcomponent_type,
-            Some(models::SubcomponentType::Asic)
+            Some(spec::SubcomponentType::Asic)
         );
 
         Ok(())

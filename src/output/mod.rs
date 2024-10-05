@@ -11,22 +11,21 @@ mod error;
 mod log;
 mod macros;
 mod measurement;
-mod models;
 mod run;
 mod state;
 mod step;
 
+pub use crate::spec::LogSeverity;
+pub use crate::spec::TestResult;
+pub use crate::spec::TestStatus;
+pub use crate::spec::ValidatorType;
+pub use crate::spec::SPEC_VERSION;
 pub use config::*;
 pub use dut::*;
 pub use emitter::*;
 pub use error::*;
 pub use log::*;
 pub use measurement::*;
-pub use models::LogSeverity;
-pub use models::TestResult;
-pub use models::TestStatus;
-pub use models::ValidatorType;
-pub use models::SPEC_VERSION;
 pub use run::*;
 pub use step::*;
 

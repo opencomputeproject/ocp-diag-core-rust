@@ -5,13 +5,14 @@
 // https://opensource.org/licenses/MIT.
 
 use crate::output as tv;
-use tv::{dut, models};
+use crate::spec;
+use tv::dut;
 
 pub struct Error {
     symptom: String,
     message: Option<String>,
-    software_infos: Option<Vec<models::SoftwareInfoSpec>>,
-    source_location: Option<models::SourceLocationSpec>,
+    software_infos: Option<Vec<spec::SoftwareInfo>>,
+    source_location: Option<spec::SourceLocation>,
 }
 
 impl Error {
@@ -19,8 +20,8 @@ impl Error {
         ErrorBuilder::new(symptom)
     }
 
-    pub fn to_artifact(&self) -> models::ErrorSpec {
-        models::ErrorSpec {
+    pub fn to_artifact(&self) -> spec::Error {
+        spec::Error {
             symptom: self.symptom.clone(),
             message: self.message.clone(),
             software_infos: self.software_infos.clone(),
@@ -33,8 +34,8 @@ impl Error {
 pub struct ErrorBuilder {
     symptom: String,
     message: Option<String>,
-    software_infos: Option<Vec<models::SoftwareInfoSpec>>,
-    source_location: Option<models::SourceLocationSpec>,
+    software_infos: Option<Vec<spec::SoftwareInfo>>,
+    source_location: Option<spec::SourceLocation>,
 }
 
 impl ErrorBuilder {
@@ -51,7 +52,7 @@ impl ErrorBuilder {
         self
     }
     pub fn source(mut self, file: &str, line: i32) -> ErrorBuilder {
-        self.source_location = Some(models::SourceLocationSpec {
+        self.source_location = Some(spec::SourceLocation {
             file: file.to_string(),
             line,
         });
@@ -86,7 +87,8 @@ mod tests {
 
     use super::*;
     use crate::output as tv;
-    use tv::{dut, models};
+    use crate::spec;
+    use tv::dut;
 
     #[test]
     fn test_error_output_as_test_run_descendant_to_artifact() -> Result<()> {
@@ -99,7 +101,7 @@ mod tests {
         let artifact = error.to_artifact();
         assert_eq!(
             artifact,
-            models::ErrorSpec {
+            spec::Error {
                 symptom: error.symptom.clone(),
                 message: error.message.clone(),
                 software_infos: error.software_infos.clone(),
@@ -121,7 +123,7 @@ mod tests {
         let artifact = error.to_artifact();
         assert_eq!(
             artifact,
-            models::ErrorSpec {
+            spec::Error {
                 symptom: error.symptom.clone(),
                 message: error.message.clone(),
                 software_infos: error.software_infos.clone(),

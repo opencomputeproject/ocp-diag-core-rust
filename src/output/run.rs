@@ -12,16 +12,17 @@ use serde_json::Value;
 use tokio::sync::Mutex;
 
 use crate::output as tv;
+use crate::spec;
 use tv::step::TestStep;
-use tv::{config, dut, emitter, error, log, models, run, state};
+use tv::{config, dut, emitter, error, log, run, state};
 
 /// The outcome of a TestRun.
 /// It's returned when the scope method of the [`TestRun`] object is used.
 pub struct TestRunOutcome {
     /// Reports the execution status of the test
-    pub status: models::TestStatus,
+    pub status: spec::TestStatus,
     /// Reports the result of the test
-    pub result: models::TestResult,
+    pub result: spec::TestResult,
 }
 
 /// The main diag test run.
@@ -303,8 +304,8 @@ impl StartedTestRun {
     /// ```
     pub async fn end(
         &self,
-        status: models::TestStatus,
-        result: models::TestResult,
+        status: spec::TestStatus,
+        result: spec::TestResult,
     ) -> Result<(), emitter::WriterError> {
         let end = run::TestRunEnd::builder()
             .status(status)
@@ -341,18 +342,18 @@ impl StartedTestRun {
     /// ```
     pub async fn log(
         &self,
-        severity: models::LogSeverity,
+        severity: spec::LogSeverity,
         msg: &str,
     ) -> Result<(), emitter::WriterError> {
         let log = log::Log::builder(msg).severity(severity).build();
 
         let emitter = &self.run.state.lock().await.emitter;
 
-        let artifact = models::TestRunArtifactSpec {
-            artifact: models::TestRunArtifactDescendant::Log(log.to_artifact()),
+        let artifact = spec::TestRunArtifact {
+            artifact: spec::TestRunArtifactDescendant::Log(log.to_artifact()),
         };
         emitter
-            .emit(&models::RootArtifactSpec::TestRunArtifact(artifact))
+            .emit(&spec::RootArtifact::TestRunArtifact(artifact))
             .await?;
 
         Ok(())
@@ -384,11 +385,11 @@ impl StartedTestRun {
     pub async fn log_with_details(&self, log: &log::Log) -> Result<(), emitter::WriterError> {
         let emitter = &self.run.state.lock().await.emitter;
 
-        let artifact = models::TestRunArtifactSpec {
-            artifact: models::TestRunArtifactDescendant::Log(log.to_artifact()),
+        let artifact = spec::TestRunArtifact {
+            artifact: spec::TestRunArtifactDescendant::Log(log.to_artifact()),
         };
         emitter
-            .emit(&models::RootArtifactSpec::TestRunArtifact(artifact))
+            .emit(&spec::RootArtifact::TestRunArtifact(artifact))
             .await?;
 
         Ok(())
@@ -416,11 +417,11 @@ impl StartedTestRun {
         let error = error::Error::builder(symptom).build();
         let emitter = &self.run.state.lock().await.emitter;
 
-        let artifact = models::TestRunArtifactSpec {
-            artifact: models::TestRunArtifactDescendant::Error(error.to_artifact()),
+        let artifact = spec::TestRunArtifact {
+            artifact: spec::TestRunArtifactDescendant::Error(error.to_artifact()),
         };
         emitter
-            .emit(&models::RootArtifactSpec::TestRunArtifact(artifact))
+            .emit(&spec::RootArtifact::TestRunArtifact(artifact))
             .await?;
 
         Ok(())
@@ -453,11 +454,11 @@ impl StartedTestRun {
         let error = error::Error::builder(symptom).message(msg).build();
         let emitter = &self.run.state.lock().await.emitter;
 
-        let artifact = models::TestRunArtifactSpec {
-            artifact: models::TestRunArtifactDescendant::Error(error.to_artifact()),
+        let artifact = spec::TestRunArtifact {
+            artifact: spec::TestRunArtifactDescendant::Error(error.to_artifact()),
         };
         emitter
-            .emit(&models::RootArtifactSpec::TestRunArtifact(artifact))
+            .emit(&spec::RootArtifact::TestRunArtifact(artifact))
             .await?;
 
         Ok(())
@@ -493,11 +494,11 @@ impl StartedTestRun {
     ) -> Result<(), emitter::WriterError> {
         let emitter = &self.run.state.lock().await.emitter;
 
-        let artifact = models::TestRunArtifactSpec {
-            artifact: models::TestRunArtifactDescendant::Error(error.to_artifact()),
+        let artifact = spec::TestRunArtifact {
+            artifact: spec::TestRunArtifactDescendant::Error(error.to_artifact()),
         };
         emitter
-            .emit(&models::RootArtifactSpec::TestRunArtifact(artifact))
+            .emit(&spec::RootArtifact::TestRunArtifact(artifact))
             .await?;
 
         Ok(())
@@ -528,9 +529,9 @@ impl TestRunStart {
         TestRunStartBuilder::new(name, version, command_line, parameters, dut_info)
     }
 
-    pub fn to_artifact(&self) -> models::RootArtifactSpec {
-        models::RootArtifactSpec::TestRunArtifact(models::TestRunArtifactSpec {
-            artifact: models::TestRunArtifactDescendant::TestRunStart(models::TestRunStartSpec {
+    pub fn to_artifact(&self) -> spec::RootArtifact {
+        spec::RootArtifact::TestRunArtifact(spec::TestRunArtifact {
+            artifact: spec::TestRunArtifactDescendant::TestRunStart(spec::TestRunStart {
                 name: self.name.clone(),
                 version: self.version.clone(),
                 command_line: self.command_line.clone(),
@@ -597,8 +598,8 @@ impl TestRunStartBuilder {
 }
 
 pub struct TestRunEnd {
-    status: models::TestStatus,
-    result: models::TestResult,
+    status: spec::TestStatus,
+    result: spec::TestResult,
 }
 
 impl TestRunEnd {
@@ -606,9 +607,9 @@ impl TestRunEnd {
         TestRunEndBuilder::new()
     }
 
-    pub fn to_artifact(&self) -> models::RootArtifactSpec {
-        models::RootArtifactSpec::TestRunArtifact(models::TestRunArtifactSpec {
-            artifact: models::TestRunArtifactDescendant::TestRunEnd(models::TestRunEndSpec {
+    pub fn to_artifact(&self) -> spec::RootArtifact {
+        spec::RootArtifact::TestRunArtifact(spec::TestRunArtifact {
+            artifact: spec::TestRunArtifactDescendant::TestRunEnd(spec::TestRunEnd {
                 status: self.status.clone(),
                 result: self.result.clone(),
             }),
@@ -618,24 +619,24 @@ impl TestRunEnd {
 
 #[derive(Debug)]
 pub struct TestRunEndBuilder {
-    status: models::TestStatus,
-    result: models::TestResult,
+    status: spec::TestStatus,
+    result: spec::TestResult,
 }
 
 #[allow(clippy::new_without_default)]
 impl TestRunEndBuilder {
     pub fn new() -> TestRunEndBuilder {
         TestRunEndBuilder {
-            status: models::TestStatus::Complete,
-            result: models::TestResult::Pass,
+            status: spec::TestStatus::Complete,
+            result: spec::TestResult::Pass,
         }
     }
-    pub fn status(mut self, value: models::TestStatus) -> TestRunEndBuilder {
+    pub fn status(mut self, value: spec::TestStatus) -> TestRunEndBuilder {
         self.status = value;
         self
     }
 
-    pub fn result(mut self, value: models::TestResult) -> TestRunEndBuilder {
+    pub fn result(mut self, value: spec::TestResult) -> TestRunEndBuilder {
         self.result = value;
         self
     }
@@ -658,13 +659,13 @@ pub struct SchemaVersion {
 impl SchemaVersion {
     pub fn new() -> SchemaVersion {
         SchemaVersion {
-            major: models::SPEC_VERSION.0,
-            minor: models::SPEC_VERSION.1,
+            major: spec::SPEC_VERSION.0,
+            minor: spec::SPEC_VERSION.1,
         }
     }
 
-    pub fn to_artifact(&self) -> models::RootArtifactSpec {
-        models::RootArtifactSpec::SchemaVersion(models::SchemaVersionSpec {
+    pub fn to_artifact(&self) -> spec::RootArtifact {
+        spec::RootArtifact::SchemaVersion(spec::SchemaVersion {
             major: self.major,
             minor: self.minor,
         })
@@ -676,14 +677,13 @@ mod tests {
     use anyhow::Result;
 
     use super::*;
-    use crate::output as tv;
-    use tv::models;
+    use crate::spec;
 
     #[test]
     fn test_schema_creation_from_builder() -> Result<()> {
         let version = SchemaVersion::new();
-        assert_eq!(version.major, models::SPEC_VERSION.0);
-        assert_eq!(version.minor, models::SPEC_VERSION.1);
+        assert_eq!(version.major, spec::SPEC_VERSION.0);
+        assert_eq!(version.minor, spec::SPEC_VERSION.1);
         Ok(())
     }
 }
