@@ -494,6 +494,9 @@ pub struct SourceLocation {
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/testStepArtifact
 #[derive(Debug, Serialize, PartialEq, Clone)]
 pub struct TestStepArtifact {
+    #[serde(rename = "testStepId")]
+    pub id: String,
+
     #[serde(flatten)]
     pub descendant: TestStepArtifactDescendant,
 }

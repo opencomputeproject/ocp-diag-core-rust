@@ -5,6 +5,8 @@
 // https://opensource.org/licenses/MIT.
 
 use std::env;
+use std::sync::atomic;
+use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
 use serde_json::Map;
@@ -115,7 +117,7 @@ impl TestRun {
             .emit(&start.to_artifact())
             .await?;
 
-        Ok(StartedTestRun { run: self })
+        Ok(StartedTestRun::new(self))
     }
 
     // disabling this for the moment so we don't publish api that's unusable.
@@ -283,9 +285,17 @@ impl TestRunBuilder {
 /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#testrunstart
 pub struct StartedTestRun {
     run: TestRun,
+
+    step_seqno: atomic::AtomicU64,
 }
 
 impl StartedTestRun {
+    fn new(run: TestRun) -> StartedTestRun {
+        StartedTestRun {
+            run,
+            step_seqno: atomic::AtomicU64::new(0),
+        }
+    }
     /// Ends the test run.
     ///
     /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#testrunend
@@ -505,7 +515,8 @@ impl StartedTestRun {
     }
 
     pub fn step(&self, name: &str) -> TestStep {
-        TestStep::new(name, self.run.state.clone())
+        let step_id = format!("step_{}", self.step_seqno.fetch_add(1, Ordering::AcqRel));
+        TestStep::new(&step_id, name, self.run.state.clone())
     }
 }
 

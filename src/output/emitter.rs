@@ -84,9 +84,9 @@ impl StdoutWriter {
 }
 
 pub struct JsonEmitter {
-    sequence_no: Arc<atomic::AtomicU64>,
     timezone: chrono_tz::Tz,
     writer: WriterType,
+    seqno: Arc<atomic::AtomicU64>,
 }
 
 impl JsonEmitter {
@@ -94,7 +94,7 @@ impl JsonEmitter {
         JsonEmitter {
             timezone,
             writer,
-            sequence_no: Arc::new(atomic::AtomicU64::new(0)),
+            seqno: Arc::new(atomic::AtomicU64::new(0)),
         }
     }
 
@@ -110,8 +110,8 @@ impl JsonEmitter {
     }
 
     fn next_sequence_no(&self) -> u64 {
-        self.sequence_no.fetch_add(1, atomic::Ordering::SeqCst);
-        self.sequence_no.load(atomic::Ordering::SeqCst)
+        self.seqno.fetch_add(1, atomic::Ordering::SeqCst);
+        self.seqno.load(atomic::Ordering::SeqCst)
     }
 
     pub async fn emit(&self, object: &spec::RootArtifact) -> Result<(), WriterError> {

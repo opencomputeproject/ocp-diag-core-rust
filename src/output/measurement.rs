@@ -15,22 +15,25 @@ use tokio::sync::Mutex;
 
 use crate::output as tv;
 use crate::spec;
-use tv::{dut, emitter, state};
+use tv::{dut, emitter, step};
 
 /// The measurement series.
 /// A Measurement Series is a time-series list of measurements.
 ///
 /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#measurementseriesstart
-pub struct MeasurementSeries {
-    state: Arc<Mutex<state::TestState>>,
+pub struct MeasurementSeries<'a> {
+    // note: intentional design to only allow 1 thread to output; may need
+    // revisiting in the future, if there's a case for multithreaded writers
+    emitter: &'a step::StepEmitter,
+
     seq_no: Arc<Mutex<atomic::AtomicU64>>,
     start: MeasurementSeriesStart,
 }
 
-impl MeasurementSeries {
-    pub(crate) fn new(series_id: &str, name: &str, state: Arc<Mutex<state::TestState>>) -> Self {
+impl<'a> MeasurementSeries<'a> {
+    pub(crate) fn new(series_id: &str, name: &str, emitter: &'a step::StepEmitter) -> Self {
         Self {
-            state,
+            emitter,
             seq_no: Arc::new(Mutex::new(atomic::AtomicU64::new(0))),
             start: MeasurementSeriesStart::new(name, series_id),
         }
@@ -38,10 +41,10 @@ impl MeasurementSeries {
 
     pub(crate) fn new_with_details(
         start: MeasurementSeriesStart,
-        state: Arc<Mutex<state::TestState>>,
+        emitter: &'a step::StepEmitter,
     ) -> Self {
         Self {
-            state,
+            emitter,
             seq_no: Arc::new(Mutex::new(atomic::AtomicU64::new(0))),
             start,
         }
@@ -78,11 +81,10 @@ impl MeasurementSeries {
     /// # });
     /// ```
     pub async fn start(&self) -> Result<(), emitter::WriterError> {
-        self.state
-            .lock()
-            .await
-            .emitter
-            .emit(&self.start.to_artifact())
+        self.emitter
+            .emit(&spec::TestStepArtifactDescendant::MeasurementSeriesStart(
+                self.start.to_artifact(),
+            ))
             .await?;
         Ok(())
     }
@@ -110,12 +112,12 @@ impl MeasurementSeries {
     pub async fn end(&self) -> Result<(), emitter::WriterError> {
         let end =
             MeasurementSeriesEnd::new(self.start.get_series_id(), self.current_sequence_no().await);
-        self.state
-            .lock()
-            .await
-            .emitter
-            .emit(&end.to_artifact())
+        self.emitter
+            .emit(&spec::TestStepArtifactDescendant::MeasurementSeriesEnd(
+                end.to_artifact(),
+            ))
             .await?;
+
         Ok(())
     }
 
@@ -147,12 +149,13 @@ impl MeasurementSeries {
             None,
         );
         self.increment_sequence_no().await;
-        self.state
-            .lock()
-            .await
-            .emitter
-            .emit(&element.to_artifact())
+
+        self.emitter
+            .emit(&spec::TestStepArtifactDescendant::MeasurementSeriesElement(
+                element.to_artifact(),
+            ))
             .await?;
+
         Ok(())
     }
 
@@ -191,12 +194,13 @@ impl MeasurementSeries {
             )),
         );
         self.increment_sequence_no().await;
-        self.state
-            .lock()
-            .await
-            .emitter
-            .emit(&element.to_artifact())
+
+        self.emitter
+            .emit(&spec::TestStepArtifactDescendant::MeasurementSeriesElement(
+                element.to_artifact(),
+            ))
             .await?;
+
         Ok(())
     }
 
@@ -228,10 +232,10 @@ impl MeasurementSeries {
     /// # Ok::<(), WriterError>(())
     /// # });
     /// ```
-    pub async fn scope<'a, F, R>(&'a self, func: F) -> Result<(), emitter::WriterError>
+    pub async fn scope<'s, F, R>(&'s self, func: F) -> Result<(), emitter::WriterError>
     where
         R: Future<Output = Result<(), emitter::WriterError>>,
-        F: std::ops::FnOnce(&'a MeasurementSeries) -> R,
+        F: std::ops::FnOnce(&'s MeasurementSeries) -> R,
     {
         self.start().await?;
         func(self).await?;
@@ -406,27 +410,25 @@ impl Measurement {
     /// let measurement = Measurement::new("name", 50.into());
     /// let _ = measurement.to_artifact();
     /// ```
-    pub fn to_artifact(&self) -> spec::RootArtifact {
-        spec::RootArtifact::TestStepArtifact(spec::TestStepArtifact {
-            descendant: spec::TestStepArtifactDescendant::Measurement(spec::Measurement {
-                name: self.name.clone(),
-                unit: self.unit.clone(),
-                value: self.value.clone(),
-                validators: self
-                    .validators
-                    .clone()
-                    .map(|vals| vals.iter().map(|val| val.to_spec()).collect()),
-                hardware_info_id: self
-                    .hardware_info
-                    .as_ref()
-                    .map(|hardware_info| hardware_info.id().to_owned()),
-                subcomponent: self
-                    .subcomponent
-                    .as_ref()
-                    .map(|subcomponent| subcomponent.to_spec()),
-                metadata: self.metadata.clone(),
-            }),
-        })
+    pub fn to_artifact(&self) -> spec::Measurement {
+        spec::Measurement {
+            name: self.name.clone(),
+            unit: self.unit.clone(),
+            value: self.value.clone(),
+            validators: self
+                .validators
+                .clone()
+                .map(|vals| vals.iter().map(|val| val.to_spec()).collect()),
+            hardware_info_id: self
+                .hardware_info
+                .as_ref()
+                .map(|hardware_info| hardware_info.id().to_owned()),
+            subcomponent: self
+                .subcomponent
+                .as_ref()
+                .map(|subcomponent| subcomponent.to_spec()),
+            metadata: self.metadata.clone(),
+        }
     }
 }
 
@@ -634,29 +636,25 @@ impl MeasurementSeriesStart {
         MeasurementSeriesStartBuilder::new(name, series_id)
     }
 
-    pub fn to_artifact(&self) -> spec::RootArtifact {
-        spec::RootArtifact::TestStepArtifact(spec::TestStepArtifact {
-            descendant: spec::TestStepArtifactDescendant::MeasurementSeriesStart(
-                spec::MeasurementSeriesStart {
-                    name: self.name.clone(),
-                    unit: self.unit.clone(),
-                    series_id: self.series_id.clone(),
-                    validators: self
-                        .validators
-                        .clone()
-                        .map(|vals| vals.iter().map(|val| val.to_spec()).collect()),
-                    hardware_info: self
-                        .hardware_info
-                        .as_ref()
-                        .map(|hardware_info| hardware_info.to_spec()),
-                    subcomponent: self
-                        .subcomponent
-                        .as_ref()
-                        .map(|subcomponent| subcomponent.to_spec()),
-                    metadata: self.metadata.clone(),
-                },
-            ),
-        })
+    pub fn to_artifact(&self) -> spec::MeasurementSeriesStart {
+        spec::MeasurementSeriesStart {
+            name: self.name.clone(),
+            unit: self.unit.clone(),
+            series_id: self.series_id.clone(),
+            validators: self
+                .validators
+                .clone()
+                .map(|vals| vals.iter().map(|val| val.to_spec()).collect()),
+            hardware_info: self
+                .hardware_info
+                .as_ref()
+                .map(|hardware_info| hardware_info.to_spec()),
+            subcomponent: self
+                .subcomponent
+                .as_ref()
+                .map(|subcomponent| subcomponent.to_spec()),
+            metadata: self.metadata.clone(),
+        }
     }
 
     pub fn get_series_id(&self) -> &str {
@@ -759,15 +757,11 @@ impl MeasurementSeriesEnd {
         }
     }
 
-    pub fn to_artifact(&self) -> spec::RootArtifact {
-        spec::RootArtifact::TestStepArtifact(spec::TestStepArtifact {
-            descendant: spec::TestStepArtifactDescendant::MeasurementSeriesEnd(
-                spec::MeasurementSeriesEnd {
-                    series_id: self.series_id.clone(),
-                    total_count: self.total_count,
-                },
-            ),
-        })
+    pub fn to_artifact(&self) -> spec::MeasurementSeriesEnd {
+        spec::MeasurementSeriesEnd {
+            series_id: self.series_id.clone(),
+            total_count: self.total_count,
+        }
     }
 }
 
@@ -795,18 +789,14 @@ impl MeasurementSeriesElement {
         }
     }
 
-    pub fn to_artifact(&self) -> spec::RootArtifact {
-        spec::RootArtifact::TestStepArtifact(spec::TestStepArtifact {
-            descendant: spec::TestStepArtifactDescendant::MeasurementSeriesElement(
-                spec::MeasurementSeriesElement {
-                    index: self.index,
-                    value: self.value.clone(),
-                    timestamp: self.timestamp,
-                    series_id: self.series_id.clone(),
-                    metadata: self.metadata.clone(),
-                },
-            ),
-        })
+    pub fn to_artifact(&self) -> spec::MeasurementSeriesElement {
+        spec::MeasurementSeriesElement {
+            index: self.index,
+            value: self.value.clone(),
+            timestamp: self.timestamp,
+            series_id: self.series_id.clone(),
+            metadata: self.metadata.clone(),
+        }
     }
 }
 
@@ -829,17 +819,15 @@ mod tests {
         let artifact = measurement.to_artifact();
         assert_eq!(
             artifact,
-            spec::RootArtifact::TestStepArtifact(spec::TestStepArtifact {
-                descendant: spec::TestStepArtifactDescendant::Measurement(spec::Measurement {
-                    name: name.to_string(),
-                    unit: None,
-                    value,
-                    validators: None,
-                    hardware_info_id: None,
-                    subcomponent: None,
-                    metadata: None,
-                }),
-            })
+            spec::Measurement {
+                name: name.to_string(),
+                unit: None,
+                value,
+                validators: None,
+                hardware_info_id: None,
+                subcomponent: None,
+                metadata: None,
+            }
         );
 
         Ok(())
@@ -874,17 +862,15 @@ mod tests {
         let artifact = measurement.to_artifact();
         assert_eq!(
             artifact,
-            spec::RootArtifact::TestStepArtifact(spec::TestStepArtifact {
-                descendant: spec::TestStepArtifactDescendant::Measurement(spec::Measurement {
-                    name,
-                    unit: Some(unit.to_string()),
-                    value,
-                    validators: Some(vec![validator.to_spec(), validator.to_spec()]),
-                    hardware_info_id: Some(hardware_info.to_spec().id.clone()),
-                    subcomponent: Some(subcomponent.to_spec()),
-                    metadata: Some(metadata),
-                }),
-            })
+            spec::Measurement {
+                name,
+                unit: Some(unit.to_string()),
+                value,
+                validators: Some(vec![validator.to_spec(), validator.to_spec()]),
+                hardware_info_id: Some(hardware_info.to_spec().id.clone()),
+                subcomponent: Some(subcomponent.to_spec()),
+                metadata: Some(metadata),
+            }
         );
 
         Ok(())
@@ -899,19 +885,15 @@ mod tests {
         let artifact = series.to_artifact();
         assert_eq!(
             artifact,
-            spec::RootArtifact::TestStepArtifact(spec::TestStepArtifact {
-                descendant: spec::TestStepArtifactDescendant::MeasurementSeriesStart(
-                    spec::MeasurementSeriesStart {
-                        name: name.to_string(),
-                        unit: None,
-                        series_id: series_id.to_string(),
-                        validators: None,
-                        hardware_info: None,
-                        subcomponent: None,
-                        metadata: None,
-                    }
-                ),
-            })
+            spec::MeasurementSeriesStart {
+                name: name.to_string(),
+                unit: None,
+                series_id: series_id.to_string(),
+                validators: None,
+                hardware_info: None,
+                subcomponent: None,
+                metadata: None,
+            }
         );
 
         Ok(())
@@ -938,22 +920,18 @@ mod tests {
         let artifact = series.to_artifact();
         assert_eq!(
             artifact,
-            spec::RootArtifact::TestStepArtifact(spec::TestStepArtifact {
-                descendant: spec::TestStepArtifactDescendant::MeasurementSeriesStart(
-                    spec::MeasurementSeriesStart {
-                        name,
-                        unit: Some("unit".to_string()),
-                        series_id: series_id.to_string(),
-                        validators: Some(vec![validator.to_spec(), validator2.to_spec()]),
-                        hardware_info: Some(hw_info.to_spec()),
-                        subcomponent: Some(subcomponent.to_spec()),
-                        metadata: Some(serde_json::Map::from_iter([
-                            ("key".to_string(), "value".into()),
-                            ("key2".to_string(), "value2".into())
-                        ])),
-                    }
-                ),
-            })
+            spec::MeasurementSeriesStart {
+                name,
+                unit: Some("unit".to_string()),
+                series_id: series_id.to_string(),
+                validators: Some(vec![validator.to_spec(), validator2.to_spec()]),
+                hardware_info: Some(hw_info.to_spec()),
+                subcomponent: Some(subcomponent.to_spec()),
+                metadata: Some(serde_json::Map::from_iter([
+                    ("key".to_string(), "value".into()),
+                    ("key2".to_string(), "value2".into())
+                ])),
+            }
         );
 
         Ok(())
@@ -967,14 +945,10 @@ mod tests {
         let artifact = series.to_artifact();
         assert_eq!(
             artifact,
-            spec::RootArtifact::TestStepArtifact(spec::TestStepArtifact {
-                descendant: spec::TestStepArtifactDescendant::MeasurementSeriesEnd(
-                    spec::MeasurementSeriesEnd {
-                        series_id: series_id.to_string(),
-                        total_count: 1,
-                    }
-                ),
-            })
+            spec::MeasurementSeriesEnd {
+                series_id: series_id.to_string(),
+                total_count: 1,
+            }
         );
 
         Ok(())
