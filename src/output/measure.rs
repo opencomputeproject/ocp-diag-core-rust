@@ -180,7 +180,7 @@ impl StartedMeasurementSeries {
         let element = spec::MeasurementSeriesElement {
             index: self.incr_seqno(),
             value: value.clone(),
-            timestamp: chrono::Local::now().with_timezone(&chrono_tz::Tz::UTC),
+            timestamp: self.parent.emitter.timestamp_provider().now(),
             series_id: self.parent.start.series_id.clone(),
             metadata: None,
         };
@@ -223,7 +223,7 @@ impl StartedMeasurementSeries {
         let element = spec::MeasurementSeriesElement {
             index: self.incr_seqno(),
             value: value.clone(),
-            timestamp: chrono::Local::now().with_timezone(&chrono_tz::Tz::UTC),
+            timestamp: self.parent.emitter.timestamp_provider().now(),
             series_id: self.parent.start.series_id.clone(),
             metadata: Some(Map::from_iter(
                 metadata.iter().map(|(k, v)| (k.to_string(), v.clone())),

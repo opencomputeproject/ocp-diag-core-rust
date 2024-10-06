@@ -14,8 +14,8 @@ use crate::spec::{self, TestStepArtifactImpl};
 use tv::measure::MeasurementSeries;
 use tv::{emitter, error, log, measure};
 
-use super::JsonEmitter;
 use super::WriterError;
+use super::{JsonEmitter, TimestampProvider};
 
 /// A single test step in the scope of a [`TestRun`].
 ///
@@ -514,5 +514,9 @@ impl StepEmitter {
         self.run_emitter.emit(&root).await?;
 
         Ok(())
+    }
+
+    pub fn timestamp_provider(&self) -> &dyn TimestampProvider {
+        &*self.run_emitter.timestamp_provider
     }
 }

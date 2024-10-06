@@ -12,7 +12,7 @@ use crate::output::emitter;
 
 /// The configuration repository for the TestRun.
 pub struct Config {
-    pub(crate) timezone: chrono_tz::Tz,
+    pub(crate) timestamp_provider: Box<dyn TimestampProvider + Send + Sync + 'static>,
     pub(crate) writer: emitter::WriterType,
 }
 
@@ -32,20 +32,28 @@ impl Config {
 
 /// The builder for the [`Config`] object.
 pub struct ConfigBuilder {
-    timezone: Option<chrono_tz::Tz>,
+    timestamp_provider: Box<dyn TimestampProvider + Send + Sync + 'static>,
     writer: Option<emitter::WriterType>,
 }
 
 impl ConfigBuilder {
     fn new() -> Self {
         Self {
-            timezone: None,
+            timestamp_provider: Box::new(ConfiguredTzProvider { tz: chrono_tz::UTC }),
             writer: Some(emitter::WriterType::Stdout(emitter::StdoutWriter::new())),
         }
     }
 
     pub fn timezone(mut self, timezone: chrono_tz::Tz) -> Self {
-        self.timezone = Some(timezone);
+        self.timestamp_provider = Box::new(ConfiguredTzProvider { tz: timezone });
+        self
+    }
+
+    pub fn with_timestamp_provider(
+        mut self,
+        timestamp_provider: Box<dyn TimestampProvider + Send + Sync + 'static>,
+    ) -> Self {
+        self.timestamp_provider = timestamp_provider;
         self
     }
 
@@ -68,10 +76,37 @@ impl ConfigBuilder {
 
     pub fn build(self) -> Config {
         Config {
-            timezone: self.timezone.unwrap_or(chrono_tz::UTC),
+            timestamp_provider: self.timestamp_provider,
             writer: self
                 .writer
                 .unwrap_or(emitter::WriterType::Stdout(emitter::StdoutWriter::new())),
         }
+    }
+}
+
+pub trait TimestampProvider {
+    fn now(&self) -> chrono::DateTime<chrono_tz::Tz>;
+
+    fn to_string(&self) -> String {
+        self.now()
+            .to_rfc3339_opts(chrono::SecondsFormat::Millis, true)
+    }
+}
+
+struct ConfiguredTzProvider {
+    tz: chrono_tz::Tz,
+}
+
+impl TimestampProvider for ConfiguredTzProvider {
+    fn now(&self) -> chrono::DateTime<chrono_tz::Tz> {
+        chrono::Local::now().with_timezone(&self.tz)
+    }
+}
+
+pub struct NullTimestampProvider {}
+
+impl TimestampProvider for NullTimestampProvider {
+    fn now(&self) -> chrono::DateTime<chrono_tz::Tz> {
+        chrono::DateTime::from_timestamp_nanos(0).with_timezone(&chrono_tz::UTC)
     }
 }
