@@ -55,20 +55,12 @@ fn json_run_default_start() -> serde_json::Value {
         "testRunArtifact": {
             "testRunStart": {
                 "dutInfo": {
-                    "dutInfoId": "dut_id",
-
-                    "name": null,
-                    "metadata": null,
-                    "softwareInfos": null,
-                    "hardwareInfos": null,
-                    "platformInfos": null
+                    "dutInfoId": "dut_id"
                 },
                 "name": "run_name",
                 "parameters": {},
                 "version": "1.0",
-
-                "commandLine": "",
-                "metadata": null,
+                "commandLine": ""
             }
         },
         "sequenceNumber": 1,
@@ -195,9 +187,7 @@ async fn test_testrun_with_log() -> Result<()> {
             "testRunArtifact": {
                 "log": {
                     "message": "This is a log message with INFO severity",
-                    "severity": "INFO",
-
-                    "sourceLocation": null,
+                    "severity": "INFO"
                 }
             },
             "sequenceNumber": 2,
@@ -264,11 +254,7 @@ async fn test_testrun_with_error() -> Result<()> {
         json!({
             "testRunArtifact": {
                 "error": {
-                    "symptom": "symptom",
-
-                    "message": null,
-                    "softwareInfoIds": null,
-                    "sourceLocation": null,
+                    "symptom": "symptom"
                 }
             },
             "sequenceNumber": 2,
@@ -292,10 +278,7 @@ async fn test_testrun_with_error_with_message() -> Result<()> {
             "testRunArtifact": {
                 "error": {
                     "message": "Error message",
-                    "symptom": "symptom",
-
-                    "sourceLocation": null,
-                    "softwareInfoIds": null,
+                    "symptom": "symptom"
                 }
             },
             "sequenceNumber": 2,
@@ -321,12 +304,7 @@ async fn test_testrun_with_error_with_details() -> Result<()> {
                     "message": "Error message",
                     "softwareInfoIds": [{
                         "name": "name",
-                        "softwareInfoId": "id",
-
-                        "softwareType": null,
-                        "version": null,
-                        "computerSystem": null,
-                        "revision": null,
+                        "softwareInfoId": "id"
                     }],
                     "sourceLocation": {
                         "file": "file",
@@ -415,9 +393,7 @@ async fn test_testrun_step_log() -> Result<()> {
                 "testStepId": "step_0",
                 "log": {
                     "message": "This is a log message with INFO severity",
-                    "severity": "INFO",
-
-                    "sourceLocation": null,
+                    "severity": "INFO"
                 }
             },
             "sequenceNumber": 3,
@@ -494,11 +470,7 @@ async fn test_testrun_step_error() -> Result<()> {
             "testStepArtifact": {
                 "testStepId": "step_0",
                 "error": {
-                    "symptom": "symptom",
-
-                    "sourceLocation": null,
-                    "softwareInfoIds": null,
-                    "message": null,
+                    "symptom": "symptom"
                 }
             },
             "sequenceNumber": 3,
@@ -530,10 +502,7 @@ async fn test_testrun_step_error_with_message() -> Result<()> {
                 "testStepId": "step_0",
                 "error": {
                     "message": "Error message",
-                    "symptom": "symptom",
-
-                    "sourceLocation": null,
-                    "softwareInfoIds": null,
+                    "symptom": "symptom"
                 }
             },
             "sequenceNumber": 3,
@@ -567,12 +536,7 @@ async fn test_testrun_step_error_with_details() -> Result<()> {
                     "message": "Error message",
                     "softwareInfoIds": [{
                         "name": "name",
-                        "softwareInfoId": "id",
-
-                        "revision": null,
-                        "computerSystem": null,
-                        "version": null,
-                        "softwareType": null,
+                        "softwareInfoId": "id"
                     }],
                     "sourceLocation": {
                         "file": "file",
@@ -655,13 +619,7 @@ async fn test_step_with_measurement() -> Result<()> {
                 "testStepId": "step_0",
                 "measurement": {
                     "name": "name",
-                    "value": 50,
-
-                    "metadata": null,
-                    "hardwareInfoId": null,
-                    "subcomponent": null,
-                    "unit": null,
-                    "validators": null,
+                    "value": 50
                 }
             },
             "sequenceNumber": 3,
@@ -698,23 +656,13 @@ async fn test_step_with_measurement_builder() -> Result<()> {
                     },
                     "name": "name",
                     "subcomponent": {
-                        "name": "name",
-
-                        "type": null,
-                        "revision": null,
-                        "version": null,
-                        "location": null,
+                        "name": "name"
                     },
                     "validators": [{
                         "type": "EQUAL",
-                        "value": 30,
-
-                        "name": null,
-                        "metadata": null,
+                        "value": 30
                     }],
-                    "value": 50,
-
-                    "unit": null,
+                    "value": 50
                 }
             },
             "sequenceNumber": 3,
@@ -752,13 +700,7 @@ async fn test_step_with_measurement_series() -> Result<()> {
                 "testStepId": "step_0",
                 "measurementSeriesStart": {
                     "measurementSeriesId": "series_0",
-                    "name": "name",
-
-                    "unit": null,
-                    "hardwareInfoId": null,
-                    "metadata": null,
-                    "subcomponent": null,
-                    "validators": null,
+                    "name": "name"
                 }
             },
             "sequenceNumber": 3,
@@ -802,13 +744,7 @@ async fn test_step_with_multiple_measurement_series() -> Result<()> {
                 "testStepId": "step_0",
                 "measurementSeriesStart": {
                     "measurementSeriesId": "series_0",
-                    "name": "name",
-
-                    "unit": null,
-                    "subcomponent": null,
-                    "metadata": null,
-                    "validators": null,
-                    "hardwareInfoId": null,
+                    "name": "name"
                 }
             },
             "sequenceNumber": 3,
@@ -830,13 +766,7 @@ async fn test_step_with_multiple_measurement_series() -> Result<()> {
                 "testStepId": "step_0",
                 "measurementSeriesStart": {
                     "measurementSeriesId": "series_1",
-                    "name": "name",
-
-                    "unit": null,
-                    "subcomponent": null,
-                    "metadata": null,
-                    "validators": null,
-                    "hardwareInfoId": null,
+                    "name": "name"
                 }
             },
             "sequenceNumber": 5,
@@ -883,13 +813,7 @@ async fn test_step_with_measurement_series_with_details() -> Result<()> {
                 "testStepId": "step_0",
                 "measurementSeriesStart": {
                     "measurementSeriesId": "series_id",
-                    "name": "name",
-
-                    "unit": null,
-                    "hardwareInfoId": null,
-                    "metadata": null,
-                    "subcomponent": null,
-                    "validators": null,
+                    "name": "name"
                 }
             },
             "sequenceNumber": 3,
@@ -936,18 +860,7 @@ async fn test_step_with_measurement_series_with_details_and_start_builder() -> R
                 "measurementSeriesStart": {
                     "hardwareInfoId": {
                         "hardwareInfoId": "id",
-                        "name": "name",
-
-                        "serialNumber": null,
-                        "revision": null,
-                        "computerSystem": null,
-                        "location": null,
-                        "odataId": null,
-                        "version": null,
-                        "manufacturerPartNumber": null,
-                        "manufacturer": null,
-                        "manager": null,
-                        "partNumber": null,
+                        "name": "name"
                     },
                     "measurementSeriesId": "series_id",
                     "metadata": {
@@ -955,22 +868,12 @@ async fn test_step_with_measurement_series_with_details_and_start_builder() -> R
                     },
                     "name": "name",
                     "subcomponent": {
-                        "name": "name",
-
-                        "type": null,
-                        "version": null,
-                        "location": null,
-                        "revision": null
+                        "name": "name"
                     },
-                    "validators":[{
+                    "validators": [{
                         "type": "EQUAL",
-                        "value": 30,
-
-                        "metadata": null,
-                        "name": null,
-                    }],
-
-                    "unit": null,
+                        "value": 30
+                    }]
                 }
             },
             "sequenceNumber": 3,
@@ -1024,13 +927,7 @@ async fn test_step_with_measurement_series_element() -> Result<()> {
                 "testStepId": "step_0",
                 "measurementSeriesStart": {
                     "measurementSeriesId": "series_0",
-                    "name": "name",
-
-                    "unit": null,
-                    "hardwareInfoId": null,
-                    "metadata": null,
-                    "subcomponent": null,
-                    "validators": null,
+                    "name": "name"
                 }
             },
             "sequenceNumber": 3,
@@ -1043,9 +940,7 @@ async fn test_step_with_measurement_series_element() -> Result<()> {
                     "index": 0,
                     "measurementSeriesId": "series_0",
                     "value": 60,
-                    "timestamp": DATETIME_FORMATTED,
-
-                    "metadata": null,
+                    "timestamp": DATETIME_FORMATTED
                 }
             },
             "sequenceNumber": 4,
@@ -1090,13 +985,7 @@ async fn test_step_with_measurement_series_element_index_no() -> Result<()> {
                 "testStepId": "step_0",
                 "measurementSeriesStart": {
                     "measurementSeriesId": "series_0",
-                    "name": "name",
-
-                    "unit": null,
-                    "hardwareInfoId": null,
-                    "metadata": null,
-                    "subcomponent": null,
-                    "validators": null,
+                    "name": "name"
                 }
             },
             "sequenceNumber": 3,
@@ -1109,9 +998,7 @@ async fn test_step_with_measurement_series_element_index_no() -> Result<()> {
                     "index": 0,
                     "measurementSeriesId": "series_0",
                     "value": 60,
-                    "timestamp": DATETIME_FORMATTED,
-
-                    "metadata": null,
+                    "timestamp": DATETIME_FORMATTED
                 }
             },
             "sequenceNumber": 4,
@@ -1124,9 +1011,7 @@ async fn test_step_with_measurement_series_element_index_no() -> Result<()> {
                     "index": 1,
                     "measurementSeriesId": "series_0",
                     "value": 70,
-                    "timestamp": DATETIME_FORMATTED,
-
-                    "metadata": null,
+                    "timestamp": DATETIME_FORMATTED
                 }
             },
             "sequenceNumber": 5,
@@ -1139,9 +1024,7 @@ async fn test_step_with_measurement_series_element_index_no() -> Result<()> {
                     "index": 2,
                     "measurementSeriesId": "series_0",
                     "value": 80,
-                    "timestamp": DATETIME_FORMATTED,
-
-                    "metadata": null,
+                    "timestamp": DATETIME_FORMATTED
                 }
             },
             "sequenceNumber": 6,
@@ -1189,14 +1072,7 @@ async fn test_step_with_measurement_series_element_with_metadata() -> Result<()>
                 "testStepId": "step_0",
                 "measurementSeriesStart": {
                     "measurementSeriesId": "series_0",
-                    "name": "name",
-
-
-                    "unit": null,
-                    "hardwareInfoId": null,
-                    "metadata": null,
-                    "subcomponent": null,
-                    "validators": null,
+                    "name": "name"
                 }
             },
             "sequenceNumber": 3,
@@ -1259,13 +1135,7 @@ async fn test_step_with_measurement_series_element_with_metadata_index_no() -> R
                 "testStepId": "step_0",
                 "measurementSeriesStart": {
                     "measurementSeriesId": "series_0",
-                    "name": "name",
-
-                    "unit": null,
-                    "hardwareInfoId": null,
-                    "metadata": null,
-                    "subcomponent": null,
-                    "validators": null,
+                    "name": "name"
                 }
             },
             "sequenceNumber": 3,
@@ -1459,6 +1329,7 @@ async fn test_config_builder_with_file() -> Result<()> {
         .config(
             Config::builder()
                 .timezone(chrono_tz::Europe::Rome)
+                .with_timestamp_provider(Box::new(FixedTsProvider {}))
                 .with_file_output(output_file.path())
                 .await?
                 .build(),
@@ -1510,13 +1381,7 @@ async fn test_testrun_metadata() -> Result<()> {
             "testRunArtifact": {
                 "testRunStart": {
                     "dutInfo": {
-                        "dutInfoId": "dut_id",
-
-                        "name": null,
-                        "metadata": null,
-                        "softwareInfos": null,
-                        "hardwareInfos": null,
-                        "platformInfos": null
+                        "dutInfoId": "dut_id"
                     },
                     "metadata": {"key": "value"},
                     "name": "run_name",
@@ -1554,13 +1419,7 @@ async fn test_testrun_builder() -> Result<()> {
                 "testRunStart": {
                     "commandLine": "cmd_line",
                     "dutInfo": {
-                        "dutInfoId": "dut_id",
-
-                        "name": null,
-                        "metadata": null,
-                        "softwareInfos": null,
-                        "hardwareInfos": null,
-                        "platformInfos": null
+                        "dutInfoId": "dut_id"
                     },
                     "metadata": {
                         "key": "value",

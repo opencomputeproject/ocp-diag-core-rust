@@ -273,6 +273,7 @@ pub struct TestRunStart {
     #[serde(rename = "dutInfo")]
     pub dut_info: DutInfo,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "metadata")]
     pub metadata: Option<Map<String, Value>>,
 }
@@ -288,18 +289,23 @@ pub struct DutInfo {
     #[serde(rename = "dutInfoId")]
     pub id: String,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "name")]
     pub name: Option<String>,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "platformInfos")]
     pub platform_infos: Option<Vec<PlatformInfo>>,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "softwareInfos")]
     pub software_infos: Option<Vec<SoftwareInfo>>,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "hardwareInfos")]
     pub hardware_infos: Option<Vec<HardwareInfo>>,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "metadata")]
     pub metadata: Option<Map<String, Value>>,
 }
@@ -330,15 +336,19 @@ pub struct SoftwareInfo {
     #[serde(rename = "name")]
     pub name: String,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "version")]
     pub version: Option<String>,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "revision")]
     pub revision: Option<String>,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "softwareType")]
     pub software_type: Option<SoftwareType>,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "computerSystem")]
     pub computer_system: Option<String>,
 }
@@ -357,33 +367,43 @@ pub struct HardwareInfo {
     #[serde(rename = "name")]
     pub name: String,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "version")]
     pub version: Option<String>,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "revision")]
     pub revision: Option<String>,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "location")]
     pub location: Option<String>,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "serialNumber")]
     pub serial_no: Option<String>,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "partNumber")]
     pub part_no: Option<String>,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "manufacturer")]
     pub manufacturer: Option<String>,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "manufacturerPartNumber")]
     pub manufacturer_part_no: Option<String>,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "odataId")]
     pub odata_id: Option<String>,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "computerSystem")]
     pub computer_system: Option<String>,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "manager")]
     pub manager: Option<String>,
 }
@@ -415,13 +435,16 @@ pub struct Error {
     #[serde(rename = "symptom")]
     pub symptom: String,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "message")]
     pub message: Option<String>,
 
     // TODO: support this field during serialization to print only the id of SoftwareInfo struct
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "softwareInfoIds")]
     pub software_infos: Option<Vec<SoftwareInfo>>,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "sourceLocation")]
     pub source_location: Option<SourceLocation>,
 }
@@ -440,6 +463,7 @@ pub struct Log {
     #[serde(rename = "message")]
     pub message: String,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "sourceLocation")]
     pub source_location: Option<SourceLocation>,
 }
@@ -548,18 +572,23 @@ pub struct Measurement {
     #[serde(rename = "value")]
     pub value: Value,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "unit")]
     pub unit: Option<String>,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "validators")]
     pub validators: Option<Vec<Validator>>,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "hardwareInfoId")]
     pub hardware_info_id: Option<String>,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "subcomponent")]
     pub subcomponent: Option<Subcomponent>,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "metadata")]
     pub metadata: Option<Map<String, Value>>,
 }
@@ -572,6 +601,7 @@ pub struct Measurement {
 #[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename = "validator")]
 pub struct Validator {
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "name")]
     pub name: Option<String>,
 
@@ -581,6 +611,7 @@ pub struct Validator {
     #[serde(rename = "value")]
     pub value: Value,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "metadata")]
     pub metadata: Option<Map<String, Value>>,
 }
@@ -593,18 +624,22 @@ pub struct Validator {
 #[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename = "subcomponent")]
 pub struct Subcomponent {
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "type")]
     pub subcomponent_type: Option<SubcomponentType>,
 
     #[serde(rename = "name")]
     pub name: String,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "location")]
     pub location: Option<String>,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "version")]
     pub version: Option<String>,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "revision")]
     pub revision: Option<String>,
 }
@@ -620,21 +655,26 @@ pub struct MeasurementSeriesStart {
     #[serde(rename = "name")]
     pub name: String,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "unit")]
     pub unit: Option<String>,
 
     #[serde(rename = "measurementSeriesId")]
     pub series_id: String,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "validators")]
     pub validators: Option<Vec<Validator>>,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "hardwareInfoId")]
     pub hardware_info: Option<HardwareInfo>,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "subcomponent")]
     pub subcomponent: Option<Subcomponent>,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "metadata")]
     pub metadata: Option<Map<String, Value>>,
 }
@@ -674,6 +714,7 @@ pub struct MeasurementSeriesElement {
     #[serde(rename = "measurementSeriesId")]
     pub series_id: String,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "metadata")]
     pub metadata: Option<Map<String, Value>>,
 }
@@ -692,15 +733,19 @@ pub struct Diagnosis {
     #[serde(rename = "type")]
     pub diagnosis_type: DiagnosisType,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "message")]
     pub message: Option<String>,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "validators")]
     pub hardware_info: Option<HardwareInfo>,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "subComponent")]
     pub subcomponent: Option<Subcomponent>,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "sourceLocation")]
     pub source_location: Option<SourceLocation>,
 }
@@ -722,12 +767,15 @@ pub struct File {
     #[serde(rename = "isSnapshot")]
     pub is_snapshot: bool,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "description")]
     pub description: Option<String>,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "contentType")]
     pub content_type: Option<String>,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "metadata")]
     pub metadata: Option<Map<String, Value>>,
 }

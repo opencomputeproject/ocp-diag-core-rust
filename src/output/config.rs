@@ -86,11 +86,6 @@ impl ConfigBuilder {
 
 pub trait TimestampProvider {
     fn now(&self) -> chrono::DateTime<chrono_tz::Tz>;
-
-    fn to_string(&self) -> String {
-        self.now()
-            .to_rfc3339_opts(chrono::SecondsFormat::Millis, true)
-    }
 }
 
 struct ConfiguredTzProvider {
