@@ -757,7 +757,7 @@ async fn test_step_with_measurement_series() -> Result<()> {
                     "unit": null,
                     "hardwareInfoId": null,
                     "metadata": null,
-                    "subComponent": null,
+                    "subcomponent": null,
                     "validators": null,
                 }
             },
@@ -805,7 +805,7 @@ async fn test_step_with_multiple_measurement_series() -> Result<()> {
                     "name": "name",
 
                     "unit": null,
-                    "subComponent": null,
+                    "subcomponent": null,
                     "metadata": null,
                     "validators": null,
                     "hardwareInfoId": null,
@@ -833,7 +833,7 @@ async fn test_step_with_multiple_measurement_series() -> Result<()> {
                     "name": "name",
 
                     "unit": null,
-                    "subComponent": null,
+                    "subcomponent": null,
                     "metadata": null,
                     "validators": null,
                     "hardwareInfoId": null,
@@ -888,7 +888,7 @@ async fn test_step_with_measurement_series_with_details() -> Result<()> {
                     "unit": null,
                     "hardwareInfoId": null,
                     "metadata": null,
-                    "subComponent": null,
+                    "subcomponent": null,
                     "validators": null,
                 }
             },
@@ -954,7 +954,7 @@ async fn test_step_with_measurement_series_with_details_and_start_builder() -> R
                         "key": "value"
                     },
                     "name": "name",
-                    "subComponent": {
+                    "subcomponent": {
                         "name": "name",
 
                         "type": null,
@@ -1029,7 +1029,7 @@ async fn test_step_with_measurement_series_element() -> Result<()> {
                     "unit": null,
                     "hardwareInfoId": null,
                     "metadata": null,
-                    "subComponent": null,
+                    "subcomponent": null,
                     "validators": null,
                 }
             },
@@ -1095,7 +1095,7 @@ async fn test_step_with_measurement_series_element_index_no() -> Result<()> {
                     "unit": null,
                     "hardwareInfoId": null,
                     "metadata": null,
-                    "subComponent": null,
+                    "subcomponent": null,
                     "validators": null,
                 }
             },
@@ -1195,7 +1195,7 @@ async fn test_step_with_measurement_series_element_with_metadata() -> Result<()>
                     "unit": null,
                     "hardwareInfoId": null,
                     "metadata": null,
-                    "subComponent": null,
+                    "subcomponent": null,
                     "validators": null,
                 }
             },
@@ -1264,7 +1264,7 @@ async fn test_step_with_measurement_series_element_with_metadata_index_no() -> R
                     "unit": null,
                     "hardwareInfoId": null,
                     "metadata": null,
-                    "subComponent": null,
+                    "subcomponent": null,
                     "validators": null,
                 }
             },

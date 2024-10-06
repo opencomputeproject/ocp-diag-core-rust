@@ -632,7 +632,7 @@ pub struct MeasurementSeriesStart {
     #[serde(rename = "hardwareInfoId")]
     pub hardware_info: Option<HardwareInfo>,
 
-    #[serde(rename = "subComponent")]
+    #[serde(rename = "subcomponent")]
     pub subcomponent: Option<Subcomponent>,
 
     #[serde(rename = "metadata")]
