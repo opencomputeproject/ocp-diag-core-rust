@@ -6,14 +6,15 @@
 
 use std::path::Path;
 use std::sync::Arc;
+
 use tokio::sync::Mutex;
 
-use crate::output::emitter;
+use crate::output::writer::{self, BufferWriter, FileWriter, StdoutWriter, WriterType};
 
 /// The configuration repository for the TestRun.
 pub struct Config {
     pub(crate) timestamp_provider: Box<dyn TimestampProvider + Send + Sync + 'static>,
-    pub(crate) writer: emitter::WriterType,
+    pub(crate) writer: WriterType,
 }
 
 impl Config {
@@ -33,14 +34,14 @@ impl Config {
 /// The builder for the [`Config`] object.
 pub struct ConfigBuilder {
     timestamp_provider: Box<dyn TimestampProvider + Send + Sync + 'static>,
-    writer: Option<emitter::WriterType>,
+    writer: Option<WriterType>,
 }
 
 impl ConfigBuilder {
     fn new() -> Self {
         Self {
             timestamp_provider: Box::new(ConfiguredTzProvider { tz: chrono_tz::UTC }),
-            writer: Some(emitter::WriterType::Stdout(emitter::StdoutWriter::new())),
+            writer: Some(WriterType::Stdout(StdoutWriter::new())),
         }
     }
 
@@ -58,19 +59,15 @@ impl ConfigBuilder {
     }
 
     pub fn with_buffer_output(mut self, buffer: Arc<Mutex<Vec<String>>>) -> Self {
-        self.writer = Some(emitter::WriterType::Buffer(emitter::BufferWriter::new(
-            buffer,
-        )));
+        self.writer = Some(WriterType::Buffer(BufferWriter::new(buffer)));
         self
     }
 
     pub async fn with_file_output<P: AsRef<Path>>(
         mut self,
         path: P,
-    ) -> Result<Self, emitter::WriterError> {
-        self.writer = Some(emitter::WriterType::File(
-            emitter::FileWriter::new(path).await?,
-        ));
+    ) -> Result<Self, writer::WriterError> {
+        self.writer = Some(WriterType::File(FileWriter::new(path).await?));
         Ok(self)
     }
 
@@ -79,7 +76,7 @@ impl ConfigBuilder {
             timestamp_provider: self.timestamp_provider,
             writer: self
                 .writer
-                .unwrap_or(emitter::WriterType::Stdout(emitter::StdoutWriter::new())),
+                .unwrap_or(WriterType::Stdout(StdoutWriter::new())),
         }
     }
 }

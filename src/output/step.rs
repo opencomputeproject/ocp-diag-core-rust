@@ -12,9 +12,8 @@ use crate::output as tv;
 use crate::spec::TestStepStart;
 use crate::spec::{self, TestStepArtifactImpl};
 use tv::measure::MeasurementSeries;
-use tv::{emitter, error, log, measure};
+use tv::{error, log, measure, writer};
 
-use super::WriterError;
 use super::{JsonEmitter, TimestampProvider};
 
 /// A single test step in the scope of a [`TestRun`].
@@ -53,7 +52,7 @@ impl TestStep {
     /// # Ok::<(), WriterError>(())
     /// # });
     /// ```
-    pub async fn start(self) -> Result<StartedTestStep, emitter::WriterError> {
+    pub async fn start(self) -> Result<StartedTestStep, writer::WriterError> {
         self.emitter
             .emit(&TestStepArtifactImpl::TestStepStart(TestStepStart {
                 name: self.name.clone(),
@@ -129,7 +128,7 @@ impl StartedTestStep {
     /// # Ok::<(), WriterError>(())
     /// # });
     /// ```
-    pub async fn end(&self, status: spec::TestStatus) -> Result<(), emitter::WriterError> {
+    pub async fn end(&self, status: spec::TestStatus) -> Result<(), writer::WriterError> {
         let end = TestStepArtifactImpl::TestStepEnd(spec::TestStepEnd { status });
 
         self.step.emitter.emit(&end).await?;
@@ -181,7 +180,7 @@ impl StartedTestStep {
         &self,
         severity: spec::LogSeverity,
         msg: &str,
-    ) -> Result<(), emitter::WriterError> {
+    ) -> Result<(), writer::WriterError> {
         let log = log::Log::builder(msg).severity(severity).build();
 
         self.step
@@ -217,7 +216,7 @@ impl StartedTestStep {
     /// # Ok::<(), WriterError>(())
     /// # });
     /// ```
-    pub async fn log_with_details(&self, log: &log::Log) -> Result<(), emitter::WriterError> {
+    pub async fn log_with_details(&self, log: &log::Log) -> Result<(), writer::WriterError> {
         self.step
             .emitter
             .emit(&TestStepArtifactImpl::Log(log.to_artifact()))
@@ -264,7 +263,7 @@ impl StartedTestStep {
     /// # Ok::<(), WriterError>(())
     /// # });
     /// ```
-    pub async fn error(&self, symptom: &str) -> Result<(), emitter::WriterError> {
+    pub async fn error(&self, symptom: &str) -> Result<(), writer::WriterError> {
         let error = error::Error::builder(symptom).build();
 
         self.step
@@ -318,7 +317,7 @@ impl StartedTestStep {
         &self,
         symptom: &str,
         msg: &str,
-    ) -> Result<(), emitter::WriterError> {
+    ) -> Result<(), writer::WriterError> {
         let error = error::Error::builder(symptom).message(msg).build();
 
         self.step
@@ -358,7 +357,7 @@ impl StartedTestStep {
     pub async fn error_with_details(
         &self,
         error: &error::Error,
-    ) -> Result<(), emitter::WriterError> {
+    ) -> Result<(), writer::WriterError> {
         self.step
             .emitter
             .emit(&TestStepArtifactImpl::Error(error.to_artifact()))
@@ -390,7 +389,7 @@ impl StartedTestStep {
         &self,
         name: &str,
         value: Value,
-    ) -> Result<(), emitter::WriterError> {
+    ) -> Result<(), writer::WriterError> {
         let measurement = measure::Measurement::new(name, value);
 
         self.step
@@ -433,7 +432,7 @@ impl StartedTestStep {
     pub async fn add_measurement_with_details(
         &self,
         measurement: &measure::Measurement,
-    ) -> Result<(), emitter::WriterError> {
+    ) -> Result<(), writer::WriterError> {
         self.step
             .emitter
             .emit(&spec::TestStepArtifactImpl::Measurement(
@@ -505,7 +504,10 @@ pub struct StepEmitter {
 }
 
 impl StepEmitter {
-    pub async fn emit(&self, object: &spec::TestStepArtifactImpl) -> Result<(), WriterError> {
+    pub async fn emit(
+        &self,
+        object: &spec::TestStepArtifactImpl,
+    ) -> Result<(), writer::WriterError> {
         let root = spec::RootImpl::TestStepArtifact(spec::TestStepArtifact {
             id: self.step_id.clone(),
             // TODO: can these copies be avoided?

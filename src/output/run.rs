@@ -15,7 +15,7 @@ use serde_json::Value;
 use crate::output as tv;
 use crate::spec;
 use tv::step::TestStep;
-use tv::{config, dut, emitter, error, log};
+use tv::{config, dut, emitter, error, log, writer};
 
 use super::JsonEmitter;
 
@@ -88,7 +88,7 @@ impl TestRun {
     /// # Ok::<(), WriterError>(())
     /// # });
     /// ```
-    pub async fn start(self) -> Result<StartedTestRun, emitter::WriterError> {
+    pub async fn start(self) -> Result<StartedTestRun, writer::WriterError> {
         // TODO: this likely will go into the emitter since it's not the run's job to emit the schema version
         self.emitter
             .emit(&spec::RootImpl::SchemaVersion(
@@ -309,7 +309,7 @@ impl StartedTestRun {
         &self,
         status: spec::TestStatus,
         result: spec::TestResult,
-    ) -> Result<(), emitter::WriterError> {
+    ) -> Result<(), writer::WriterError> {
         let end = spec::RootImpl::TestRunArtifact(spec::TestRunArtifact {
             artifact: spec::TestRunArtifactImpl::TestRunEnd(spec::TestRunEnd { status, result }),
         });
@@ -344,7 +344,7 @@ impl StartedTestRun {
         &self,
         severity: spec::LogSeverity,
         msg: &str,
-    ) -> Result<(), emitter::WriterError> {
+    ) -> Result<(), writer::WriterError> {
         let log = log::Log::builder(msg).severity(severity).build();
 
         let artifact = spec::TestRunArtifact {
@@ -381,7 +381,7 @@ impl StartedTestRun {
     /// # Ok::<(), WriterError>(())
     /// # });
     /// ```
-    pub async fn log_with_details(&self, log: &log::Log) -> Result<(), emitter::WriterError> {
+    pub async fn log_with_details(&self, log: &log::Log) -> Result<(), writer::WriterError> {
         let artifact = spec::TestRunArtifact {
             artifact: spec::TestRunArtifactImpl::Log(log.to_artifact()),
         };
@@ -411,7 +411,7 @@ impl StartedTestRun {
     /// # Ok::<(), WriterError>(())
     /// # });
     /// ```
-    pub async fn error(&self, symptom: &str) -> Result<(), emitter::WriterError> {
+    pub async fn error(&self, symptom: &str) -> Result<(), writer::WriterError> {
         let error = error::Error::builder(symptom).build();
 
         let artifact = spec::TestRunArtifact {
@@ -448,7 +448,7 @@ impl StartedTestRun {
         &self,
         symptom: &str,
         msg: &str,
-    ) -> Result<(), emitter::WriterError> {
+    ) -> Result<(), writer::WriterError> {
         let error = error::Error::builder(symptom).message(msg).build();
 
         let artifact = spec::TestRunArtifact {
@@ -489,7 +489,7 @@ impl StartedTestRun {
     pub async fn error_with_details(
         &self,
         error: &error::Error,
-    ) -> Result<(), emitter::WriterError> {
+    ) -> Result<(), writer::WriterError> {
         let artifact = spec::TestRunArtifact {
             artifact: spec::TestRunArtifactImpl::Error(error.to_artifact()),
         };

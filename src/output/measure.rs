@@ -12,7 +12,7 @@ use serde_json::Value;
 
 use crate::output as tv;
 use crate::spec;
-use tv::{dut, emitter, step};
+use tv::{dut, step, writer};
 
 /// The measurement series.
 /// A Measurement Series is a time-series list of measurements.
@@ -60,7 +60,7 @@ impl MeasurementSeries {
     /// # Ok::<(), WriterError>(())
     /// # });
     /// ```
-    pub async fn start(self) -> Result<StartedMeasurementSeries, emitter::WriterError> {
+    pub async fn start(self) -> Result<StartedMeasurementSeries, writer::WriterError> {
         self.emitter
             .emit(&spec::TestStepArtifactImpl::MeasurementSeriesStart(
                 self.start.to_artifact(),
@@ -101,9 +101,9 @@ impl MeasurementSeries {
     // /// # Ok::<(), WriterError>(())
     // /// # });
     // /// ```
-    // pub async fn scope<'s, F, R>(&'s self, func: F) -> Result<(), emitter::WriterError>
+    // pub async fn scope<'s, F, R>(&'s self, func: F) -> Result<(), writer::WriterError>
     // where
-    //     R: Future<Output = Result<(), emitter::WriterError>>,
+    //     R: Future<Output = Result<(), writer::WriterError>>,
     //     F: std::ops::FnOnce(&'s MeasurementSeries) -> R,
     // {
     //     self.start().await?;
@@ -143,7 +143,7 @@ impl StartedMeasurementSeries {
     /// # Ok::<(), WriterError>(())
     /// # });
     /// ```
-    pub async fn end(&self) -> Result<(), emitter::WriterError> {
+    pub async fn end(&self) -> Result<(), writer::WriterError> {
         let end = spec::MeasurementSeriesEnd {
             series_id: self.parent.start.series_id.clone(),
             total_count: self.seqno.load(Ordering::Acquire),
@@ -176,7 +176,7 @@ impl StartedMeasurementSeries {
     /// # Ok::<(), WriterError>(())
     /// # });
     /// ```
-    pub async fn add_measurement(&self, value: Value) -> Result<(), emitter::WriterError> {
+    pub async fn add_measurement(&self, value: Value) -> Result<(), writer::WriterError> {
         let element = spec::MeasurementSeriesElement {
             index: self.incr_seqno(),
             value: value.clone(),
@@ -219,7 +219,7 @@ impl StartedMeasurementSeries {
         &self,
         value: Value,
         metadata: Vec<(&str, Value)>,
-    ) -> Result<(), emitter::WriterError> {
+    ) -> Result<(), writer::WriterError> {
         let element = spec::MeasurementSeriesElement {
             index: self.incr_seqno(),
             value: value.clone(),

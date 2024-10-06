@@ -13,6 +13,7 @@ mod macros;
 mod measure;
 mod run;
 mod step;
+mod writer;
 
 pub use crate::spec::LogSeverity;
 pub use crate::spec::TestResult;
@@ -27,5 +28,6 @@ pub use log::*;
 pub use measure::*;
 pub use run::*;
 pub use step::*;
+pub use writer::WriterError;
 
 pub use serde_json::Value;
