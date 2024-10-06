@@ -66,7 +66,7 @@ impl JsonEmitter {
 #[cfg(test)]
 mod tests {
     use anyhow::{anyhow, Result};
-    use assert_json_diff::assert_json_include;
+    use assert_json_diff::assert_json_eq;
     use serde_json::json;
     use tokio::sync::Mutex;
 
@@ -79,7 +79,8 @@ mod tests {
                 "major": spec::SPEC_VERSION.0,
                 "minor": spec::SPEC_VERSION.1,
             },
-            "sequenceNumber": 0
+            "sequenceNumber": 0,
+            "timestamp": config::NullTimestampProvider::FORMATTED,
         });
 
         let buffer = Arc::new(Mutex::new(vec![]));
@@ -98,7 +99,7 @@ mod tests {
         let deserialized = serde_json::from_str::<serde_json::Value>(
             buffer.lock().await.first().ok_or(anyhow!("no outputs"))?,
         )?;
-        assert_json_include!(actual: deserialized, expected: expected);
+        assert_json_eq!(deserialized, expected);
 
         Ok(())
     }
@@ -110,14 +111,16 @@ mod tests {
                 "major": spec::SPEC_VERSION.0,
                 "minor": spec::SPEC_VERSION.1,
             },
-            "sequenceNumber": 0
+            "sequenceNumber": 0,
+            "timestamp": config::NullTimestampProvider::FORMATTED,
         });
         let expected_2 = json!({
             "schemaVersion": {
                 "major": spec::SPEC_VERSION.0,
                 "minor": spec::SPEC_VERSION.1,
             },
-            "sequenceNumber": 1
+            "sequenceNumber": 1,
+            "timestamp": config::NullTimestampProvider::FORMATTED,
         });
 
         let buffer = Arc::new(Mutex::new(vec![]));
@@ -134,12 +137,12 @@ mod tests {
         let deserialized = serde_json::from_str::<serde_json::Value>(
             buffer.lock().await.first().ok_or(anyhow!("no outputs"))?,
         )?;
-        assert_json_include!(actual: deserialized, expected: expected_1);
+        assert_json_eq!(deserialized, expected_1);
 
         let deserialized = serde_json::from_str::<serde_json::Value>(
             buffer.lock().await.get(1).ok_or(anyhow!("no outputs"))?,
         )?;
-        assert_json_include!(actual: deserialized, expected: expected_2);
+        assert_json_eq!(deserialized, expected_2);
 
         Ok(())
     }

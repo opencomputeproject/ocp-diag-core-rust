@@ -106,6 +106,12 @@ impl TimestampProvider for ConfiguredTzProvider {
 
 pub struct NullTimestampProvider {}
 
+impl NullTimestampProvider {
+    // warn: linter is wrong here, this is used in a serde_json::json! block
+    #[allow(dead_code)]
+    pub const FORMATTED: &str = "1970-01-01T00:00:00.000Z";
+}
+
 impl TimestampProvider for NullTimestampProvider {
     fn now(&self) -> chrono::DateTime<chrono_tz::Tz> {
         chrono::DateTime::from_timestamp_nanos(0).with_timezone(&chrono_tz::UTC)

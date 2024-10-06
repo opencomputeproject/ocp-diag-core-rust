@@ -4,7 +4,6 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
-use serde_json::Value;
 use std::io;
 use std::sync::atomic::{self, Ordering};
 use std::sync::Arc;
@@ -377,7 +376,11 @@ impl StartedTestStep {
     /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn add_measurement(&self, name: &str, value: Value) -> Result<(), tv::OcptvError> {
+    pub async fn add_measurement(
+        &self,
+        name: &str,
+        value: tv::Value,
+    ) -> Result<(), tv::OcptvError> {
         let measurement = measure::Measurement::new(name, value);
 
         self.step

@@ -4,13 +4,14 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
+use std::collections::BTreeMap;
 use std::env;
-use std::sync::atomic;
-use std::sync::atomic::Ordering;
-use std::sync::Arc;
+use std::sync::{
+    atomic::{self, Ordering},
+    Arc,
+};
 
-use serde_json::Map;
-use serde_json::Value;
+use maplit::{btreemap, convert_args};
 
 use crate::output as tv;
 use crate::spec;
@@ -32,10 +33,10 @@ pub struct TestRunOutcome {
 pub struct TestRun {
     name: String,
     version: String,
-    parameters: Map<String, tv::Value>,
+    parameters: BTreeMap<String, tv::Value>,
     dut: dut::DutInfo,
     command_line: String,
-    metadata: Option<serde_json::Map<String, tv::Value>>,
+    metadata: Option<BTreeMap<String, tv::Value>>,
 
     emitter: Arc<emitter::JsonEmitter>,
 }
@@ -156,9 +157,9 @@ pub struct TestRunBuilder {
     name: String,
     dut: dut::DutInfo,
     version: String,
-    parameters: Map<String, Value>,
+    parameters: BTreeMap<String, tv::Value>,
     command_line: String,
-    metadata: Option<Map<String, Value>>,
+    metadata: Option<BTreeMap<String, tv::Value>>,
     config: Option<config::Config>,
 }
 
@@ -168,7 +169,7 @@ impl TestRunBuilder {
             name: name.to_string(),
             dut: dut.clone(),
             version: version.to_string(),
-            parameters: Map::new(),
+            parameters: BTreeMap::new(),
             command_line: env::args().collect::<Vec<_>>()[1..].join(" "),
             metadata: None,
             config: None,
@@ -187,7 +188,7 @@ impl TestRunBuilder {
     ///     .add_parameter("param1", "value1".into())
     ///     .build();
     /// ```
-    pub fn add_parameter(mut self, key: &str, value: Value) -> TestRunBuilder {
+    pub fn add_parameter(mut self, key: &str, value: tv::Value) -> TestRunBuilder {
         self.parameters.insert(key.to_string(), value.clone());
         self
     }
@@ -239,17 +240,15 @@ impl TestRunBuilder {
     ///     .add_metadata("meta1", "value1".into())
     ///     .build();
     /// ```
-    pub fn add_metadata(mut self, key: &str, value: Value) -> TestRunBuilder {
+    pub fn add_metadata(mut self, key: &str, value: tv::Value) -> TestRunBuilder {
         self.metadata = match self.metadata {
             Some(mut metadata) => {
                 metadata.insert(key.to_string(), value.clone());
                 Some(metadata)
             }
-            None => {
-                let mut metadata = Map::new();
-                metadata.insert(key.to_string(), value.clone());
-                Some(metadata)
-            }
+            None => Some(convert_args!(btreemap!(
+                key => value,
+            ))),
         };
         self
     }

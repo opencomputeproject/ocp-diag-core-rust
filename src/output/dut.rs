@@ -4,6 +4,10 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
+use maplit::{btreemap, convert_args};
+use std::collections::BTreeMap;
+
+use crate::output as tv;
 use crate::spec;
 
 #[derive(Default, Debug, Clone, PartialEq)]
@@ -13,7 +17,7 @@ pub struct DutInfo {
     platform_infos: Option<Vec<PlatformInfo>>,
     software_infos: Option<Vec<SoftwareInfo>>,
     hardware_infos: Option<Vec<HardwareInfo>>,
-    metadata: Option<serde_json::Map<String, serde_json::Value>>,
+    metadata: Option<BTreeMap<String, tv::Value>>,
 }
 
 impl DutInfo {
@@ -52,7 +56,7 @@ pub struct DutInfoBuilder {
     platform_infos: Option<Vec<PlatformInfo>>,
     software_infos: Option<Vec<SoftwareInfo>>,
     hardware_infos: Option<Vec<HardwareInfo>>,
-    metadata: Option<serde_json::Map<String, serde_json::Value>>,
+    metadata: Option<BTreeMap<String, tv::Value>>,
 }
 
 impl DutInfoBuilder {
@@ -104,17 +108,15 @@ impl DutInfoBuilder {
         self
     }
 
-    pub fn add_metadata(mut self, key: &str, value: serde_json::Value) -> DutInfoBuilder {
+    pub fn add_metadata(mut self, key: &str, value: tv::Value) -> DutInfoBuilder {
         self.metadata = match self.metadata {
             Some(mut metadata) => {
                 metadata.insert(key.to_string(), value.clone());
                 Some(metadata)
             }
-            None => {
-                let mut metadata = serde_json::Map::new();
-                metadata.insert(key.to_string(), value.clone());
-                Some(metadata)
-            }
+            None => Some(convert_args!(btreemap!(
+                key => value
+            ))),
         };
         self
     }
