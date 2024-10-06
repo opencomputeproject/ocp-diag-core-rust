@@ -31,7 +31,7 @@
 /// ocptv_error!(test_run, "symptom");
 /// test_run.end(TestStatus::Complete, TestResult::Pass).await?;
 ///
-/// # Ok::<(), WriterError>(())
+/// # Ok::<(), OcptvError>(())
 /// # });
 /// ```
 ///
@@ -47,7 +47,7 @@
 /// ocptv_error!(test_run, "symptom", "Error message");
 /// test_run.end(TestStatus::Complete, TestResult::Pass).await?;
 ///
-/// # Ok::<(), WriterError>(())
+/// # Ok::<(), OcptvError>(())
 /// # });
 /// ```
 #[macro_export]
@@ -94,7 +94,7 @@ macro_rules! ocptv_error {
 /// ocptv_log_debug!(run, "Log message");
 /// run.end(TestStatus::Complete, TestResult::Pass).await?;
 ///
-/// # Ok::<(), WriterError>(())
+/// # Ok::<(), OcptvError>(())
 /// # });
 /// ```
 

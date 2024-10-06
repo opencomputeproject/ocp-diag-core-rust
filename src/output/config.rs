@@ -9,7 +9,8 @@ use std::sync::Arc;
 
 use tokio::sync::Mutex;
 
-use crate::output::writer::{self, BufferWriter, FileWriter, StdoutWriter, WriterType};
+use crate::output as tv;
+use crate::output::writer::{BufferWriter, FileWriter, StdoutWriter, WriterType};
 
 /// The configuration repository for the TestRun.
 pub struct Config {
@@ -66,7 +67,7 @@ impl ConfigBuilder {
     pub async fn with_file_output<P: AsRef<Path>>(
         mut self,
         path: P,
-    ) -> Result<Self, writer::WriterError> {
+    ) -> Result<Self, tv::OcptvError> {
         self.writer = Some(WriterType::File(FileWriter::new(path).await?));
         Ok(self)
     }

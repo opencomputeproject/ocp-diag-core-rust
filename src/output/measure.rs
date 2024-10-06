@@ -12,7 +12,7 @@ use serde_json::Value;
 
 use crate::output as tv;
 use crate::spec;
-use tv::{dut, step, writer};
+use tv::{dut, step};
 
 /// The measurement series.
 /// A Measurement Series is a time-series list of measurements.
@@ -57,10 +57,10 @@ impl MeasurementSeries {
     /// let series = step.measurement_series("name");
     /// series.start().await?;
     ///
-    /// # Ok::<(), WriterError>(())
+    /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn start(self) -> Result<StartedMeasurementSeries, writer::WriterError> {
+    pub async fn start(self) -> Result<StartedMeasurementSeries, tv::OcptvError> {
         self.emitter
             .emit(&spec::TestStepArtifactImpl::MeasurementSeriesStart(
                 self.start.to_artifact(),
@@ -98,12 +98,12 @@ impl MeasurementSeries {
     // ///     Ok(())
     // /// }).await?;
     // ///
-    // /// # Ok::<(), WriterError>(())
+    // /// # Ok::<(), OcptvError>(())
     // /// # });
     // /// ```
-    // pub async fn scope<'s, F, R>(&'s self, func: F) -> Result<(), writer::WriterError>
+    // pub async fn scope<'s, F, R>(&'s self, func: F) -> Result<(), tv::OcptvError>
     // where
-    //     R: Future<Output = Result<(), writer::WriterError>>,
+    //     R: Future<Output = Result<(), tv::OcptvError>>,
     //     F: std::ops::FnOnce(&'s MeasurementSeries) -> R,
     // {
     //     self.start().await?;
@@ -140,10 +140,10 @@ impl StartedMeasurementSeries {
     /// let series = step.measurement_series("name").start().await?;
     /// series.end().await?;
     ///
-    /// # Ok::<(), WriterError>(())
+    /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn end(&self) -> Result<(), writer::WriterError> {
+    pub async fn end(&self) -> Result<(), tv::OcptvError> {
         let end = spec::MeasurementSeriesEnd {
             series_id: self.parent.start.series_id.clone(),
             total_count: self.seqno.load(Ordering::Acquire),
@@ -173,10 +173,10 @@ impl StartedMeasurementSeries {
     /// let series = step.measurement_series("name").start().await?;
     /// series.add_measurement(60.into()).await?;
     ///
-    /// # Ok::<(), WriterError>(())
+    /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn add_measurement(&self, value: Value) -> Result<(), writer::WriterError> {
+    pub async fn add_measurement(&self, value: Value) -> Result<(), tv::OcptvError> {
         let element = spec::MeasurementSeriesElement {
             index: self.incr_seqno(),
             value: value.clone(),
@@ -212,14 +212,14 @@ impl StartedMeasurementSeries {
     /// let series = step.measurement_series("name").start().await?;
     /// series.add_measurement_with_metadata(60.into(), vec![("key", "value".into())]).await?;
     ///
-    /// # Ok::<(), WriterError>(())
+    /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
     pub async fn add_measurement_with_metadata(
         &self,
         value: Value,
         metadata: Vec<(&str, Value)>,
-    ) -> Result<(), writer::WriterError> {
+    ) -> Result<(), tv::OcptvError> {
         let element = spec::MeasurementSeriesElement {
             index: self.incr_seqno(),
             value: value.clone(),

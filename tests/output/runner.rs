@@ -135,7 +135,7 @@ where
 
 async fn check_output_run<F>(expected: &[serde_json::Value], test_fn: F) -> Result<()>
 where
-    F: for<'a> FnOnce(&'a StartedTestRun) -> BoxFuture<'a, Result<(), tv::WriterError>> + Send,
+    F: for<'a> FnOnce(&'a StartedTestRun) -> BoxFuture<'a, Result<(), tv::OcptvError>> + Send,
 {
     check_output(expected, |run_builder| async {
         let run = run_builder.build();
@@ -151,7 +151,7 @@ where
 
 async fn check_output_step<F>(expected: &[serde_json::Value], test_fn: F) -> Result<()>
 where
-    F: for<'a> FnOnce(&'a StartedTestStep) -> BoxFuture<'a, Result<(), tv::WriterError>>,
+    F: for<'a> FnOnce(&'a StartedTestStep) -> BoxFuture<'a, Result<(), tv::OcptvError>>,
 {
     check_output(expected, |run_builder| async {
         let run = run_builder.build().start().await?;

@@ -15,7 +15,7 @@ use serde_json::Value;
 use crate::output as tv;
 use crate::spec;
 use tv::step::TestStep;
-use tv::{config, dut, emitter, error, log, writer};
+use tv::{config, dut, emitter, error, log};
 
 use super::JsonEmitter;
 
@@ -85,10 +85,10 @@ impl TestRun {
     /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     /// run.start().await?;
     ///
-    /// # Ok::<(), WriterError>(())
+    /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn start(self) -> Result<StartedTestRun, writer::WriterError> {
+    pub async fn start(self) -> Result<StartedTestRun, tv::OcptvError> {
         // TODO: this likely will go into the emitter since it's not the run's job to emit the schema version
         self.emitter
             .emit(&spec::RootImpl::SchemaVersion(
@@ -137,7 +137,7 @@ impl TestRun {
     // ///     })
     // /// }).await?;
     // ///
-    // /// # Ok::<(), WriterError>(())
+    // /// # Ok::<(), OcptvError>(())
     // /// # });
     // /// ```
     // pub async fn scope<F, R>(self, func: F) -> Result<(), emitters::WriterError>
@@ -302,14 +302,14 @@ impl StartedTestRun {
     /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
     /// run.end(TestStatus::Complete, TestResult::Pass).await?;
     ///
-    /// # Ok::<(), WriterError>(())
+    /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
     pub async fn end(
         &self,
         status: spec::TestStatus,
         result: spec::TestResult,
-    ) -> Result<(), writer::WriterError> {
+    ) -> Result<(), tv::OcptvError> {
         let end = spec::RootImpl::TestRunArtifact(spec::TestRunArtifact {
             artifact: spec::TestRunArtifactImpl::TestRunEnd(spec::TestRunEnd { status, result }),
         });
@@ -337,14 +337,10 @@ impl StartedTestRun {
     /// ).await?;
     /// run.end(TestStatus::Complete, TestResult::Pass).await?;
     ///
-    /// # Ok::<(), WriterError>(())
+    /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn log(
-        &self,
-        severity: spec::LogSeverity,
-        msg: &str,
-    ) -> Result<(), writer::WriterError> {
+    pub async fn log(&self, severity: spec::LogSeverity, msg: &str) -> Result<(), tv::OcptvError> {
         let log = log::Log::builder(msg).severity(severity).build();
 
         let artifact = spec::TestRunArtifact {
@@ -378,10 +374,10 @@ impl StartedTestRun {
     /// ).await?;
     /// run.end(TestStatus::Complete, TestResult::Pass).await?;
     ///
-    /// # Ok::<(), WriterError>(())
+    /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn log_with_details(&self, log: &log::Log) -> Result<(), writer::WriterError> {
+    pub async fn log_with_details(&self, log: &log::Log) -> Result<(), tv::OcptvError> {
         let artifact = spec::TestRunArtifact {
             artifact: spec::TestRunArtifactImpl::Log(log.to_artifact()),
         };
@@ -408,10 +404,10 @@ impl StartedTestRun {
     /// run.error("symptom").await?;
     /// run.end(TestStatus::Complete, TestResult::Pass).await?;
     ///
-    /// # Ok::<(), WriterError>(())
+    /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn error(&self, symptom: &str) -> Result<(), writer::WriterError> {
+    pub async fn error(&self, symptom: &str) -> Result<(), tv::OcptvError> {
         let error = error::Error::builder(symptom).build();
 
         let artifact = spec::TestRunArtifact {
@@ -441,14 +437,10 @@ impl StartedTestRun {
     /// run.error_with_msg("symptom", "error messasge").await?;
     /// run.end(TestStatus::Complete, TestResult::Pass).await?;
     ///
-    /// # Ok::<(), WriterError>(())
+    /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn error_with_msg(
-        &self,
-        symptom: &str,
-        msg: &str,
-    ) -> Result<(), writer::WriterError> {
+    pub async fn error_with_msg(&self, symptom: &str, msg: &str) -> Result<(), tv::OcptvError> {
         let error = error::Error::builder(symptom).message(msg).build();
 
         let artifact = spec::TestRunArtifact {
@@ -483,13 +475,10 @@ impl StartedTestRun {
     /// ).await?;
     /// run.end(TestStatus::Complete, TestResult::Pass).await?;
     ///
-    /// # Ok::<(), WriterError>(())
+    /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn error_with_details(
-        &self,
-        error: &error::Error,
-    ) -> Result<(), writer::WriterError> {
+    pub async fn error_with_details(&self, error: &error::Error) -> Result<(), tv::OcptvError> {
         let artifact = spec::TestRunArtifact {
             artifact: spec::TestRunArtifactImpl::Error(error.to_artifact()),
         };

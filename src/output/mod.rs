@@ -28,6 +28,13 @@ pub use log::*;
 pub use measure::*;
 pub use run::*;
 pub use step::*;
-pub use writer::WriterError;
+pub use writer::*;
 
+// re-export this as a public type we present
 pub use serde_json::Value;
+
+#[derive(Debug, thiserror::Error, derive_more::Display)]
+#[non_exhaustive]
+pub enum OcptvError {
+    WriterError(#[from] writer::WriterError),
+}
