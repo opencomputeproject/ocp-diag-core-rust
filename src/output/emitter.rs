@@ -4,10 +4,16 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
+use std::io;
 use std::sync::atomic::{self, Ordering};
 use std::sync::Arc;
 
-use crate::output::{config, writer};
+use unwrap_infallible::UnwrapInfallible;
+
+use crate::output::{
+    config,
+    writer::{self, WriterType},
+};
 use crate::spec;
 
 pub struct JsonEmitter {
@@ -42,13 +48,17 @@ impl JsonEmitter {
         self.seqno.fetch_add(1, Ordering::AcqRel)
     }
 
-    pub async fn emit(&self, object: &spec::RootImpl) -> Result<(), writer::WriterError> {
-        let serialized = self.serialize_artifact(object);
-        match self.writer {
-            writer::WriterType::File(ref file) => file.write(&serialized.to_string()).await?,
-            writer::WriterType::Stdout(ref stdout) => stdout.write(&serialized.to_string()).await?,
-            writer::WriterType::Buffer(ref buffer) => buffer.write(&serialized.to_string()).await?,
+    pub async fn emit(&self, object: &spec::RootImpl) -> Result<(), io::Error> {
+        let s = self.serialize_artifact(object).to_string();
+
+        match &self.writer {
+            WriterType::File(file) => file.write(&s).await?,
+            WriterType::Stdout(stdout) => stdout.write(&s).await.unwrap_infallible(),
+            WriterType::Buffer(buffer) => buffer.write(&s).await.unwrap_infallible(),
+
+            WriterType::Custom(custom) => custom.write(&s).await?,
         }
+
         Ok(())
     }
 }

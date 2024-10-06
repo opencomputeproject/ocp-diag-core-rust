@@ -3,6 +3,7 @@
 // Use of this source code is governed by an MIT-style
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
+#![deny(warnings)]
 
 mod config;
 mod dut;
@@ -33,8 +34,10 @@ pub use writer::*;
 // re-export this as a public type we present
 pub use serde_json::Value;
 
-#[derive(Debug, thiserror::Error, derive_more::Display)]
+#[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
 pub enum OcptvError {
-    WriterError(#[from] writer::WriterError),
+    #[error("failed to write to output stream")]
+    IoError(#[from] std::io::Error),
+    // other?
 }

@@ -5,6 +5,7 @@
 // https://opensource.org/licenses/MIT.
 
 use serde_json::Value;
+use std::io;
 use std::sync::atomic::{self, Ordering};
 use std::sync::Arc;
 
@@ -12,7 +13,7 @@ use crate::output as tv;
 use crate::spec::TestStepStart;
 use crate::spec::{self, TestStepArtifactImpl};
 use tv::measure::MeasurementSeries;
-use tv::{error, log, measure, writer};
+use tv::{error, log, measure};
 
 use super::{JsonEmitter, TimestampProvider};
 
@@ -489,10 +490,7 @@ pub struct StepEmitter {
 }
 
 impl StepEmitter {
-    pub async fn emit(
-        &self,
-        object: &spec::TestStepArtifactImpl,
-    ) -> Result<(), writer::WriterError> {
+    pub async fn emit(&self, object: &spec::TestStepArtifactImpl) -> Result<(), io::Error> {
         let root = spec::RootImpl::TestStepArtifact(spec::TestStepArtifact {
             id: self.step_id.clone(),
             // TODO: can these copies be avoided?

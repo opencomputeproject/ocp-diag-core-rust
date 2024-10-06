@@ -10,7 +10,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 
 use crate::output as tv;
-use crate::output::writer::{BufferWriter, FileWriter, StdoutWriter, WriterType};
+use crate::output::writer::{self, BufferWriter, FileWriter, StdoutWriter, WriterType};
 
 /// The configuration repository for the TestRun.
 pub struct Config {
@@ -70,6 +70,14 @@ impl ConfigBuilder {
     ) -> Result<Self, tv::OcptvError> {
         self.writer = Some(WriterType::File(FileWriter::new(path).await?));
         Ok(self)
+    }
+
+    pub fn with_custom_output(
+        mut self,
+        custom: Box<dyn writer::Writer + Send + Sync + 'static>,
+    ) -> Self {
+        self.writer = Some(WriterType::Custom(custom));
+        self
     }
 
     pub fn build(self) -> Config {
