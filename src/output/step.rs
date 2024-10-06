@@ -13,9 +13,7 @@ use crate::output as tv;
 use crate::spec::TestStepStart;
 use crate::spec::{self, TestStepArtifactImpl};
 use tv::measure::MeasurementSeries;
-use tv::{error, log, measure};
-
-use super::{JsonEmitter, TimestampProvider};
+use tv::{emitter, error, log, measure};
 
 /// A single test step in the scope of a [`TestRun`].
 ///
@@ -27,7 +25,7 @@ pub struct TestStep {
 }
 
 impl TestStep {
-    pub(crate) fn new(id: &str, name: &str, run_emitter: Arc<JsonEmitter>) -> Self {
+    pub(crate) fn new(id: &str, name: &str, run_emitter: Arc<emitter::JsonEmitter>) -> Self {
         TestStep {
             name: name.to_owned(),
             emitter: Arc::new(StepEmitter {
@@ -486,7 +484,7 @@ impl StartedTestStep {
 
 pub struct StepEmitter {
     step_id: String,
-    run_emitter: Arc<JsonEmitter>,
+    run_emitter: Arc<emitter::JsonEmitter>,
 }
 
 impl StepEmitter {
@@ -501,7 +499,8 @@ impl StepEmitter {
         Ok(())
     }
 
-    pub fn timestamp_provider(&self) -> &dyn TimestampProvider {
+    // HACK:
+    pub fn timestamp_provider(&self) -> &dyn tv::config::TimestampProvider {
         &*self.run_emitter.timestamp_provider
     }
 }

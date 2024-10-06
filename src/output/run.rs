@@ -17,8 +17,6 @@ use crate::spec;
 use tv::step::TestStep;
 use tv::{config, dut, emitter, error, log};
 
-use super::JsonEmitter;
-
 /// The outcome of a TestRun.
 /// It's returned when the scope method of the [`TestRun`] object is used.
 pub struct TestRunOutcome {
@@ -39,7 +37,7 @@ pub struct TestRun {
     command_line: String,
     metadata: Option<serde_json::Map<String, tv::Value>>,
 
-    emitter: Arc<JsonEmitter>,
+    emitter: Arc<emitter::JsonEmitter>,
 }
 
 impl TestRun {
