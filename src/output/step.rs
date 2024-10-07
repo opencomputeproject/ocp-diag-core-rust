@@ -14,6 +14,8 @@ use crate::spec::{self, TestStepArtifactImpl};
 use tv::measure::MeasurementSeries;
 use tv::{emitter, error, log, measure};
 
+use super::OcptvError;
+
 /// A single test step in the scope of a [`TestRun`].
 ///
 /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#test-step-artifacts
@@ -354,6 +356,41 @@ impl StartedTestStep {
             .emit(&TestStepArtifactImpl::Error(error.to_artifact()))
             .await?;
 
+        Ok(())
+    }
+
+    /// Emits an extension message;
+    ///
+    /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#extension
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # tokio_test::block_on(async {
+    /// # use ocptv::output::*;
+    ///
+    /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
+    /// let step = run.add_step("step_name").start().await?;
+    ///
+    /// #[derive(serde::Serialize)]
+    /// struct Ext { i: u32 }
+    ///
+    /// step.extension("ext_name", Ext { i: 42 }).await?;
+    ///
+    /// # Ok::<(), OcptvError>(())
+    /// # });
+    /// ```
+    pub async fn extension<S: serde::Serialize>(
+        &self,
+        name: &str,
+        any: S,
+    ) -> Result<(), tv::OcptvError> {
+        let ext = TestStepArtifactImpl::Extension(spec::Extension {
+            name: name.to_owned(),
+            content: serde_json::to_value(&any).map_err(|e| OcptvError::Format(Box::new(e)))?,
+        });
+
+        self.step.emitter.emit(&ext).await?;
         Ok(())
     }
 

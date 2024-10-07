@@ -40,5 +40,7 @@ pub use serde_json::Value;
 pub enum OcptvError {
     #[error("failed to write to output stream")]
     IoError(#[from] std::io::Error),
-    // other?
+
+    #[error("failed to format input object")]
+    Format(Box<dyn std::error::Error + Send + Sync + 'static>), // opaque type so we don't leak impl
 }

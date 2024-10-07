@@ -81,19 +81,6 @@ pub enum SubcomponentType {
     Connector,
 }
 
-// TODO: this should be better typed
-#[derive(Debug, Serialize, PartialEq, Clone)]
-pub enum ExtensionContentType {
-    #[serde(rename = "float")]
-    Float(f64),
-    #[serde(rename = "int")]
-    Int(i64),
-    #[serde(rename = "bool")]
-    Bool(bool),
-    #[serde(rename = "str")]
-    Str(String),
-}
-
 /// Outcome of a diagnosis operation.
 /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#diagnosistype
 /// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/diagnosis.json
@@ -793,8 +780,10 @@ pub struct Extension {
     #[serde(rename = "name")]
     pub name: String,
 
+    // note: have to use a json specific here; alternative is to propagate up an E: Serialize,
+    // which polutes all of the types. Trait Serialize is also not object safe.
     #[serde(rename = "content")]
-    pub content: ExtensionContentType,
+    pub content: serde_json::Value,
 }
 
 #[cfg(test)]
