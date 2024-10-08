@@ -4,6 +4,8 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
+#[cfg(feature = "boxed-scopes")]
+use futures::future::BoxFuture;
 use std::collections::BTreeMap;
 use std::env;
 use std::sync::{
@@ -111,45 +113,45 @@ impl TestRun {
         Ok(StartedTestRun::new(self))
     }
 
-    // disabling this for the moment so we don't publish api that's unusable.
-    // see: https://github.com/rust-lang/rust/issues/70263
-    //
-    // /// Builds a scope in the [`TestRun`] object, taking care of starting and
-    // /// ending it. View [`TestRun::start`] and [`TestRun::end`] methods.
-    // /// After the scope is constructed, additional objects may be added to it.
-    // /// This is the preferred usage for the [`TestRun`], since it guarantees
-    // /// all the messages are emitted between the start and end messages, the order
-    // /// is respected and no messages is lost.
-    // ///
-    // /// # Examples
-    // ///
-    // /// ```rust
-    // /// # tokio_test::block_on(async {
-    // /// # use ocptv::output::*;
-    // ///
-    // /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0");
-    // /// run.scope(|r| async {
-    // ///     r.add_log(LogSeverity::Info, "First message").await?;
-    // ///     Ok(TestRunOutcome {
-    // ///         status: TestStatus::Complete,
-    // ///         result: TestResult::Pass,
-    // ///     })
-    // /// }).await?;
-    // ///
-    // /// # Ok::<(), OcptvError>(())
-    // /// # });
-    // /// ```
-    // pub async fn scope<F, R>(self, func: F) -> Result<(), emitters::WriterError>
-    // where
-    //     R: Future<Output = Result<TestRunOutcome, emitters::WriterError>>,
-    //     for<'a> F: Fut2<'a, R>,
-    // {
-    //     let run = self.start().await?;
-    //     let outcome = func(&run).await?;
-    //     run.end(outcome.status, outcome.result).await?;
+    /// Builds a scope in the [`TestRun`] object, taking care of starting and
+    /// ending it. View [`TestRun::start`] and [`TestRun::end`] methods.
+    /// After the scope is constructed, additional objects may be added to it.
+    /// This is the preferred usage for the [`TestRun`], since it guarantees
+    /// all the messages are emitted between the start and end messages, the order
+    /// is respected and no messages is lost.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # tokio_test::block_on(async {
+    /// # use futures::FutureExt;
+    /// # use ocptv::output::*;
+    ///
+    /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0");
+    /// run.scope(|r| {
+    ///     async move {
+    ///         r.add_log(LogSeverity::Info, "First message").await?;
+    ///         Ok(TestRunOutcome {
+    ///             status: TestStatus::Complete,
+    ///             result: TestResult::Pass,
+    ///         })
+    ///     }.boxed()
+    /// }).await?;
+    ///
+    /// # Ok::<(), OcptvError>(())
+    /// # });
+    /// ```
+    #[cfg(feature = "boxed-scopes")]
+    pub async fn scope<F>(self, func: F) -> Result<(), tv::OcptvError>
+    where
+        F: FnOnce(&StartedTestRun) -> BoxFuture<'_, Result<TestRunOutcome, tv::OcptvError>>,
+    {
+        let run = self.start().await?;
+        let outcome = func(&run).await?;
+        run.end(outcome.status, outcome.result).await?;
 
-    //     Ok(())
-    // }
+        Ok(())
+    }
 }
 
 /// Builder for the [`TestRun`] object.

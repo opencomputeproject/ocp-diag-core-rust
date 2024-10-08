@@ -3,28 +3,24 @@
 // Use of this source code is governed by an MIT-style
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
-#![allow(unused_imports)]
 
-use std::fs;
 use std::sync::Arc;
 
 use anyhow::Result;
-use assert_fs::prelude::*;
+
 use assert_json_diff::{assert_json_eq, assert_json_include};
 use futures::future::BoxFuture;
 use futures::future::Future;
 use futures::FutureExt;
-use ocptv::output::OcptvError;
-use predicates::prelude::*;
 use serde_json::json;
 use tokio::sync::Mutex;
 
 use ocptv::output as tv;
+use ocptv::output::OcptvError;
 use tv::{
     Config, DutInfo, Error, HardwareInfo, Log, LogSeverity, Measurement, MeasurementSeriesStart,
     SoftwareInfo, StartedTestRun, StartedTestStep, Subcomponent, TestResult, TestRun,
-    TestRunBuilder, TestRunOutcome, TestStatus, TestStep, TimestampProvider, Validator,
-    ValidatorType,
+    TestRunBuilder, TestRunOutcome, TestStatus, TimestampProvider, Validator, ValidatorType,
 };
 
 const DATETIME: chrono::DateTime<chrono::offset::Utc> = chrono::DateTime::from_timestamp_nanos(0);
@@ -336,39 +332,45 @@ async fn test_testrun_with_error_with_details() -> Result<()> {
     .await
 }
 
-// #[tokio::test]
-// async fn test_testrun_with_scope() -> Result<()> {
-//     let expected = [
-//         json_schema_version(),
-//         json_run_default_start(),
-//         json!({
-//             "testRunArtifact": {
-//                 "log": {
-//                     "message": "First message",
-//                     "severity": "INFO"
-//                 }
-//             },
-//             "sequenceNumber": 2
-//         }),
-//         json_run_pass(3),
-//     ];
+// #[cfg(any(test, feature = "boxed-scopes"))]
+#[tokio::test]
+async fn test_testrun_with_scope() -> Result<()> {
+    let expected = [
+        json_schema_version(),
+        json_run_default_start(),
+        json!({
+            "testRunArtifact": {
+                "log": {
+                    "message": "First message",
+                    "severity": "INFO"
+                }
+            },
+            "sequenceNumber": 2,
+            "timestamp": DATETIME_FORMATTED
+        }),
+        json_run_pass(3),
+    ];
 
-//     check_output(&expected, |run_builder| async {
-//         let run = run_builder.build();
+    check_output(&expected, |run_builder| async {
+        let run = run_builder.build();
 
-//         run.scope(|r| async {
-//             r.add_log(LogSeverity::Info, "First message").await?;
-//             Ok(TestRunOutcome {
-//                 status: TestStatus::Complete,
-//                 result: TestResult::Pass,
-//             })
-//         })
-//         .await?;
+        run.scope(|r| {
+            async move {
+                r.add_log(LogSeverity::Info, "First message").await?;
 
-//         Ok(())
-//     })
-//     .await
-// }
+                Ok(TestRunOutcome {
+                    status: TestStatus::Complete,
+                    result: TestResult::Pass,
+                })
+            }
+            .boxed()
+        })
+        .await?;
+
+        Ok(())
+    })
+    .await
+}
 
 #[tokio::test]
 async fn test_testrun_with_step() -> Result<()> {
@@ -1308,6 +1310,10 @@ async fn test_step_with_measurement_series_element_with_metadata_index_no() -> R
 #[cfg(coverage)]
 #[tokio::test]
 async fn test_config_builder_with_file() -> Result<()> {
+    use assert_fs::prelude::*;
+    use predicates::prelude::*;
+    use std::fs;
+
     let expected = [
         json_schema_version(),
         json_run_default_start(),
