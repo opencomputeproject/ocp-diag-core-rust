@@ -143,7 +143,7 @@ impl StartedMeasurementSeries {
     /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn end(&self) -> Result<(), tv::OcptvError> {
+    pub async fn end(self) -> Result<(), tv::OcptvError> {
         let end = spec::MeasurementSeriesEnd {
             series_id: self.parent.start.series_id.clone(),
             total_count: self.seqno.load(Ordering::Acquire),

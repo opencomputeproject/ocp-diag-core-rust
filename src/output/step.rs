@@ -127,7 +127,7 @@ impl StartedTestStep {
     /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn end(&self, status: spec::TestStatus) -> Result<(), tv::OcptvError> {
+    pub async fn end(self, status: spec::TestStatus) -> Result<(), tv::OcptvError> {
         let end = TestStepArtifactImpl::TestStepEnd(spec::TestStepEnd { status });
 
         self.step.emitter.emit(&end).await?;
