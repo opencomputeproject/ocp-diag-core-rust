@@ -9,10 +9,9 @@ use std::sync::atomic::{self, Ordering};
 use std::sync::Arc;
 
 use crate::output as tv;
-use crate::spec::TestStepStart;
-use crate::spec::{self, TestStepArtifactImpl};
+use crate::spec::{self, TestStepArtifactImpl, TestStepStart};
 use tv::measure::MeasurementSeries;
-use tv::{emitter, error, log, measure};
+use tv::{config, emitter, error, log, measure};
 
 use super::OcptvError;
 
@@ -31,7 +30,7 @@ impl TestStep {
             name: name.to_owned(),
             emitter: Arc::new(StepEmitter {
                 step_id: id.to_owned(),
-                run_emitter,
+                emitter: run_emitter,
             }),
         }
     }
@@ -528,7 +527,8 @@ impl StartedTestStep {
 
 pub struct StepEmitter {
     step_id: String,
-    run_emitter: Arc<emitter::JsonEmitter>,
+    // root emitter
+    emitter: Arc<emitter::JsonEmitter>,
 }
 
 impl StepEmitter {
@@ -538,13 +538,12 @@ impl StepEmitter {
             // TODO: can these copies be avoided?
             artifact: object.clone(),
         });
-        self.run_emitter.emit(&root).await?;
+        self.emitter.emit(&root).await?;
 
         Ok(())
     }
 
-    // HACK:
-    pub fn timestamp_provider(&self) -> &dyn tv::config::TimestampProvider {
-        &*self.run_emitter.timestamp_provider
+    pub fn timestamp_provider(&self) -> &(dyn config::TimestampProvider + Send + Sync + 'static) {
+        self.emitter.timestamp_provider()
     }
 }

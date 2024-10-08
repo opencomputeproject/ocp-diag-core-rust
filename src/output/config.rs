@@ -14,6 +14,7 @@ use crate::output::writer::{self, BufferWriter, FileWriter, StdoutWriter, Writer
 
 /// The configuration repository for the TestRun.
 pub struct Config {
+    // All fields are readable for any impl inside the crate.
     pub(crate) timestamp_provider: Box<dyn TimestampProvider + Send + Sync + 'static>,
     pub(crate) writer: WriterType,
 }
@@ -46,6 +47,7 @@ impl ConfigBuilder {
         }
     }
 
+    // TODO: docs for all these
     pub fn timezone(mut self, timezone: chrono_tz::Tz) -> Self {
         self.timestamp_provider = Box::new(ConfiguredTzProvider { tz: timezone });
         self
@@ -101,19 +103,5 @@ struct ConfiguredTzProvider {
 impl TimestampProvider for ConfiguredTzProvider {
     fn now(&self) -> chrono::DateTime<chrono_tz::Tz> {
         chrono::Local::now().with_timezone(&self.tz)
-    }
-}
-
-pub struct NullTimestampProvider {}
-
-impl NullTimestampProvider {
-    // warn: linter is wrong here, this is used in a serde_json::json! block
-    #[allow(dead_code)]
-    pub const FORMATTED: &str = "1970-01-01T00:00:00.000Z";
-}
-
-impl TimestampProvider for NullTimestampProvider {
-    fn now(&self) -> chrono::DateTime<chrono_tz::Tz> {
-        chrono::DateTime::from_timestamp_nanos(0).with_timezone(&chrono_tz::UTC)
     }
 }
