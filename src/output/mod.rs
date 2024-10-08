@@ -10,7 +10,7 @@ mod emitter;
 mod error;
 mod log;
 mod macros;
-mod measurement;
+mod measure;
 mod run;
 mod state;
 mod step;
@@ -25,7 +25,7 @@ pub use dut::*;
 pub use emitter::*;
 pub use error::*;
 pub use log::*;
-pub use measurement::*;
+pub use measure::*;
 pub use run::*;
 pub use step::*;
 

@@ -5,6 +5,8 @@
 // https://opensource.org/licenses/MIT.
 
 use std::env;
+use std::sync::atomic;
+use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
 use serde_json::Map;
@@ -14,7 +16,7 @@ use tokio::sync::Mutex;
 use crate::output as tv;
 use crate::spec;
 use tv::step::TestStep;
-use tv::{config, dut, emitter, error, log, run, state};
+use tv::{config, dut, emitter, error, log, state};
 
 /// The outcome of a TestRun.
 /// It's returned when the scope method of the [`TestRun`] object is used.
@@ -31,10 +33,10 @@ pub struct TestRunOutcome {
 pub struct TestRun {
     name: String,
     version: String,
-    parameters: Map<String, Value>,
+    parameters: Map<String, tv::Value>,
     dut: dut::DutInfo,
     command_line: String,
-    metadata: Option<Map<String, Value>>,
+    metadata: Option<serde_json::Map<String, tv::Value>>,
     state: Arc<Mutex<state::TestState>>,
 }
 
@@ -85,37 +87,30 @@ impl TestRun {
     /// # });
     /// ```
     pub async fn start(self) -> Result<StartedTestRun, emitter::WriterError> {
-        let version = SchemaVersion::new();
+        // TODO: this likely will go into the emitter since it's not the run's job to emit the schema version
         self.state
             .lock()
             .await
             .emitter
-            .emit(&version.to_artifact())
+            .emit(&spec::RootImpl::SchemaVersion(
+                spec::SchemaVersion::default(),
+            ))
             .await?;
 
-        let mut builder = run::TestRunStart::builder(
-            &self.name,
-            &self.version,
-            &self.command_line,
-            &self.parameters,
-            &self.dut,
-        );
+        let start = spec::RootImpl::TestRunArtifact(spec::TestRunArtifact {
+            artifact: spec::TestRunArtifactImpl::TestRunStart(spec::TestRunStart {
+                name: self.name.clone(),
+                version: self.version.clone(),
+                command_line: self.command_line.clone(),
+                parameters: self.parameters.clone(),
+                metadata: self.metadata.clone(),
+                dut_info: self.dut.to_spec(),
+            }),
+        });
 
-        if let Some(m) = &self.metadata {
-            for m in m {
-                builder = builder.add_metadata(m.0, m.1.clone())
-            }
-        }
+        self.state.lock().await.emitter.emit(&start).await?;
 
-        let start = builder.build();
-        self.state
-            .lock()
-            .await
-            .emitter
-            .emit(&start.to_artifact())
-            .await?;
-
-        Ok(StartedTestRun { run: self })
+        Ok(StartedTestRun::new(self))
     }
 
     // disabling this for the moment so we don't publish api that's unusable.
@@ -283,9 +278,17 @@ impl TestRunBuilder {
 /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#testrunstart
 pub struct StartedTestRun {
     run: TestRun,
+
+    step_seqno: atomic::AtomicU64,
 }
 
 impl StartedTestRun {
+    fn new(run: TestRun) -> StartedTestRun {
+        StartedTestRun {
+            run,
+            step_seqno: atomic::AtomicU64::new(0),
+        }
+    }
     /// Ends the test run.
     ///
     /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#testrunend
@@ -307,14 +310,13 @@ impl StartedTestRun {
         status: spec::TestStatus,
         result: spec::TestResult,
     ) -> Result<(), emitter::WriterError> {
-        let end = run::TestRunEnd::builder()
-            .status(status)
-            .result(result)
-            .build();
+        let end = spec::RootImpl::TestRunArtifact(spec::TestRunArtifact {
+            artifact: spec::TestRunArtifactImpl::TestRunEnd(spec::TestRunEnd { status, result }),
+        });
 
         let emitter = &self.run.state.lock().await.emitter;
 
-        emitter.emit(&end.to_artifact()).await?;
+        emitter.emit(&end).await?;
         Ok(())
     }
 
@@ -350,10 +352,10 @@ impl StartedTestRun {
         let emitter = &self.run.state.lock().await.emitter;
 
         let artifact = spec::TestRunArtifact {
-            artifact: spec::TestRunArtifactDescendant::Log(log.to_artifact()),
+            artifact: spec::TestRunArtifactImpl::Log(log.to_artifact()),
         };
         emitter
-            .emit(&spec::RootArtifact::TestRunArtifact(artifact))
+            .emit(&spec::RootImpl::TestRunArtifact(artifact))
             .await?;
 
         Ok(())
@@ -386,10 +388,10 @@ impl StartedTestRun {
         let emitter = &self.run.state.lock().await.emitter;
 
         let artifact = spec::TestRunArtifact {
-            artifact: spec::TestRunArtifactDescendant::Log(log.to_artifact()),
+            artifact: spec::TestRunArtifactImpl::Log(log.to_artifact()),
         };
         emitter
-            .emit(&spec::RootArtifact::TestRunArtifact(artifact))
+            .emit(&spec::RootImpl::TestRunArtifact(artifact))
             .await?;
 
         Ok(())
@@ -418,10 +420,10 @@ impl StartedTestRun {
         let emitter = &self.run.state.lock().await.emitter;
 
         let artifact = spec::TestRunArtifact {
-            artifact: spec::TestRunArtifactDescendant::Error(error.to_artifact()),
+            artifact: spec::TestRunArtifactImpl::Error(error.to_artifact()),
         };
         emitter
-            .emit(&spec::RootArtifact::TestRunArtifact(artifact))
+            .emit(&spec::RootImpl::TestRunArtifact(artifact))
             .await?;
 
         Ok(())
@@ -455,10 +457,10 @@ impl StartedTestRun {
         let emitter = &self.run.state.lock().await.emitter;
 
         let artifact = spec::TestRunArtifact {
-            artifact: spec::TestRunArtifactDescendant::Error(error.to_artifact()),
+            artifact: spec::TestRunArtifactImpl::Error(error.to_artifact()),
         };
         emitter
-            .emit(&spec::RootArtifact::TestRunArtifact(artifact))
+            .emit(&spec::RootImpl::TestRunArtifact(artifact))
             .await?;
 
         Ok(())
@@ -495,195 +497,17 @@ impl StartedTestRun {
         let emitter = &self.run.state.lock().await.emitter;
 
         let artifact = spec::TestRunArtifact {
-            artifact: spec::TestRunArtifactDescendant::Error(error.to_artifact()),
+            artifact: spec::TestRunArtifactImpl::Error(error.to_artifact()),
         };
         emitter
-            .emit(&spec::RootArtifact::TestRunArtifact(artifact))
+            .emit(&spec::RootImpl::TestRunArtifact(artifact))
             .await?;
 
         Ok(())
     }
 
     pub fn step(&self, name: &str) -> TestStep {
-        TestStep::new(name, self.run.state.clone())
-    }
-}
-
-pub struct TestRunStart {
-    name: String,
-    version: String,
-    command_line: String,
-    parameters: Map<String, Value>,
-    metadata: Option<Map<String, Value>>,
-    dut_info: dut::DutInfo,
-}
-
-impl TestRunStart {
-    pub fn builder(
-        name: &str,
-        version: &str,
-        command_line: &str,
-        parameters: &Map<String, Value>,
-        dut_info: &dut::DutInfo,
-    ) -> TestRunStartBuilder {
-        TestRunStartBuilder::new(name, version, command_line, parameters, dut_info)
-    }
-
-    pub fn to_artifact(&self) -> spec::RootArtifact {
-        spec::RootArtifact::TestRunArtifact(spec::TestRunArtifact {
-            artifact: spec::TestRunArtifactDescendant::TestRunStart(spec::TestRunStart {
-                name: self.name.clone(),
-                version: self.version.clone(),
-                command_line: self.command_line.clone(),
-                parameters: self.parameters.clone(),
-                metadata: self.metadata.clone(),
-                dut_info: self.dut_info.to_spec(),
-            }),
-        })
-    }
-}
-
-pub struct TestRunStartBuilder {
-    name: String,
-    version: String,
-    command_line: String,
-    parameters: Map<String, Value>,
-    metadata: Option<Map<String, Value>>,
-    dut_info: dut::DutInfo,
-}
-
-impl TestRunStartBuilder {
-    pub fn new(
-        name: &str,
-        version: &str,
-        command_line: &str,
-        parameters: &Map<String, Value>,
-        dut_info: &dut::DutInfo,
-    ) -> TestRunStartBuilder {
-        TestRunStartBuilder {
-            name: name.to_string(),
-            version: version.to_string(),
-            command_line: command_line.to_string(),
-            parameters: parameters.clone(),
-            metadata: None,
-            dut_info: dut_info.clone(),
-        }
-    }
-
-    pub fn add_metadata(mut self, key: &str, value: Value) -> TestRunStartBuilder {
-        self.metadata = match self.metadata {
-            Some(mut metadata) => {
-                metadata.insert(key.to_string(), value.clone());
-                Some(metadata)
-            }
-            None => {
-                let mut metadata = Map::new();
-                metadata.insert(key.to_string(), value.clone());
-                Some(metadata)
-            }
-        };
-        self
-    }
-
-    pub fn build(self) -> TestRunStart {
-        TestRunStart {
-            name: self.name,
-            version: self.version,
-            command_line: self.command_line,
-            parameters: self.parameters,
-            metadata: self.metadata,
-            dut_info: self.dut_info,
-        }
-    }
-}
-
-pub struct TestRunEnd {
-    status: spec::TestStatus,
-    result: spec::TestResult,
-}
-
-impl TestRunEnd {
-    pub fn builder() -> TestRunEndBuilder {
-        TestRunEndBuilder::new()
-    }
-
-    pub fn to_artifact(&self) -> spec::RootArtifact {
-        spec::RootArtifact::TestRunArtifact(spec::TestRunArtifact {
-            artifact: spec::TestRunArtifactDescendant::TestRunEnd(spec::TestRunEnd {
-                status: self.status.clone(),
-                result: self.result.clone(),
-            }),
-        })
-    }
-}
-
-#[derive(Debug)]
-pub struct TestRunEndBuilder {
-    status: spec::TestStatus,
-    result: spec::TestResult,
-}
-
-#[allow(clippy::new_without_default)]
-impl TestRunEndBuilder {
-    pub fn new() -> TestRunEndBuilder {
-        TestRunEndBuilder {
-            status: spec::TestStatus::Complete,
-            result: spec::TestResult::Pass,
-        }
-    }
-    pub fn status(mut self, value: spec::TestStatus) -> TestRunEndBuilder {
-        self.status = value;
-        self
-    }
-
-    pub fn result(mut self, value: spec::TestResult) -> TestRunEndBuilder {
-        self.result = value;
-        self
-    }
-
-    pub fn build(self) -> TestRunEnd {
-        TestRunEnd {
-            status: self.status,
-            result: self.result,
-        }
-    }
-}
-
-// TODO: this likely will go into the emitter since it's not the run's job to emit the schema version
-pub struct SchemaVersion {
-    major: i8,
-    minor: i8,
-}
-
-#[allow(clippy::new_without_default)]
-impl SchemaVersion {
-    pub fn new() -> SchemaVersion {
-        SchemaVersion {
-            major: spec::SPEC_VERSION.0,
-            minor: spec::SPEC_VERSION.1,
-        }
-    }
-
-    pub fn to_artifact(&self) -> spec::RootArtifact {
-        spec::RootArtifact::SchemaVersion(spec::SchemaVersion {
-            major: self.major,
-            minor: self.minor,
-        })
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use anyhow::Result;
-
-    use super::*;
-    use crate::spec;
-
-    #[test]
-    fn test_schema_creation_from_builder() -> Result<()> {
-        let version = SchemaVersion::new();
-        assert_eq!(version.major, spec::SPEC_VERSION.0);
-        assert_eq!(version.minor, spec::SPEC_VERSION.1);
-        Ok(())
+        let step_id = format!("step_{}", self.step_seqno.fetch_add(1, Ordering::AcqRel));
+        TestStep::new(&step_id, name, self.run.state.clone())
     }
 }

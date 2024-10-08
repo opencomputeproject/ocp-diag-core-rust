@@ -84,9 +84,9 @@ impl StdoutWriter {
 }
 
 pub struct JsonEmitter {
-    sequence_no: Arc<atomic::AtomicU64>,
     timezone: chrono_tz::Tz,
     writer: WriterType,
+    seqno: Arc<atomic::AtomicU64>,
 }
 
 impl JsonEmitter {
@@ -94,27 +94,27 @@ impl JsonEmitter {
         JsonEmitter {
             timezone,
             writer,
-            sequence_no: Arc::new(atomic::AtomicU64::new(0)),
+            seqno: Arc::new(atomic::AtomicU64::new(0)),
         }
     }
 
-    fn serialize_artifact(&self, object: &spec::RootArtifact) -> serde_json::Value {
+    fn serialize_artifact(&self, object: &spec::RootImpl) -> serde_json::Value {
         let now = chrono::Local::now();
         let now_tz = now.with_timezone(&self.timezone);
-        let out_artifact = spec::Root {
+        let root = spec::Root {
             artifact: object.clone(),
             timestamp: now_tz,
             seqno: self.next_sequence_no(),
         };
-        serde_json::json!(out_artifact)
+        serde_json::json!(root)
     }
 
     fn next_sequence_no(&self) -> u64 {
-        self.sequence_no.fetch_add(1, atomic::Ordering::SeqCst);
-        self.sequence_no.load(atomic::Ordering::SeqCst)
+        self.seqno.fetch_add(1, atomic::Ordering::SeqCst);
+        self.seqno.load(atomic::Ordering::SeqCst)
     }
 
-    pub async fn emit(&self, object: &spec::RootArtifact) -> Result<(), WriterError> {
+    pub async fn emit(&self, object: &spec::RootImpl) -> Result<(), WriterError> {
         let serialized = self.serialize_artifact(object);
         match self.writer {
             WriterType::File(ref file) => file.write(&serialized.to_string()).await?,
@@ -132,8 +132,6 @@ mod tests {
     use serde_json::json;
 
     use super::*;
-    use crate::output as tv;
-    use tv::run::SchemaVersion;
 
     #[tokio::test]
     async fn test_emit_using_buffer_writer() -> Result<()> {
@@ -149,8 +147,11 @@ mod tests {
         let writer = BufferWriter::new(buffer.clone());
         let emitter = JsonEmitter::new(chrono_tz::UTC, WriterType::Buffer(writer));
 
-        let version = SchemaVersion::new();
-        emitter.emit(&version.to_artifact()).await?;
+        emitter
+            .emit(&spec::RootImpl::SchemaVersion(
+                spec::SchemaVersion::default(),
+            ))
+            .await?;
 
         let deserialized = serde_json::from_str::<serde_json::Value>(
             buffer.lock().await.first().ok_or(anyhow!("no outputs"))?,
@@ -180,9 +181,10 @@ mod tests {
         let buffer = Arc::new(Mutex::new(vec![]));
         let writer = BufferWriter::new(buffer.clone());
         let emitter = JsonEmitter::new(chrono_tz::UTC, WriterType::Buffer(writer));
-        let version = SchemaVersion::new();
-        emitter.emit(&version.to_artifact()).await?;
-        emitter.emit(&version.to_artifact()).await?;
+
+        let version = spec::RootImpl::SchemaVersion(spec::SchemaVersion::default());
+        emitter.emit(&version).await?;
+        emitter.emit(&version).await?;
 
         let deserialized = serde_json::from_str::<serde_json::Value>(
             buffer.lock().await.first().ok_or(anyhow!("no outputs"))?,

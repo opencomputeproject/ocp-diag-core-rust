@@ -498,6 +498,7 @@ async fn test_testrun_step_error_with_details() -> Result<()> {
         json!({
             "sequenceNumber": 4,
             "testStepArtifact": {
+                "testStepId": "step_0",
                 "error": {
                     "message": "Error message",
                     "softwareInfoIds":[{
@@ -579,12 +580,14 @@ async fn test_step_with_measurement() -> Result<()> {
         json_run_default_start(),
         json_step_default_start(),
         json!({
-            "sequenceNumber": 4,
             "testStepArtifact": {
+                "testStepId": "step_0",
                 "measurement": {
-                    "name": "name", "value": 50
+                    "name": "name",
+                    "value": 50
                 }
-            }
+            },
+            "sequenceNumber": 4
         }),
         json_step_complete(5),
         json_run_pass(6),
@@ -601,6 +604,8 @@ async fn test_step_with_measurement() -> Result<()> {
     .await
 }
 
+// TODO: intentionally leaving these tests broken so that it's obvious later that the
+// assert_json_includes was not sufficient; this case is missing `testStepId` field
 #[tokio::test]
 async fn test_step_with_measurement_builder() -> Result<()> {
     let expected = [
