@@ -32,6 +32,7 @@ jobs:
           toolchain: ${{ matrix.toolchain }}
       - name: cargo test --locked
         run: cargo test --locked --all-features
+
   os-check:
     runs-on: ${{ matrix.os }}
     name: ${{ matrix.os }} / stable
@@ -46,6 +47,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
       - name: cargo test
         run: cargo test --locked --all-features --all-targets
+
   coverage:
     runs-on: ubuntu-latest
     name: ubuntu / stable / coverage
