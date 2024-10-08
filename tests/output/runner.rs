@@ -332,7 +332,7 @@ async fn test_testrun_with_error_with_details() -> Result<()> {
     .await
 }
 
-// #[cfg(any(test, feature = "boxed-scopes"))]
+#[cfg(feature = "boxed-scopes")]
 #[tokio::test]
 async fn test_testrun_with_scope() -> Result<()> {
     let expected = [
@@ -573,43 +573,49 @@ async fn test_testrun_step_error_with_details() -> Result<()> {
     .await
 }
 
-// #[tokio::test]
-// async fn test_testrun_step_scope_log() -> Result<()> {
-//     let expected = [
-//         json_schema_version(),
-//         json_run_default_start(),
-//         json_step_default_start(),
-//         json!({
-//             "sequenceNumber": 3,
-//             "testStepArtifact": {
-//                 "log": {
-//                     "message": "This is a log message with INFO severity",
-//                     "severity": "INFO"
-//                 }
-//             }
-//         }),
-//         json_step_complete(4),
-//         json_run_pass(5),
-//     ];
+#[cfg(feature = "boxed-scopes")]
+#[tokio::test]
+async fn test_testrun_step_scope_log() -> Result<()> {
+    let expected = [
+        json_schema_version(),
+        json_run_default_start(),
+        json_step_default_start(),
+        json!({
+            "testStepArtifact": {
+                "testStepId": "step_0",
+                "log": {
+                    "message": "This is a log message with INFO severity",
+                    "severity": "INFO"
+                }
+            },
+            "sequenceNumber": 3,
+            "timestamp": DATETIME_FORMATTED
+        }),
+        json_step_complete(4),
+        json_run_pass(5),
+    ];
 
-//     check_output_run(&expected, |run| {
-//         async {
-//             run.step("first step")
-//                 .start()
-//                 .scope(|s| async {
-//                     s.add_log(
-//                         LogSeverity::Info,
-//                         "This is a log message with INFO severity",
-//                     )
-//                     .await?;
-//                     Ok(TestStatus::Complete)
-//                 })
-//                 .await
-//         }
-//         .boxed()
-//     })
-//     .await
-// }
+    check_output_run(&expected, |run| {
+        async {
+            run.add_step("first step")
+                .scope(|s| {
+                    async move {
+                        s.add_log(
+                            LogSeverity::Info,
+                            "This is a log message with INFO severity",
+                        )
+                        .await?;
+
+                        Ok(TestStatus::Complete)
+                    }
+                    .boxed()
+                })
+                .await
+        }
+        .boxed()
+    })
+    .await
+}
 
 #[tokio::test]
 async fn test_step_with_measurement() -> Result<()> {
