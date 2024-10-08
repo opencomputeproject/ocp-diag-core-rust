@@ -109,7 +109,7 @@ async fn test_ocptv_error_macro_with_symptom_and_message() -> Result<()> {
                 "symptom": "symptom"
             }
         },
-        "sequenceNumber": 3
+        "sequenceNumber": 2
     });
 
     check_output_run(&expected, "error", |run| async move {
@@ -127,7 +127,7 @@ async fn test_ocptv_error_macro_with_symptom() -> Result<()> {
                 "symptom": "symptom"
             }
         },
-        "sequenceNumber": 3
+        "sequenceNumber": 2
     });
 
     check_output_run(&expected, "error", |run| async move {
@@ -146,7 +146,7 @@ async fn test_ocptv_log_debug() -> Result<()> {
                 "severity": "DEBUG"
             }
         },
-        "sequenceNumber": 3
+        "sequenceNumber": 2
     });
 
     check_output_run(&expected, "log", |run| async move {
@@ -166,7 +166,7 @@ async fn test_ocptv_log_info() -> Result<()> {
                 "severity": "INFO"
             }
         },
-        "sequenceNumber": 3
+        "sequenceNumber": 2
     });
 
     check_output_run(&expected, "log", |run| async move {
@@ -185,7 +185,7 @@ async fn test_ocptv_log_warning() -> Result<()> {
                 "severity": "WARNING"
             }
         },
-        "sequenceNumber": 3
+        "sequenceNumber": 2
     });
 
     check_output_run(&expected, "log", |run| async move {
@@ -204,7 +204,7 @@ async fn test_ocptv_log_error() -> Result<()> {
                 "severity": "ERROR"
             }
         },
-        "sequenceNumber": 3
+        "sequenceNumber": 2
     });
 
     check_output_run(&expected, "log", |run| async move {
@@ -223,7 +223,7 @@ async fn test_ocptv_log_fatal() -> Result<()> {
                 "severity": "FATAL"
             }
         },
-        "sequenceNumber": 3
+        "sequenceNumber": 2
     });
 
     check_output_run(&expected, "log", |run| async move {
@@ -242,7 +242,7 @@ async fn test_ocptv_error_macro_with_symptom_and_message_in_step() -> Result<()>
                 "symptom":"symptom"
             }
         },
-        "sequenceNumber": 4
+        "sequenceNumber": 3
     });
 
     check_output_step(&expected, "error", |step| async move {
@@ -260,7 +260,7 @@ async fn test_ocptv_error_macro_with_symptom_in_step() -> Result<()> {
                 "symptom": "symptom"
             }
         },
-        "sequenceNumber": 4
+        "sequenceNumber": 3
     });
 
     check_output_step(&expected, "error", |step| async move {
@@ -279,7 +279,7 @@ async fn test_ocptv_log_debug_in_step() -> Result<()> {
                 "severity": "DEBUG"
             }
         },
-        "sequenceNumber": 4
+        "sequenceNumber": 3
     });
 
     check_output_step(&expected, "log", |step| async move {
@@ -298,7 +298,7 @@ async fn test_ocptv_log_info_in_step() -> Result<()> {
                 "severity": "INFO"
             }
         },
-        "sequenceNumber": 4
+        "sequenceNumber": 3
     });
 
     check_output_step(&expected, "log", |step| async move {
@@ -317,7 +317,7 @@ async fn test_ocptv_log_warning_in_step() -> Result<()> {
                 "severity":"WARNING"
             }
         },
-        "sequenceNumber": 4
+        "sequenceNumber": 3
     });
 
     check_output_step(&expected, "log", |step| async move {
@@ -336,7 +336,7 @@ async fn test_ocptv_log_error_in_step() -> Result<()> {
                 "severity": "ERROR"
             }
         },
-        "sequenceNumber": 4
+        "sequenceNumber": 3
     });
 
     check_output_step(&expected, "log", |step| async move {
@@ -355,7 +355,7 @@ async fn test_ocptv_log_fatal_in_step() -> Result<()> {
                 "severity": "FATAL"
             }
         },
-        "sequenceNumber": 4
+        "sequenceNumber": 3
     });
 
     check_output_step(&expected, "log", |step| async move {
