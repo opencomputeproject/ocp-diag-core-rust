@@ -16,9 +16,12 @@ use tokio::sync::Mutex;
 use ocptv::ocptv_error;
 use ocptv::output as tv;
 use ocptv::{ocptv_log_debug, ocptv_log_error, ocptv_log_fatal, ocptv_log_info, ocptv_log_warning};
-use tv::{Config, DutInfo, StartedTestRun, TestRun, TestStep};
+use tv::{Config, DutInfo, StartedTestRun, StartedTestStep, TestRun};
 
-async fn check_output<F, R>(expected: &serde_json::Value, func: F) -> Result<serde_json::Value>
+async fn check_output<F, R, const N: usize>(
+    expected: &serde_json::Value,
+    func: F,
+) -> Result<serde_json::Value>
 where
     R: Future<Output = Result<()>>,
     F: FnOnce(StartedTestRun) -> R,
@@ -39,8 +42,8 @@ where
             .lock()
             .await
             // first 2 items are schemaVersion, testRunStart
-            .first_chunk::<3>()
-            .ok_or(anyhow!("buffer is missing macro output item"))?[2],
+            .first_chunk::<N>()
+            .ok_or(anyhow!("buffer is missing macro output item"))?[N - 1],
     )?;
     assert_json_include!(actual: actual.clone(), expected: expected);
 
@@ -52,7 +55,7 @@ where
     R: Future<Output = Result<()>>,
     F: FnOnce(StartedTestRun) -> R,
 {
-    let actual = check_output(expected, func).await?;
+    let actual = check_output::<_, _, 3>(expected, func).await?;
 
     let source = actual
         .get("testRunArtifact")
@@ -72,11 +75,10 @@ where
 async fn check_output_step<F, R>(expected: &serde_json::Value, key: &str, func: F) -> Result<()>
 where
     R: Future<Output = Result<()>>,
-    F: FnOnce(TestStep) -> R,
+    F: FnOnce(StartedTestStep) -> R,
 {
-    let actual = check_output(expected, |run| async move {
-        let step = run.step("step_name")?;
-        // TODO: missing step start here
+    let actual = check_output::<_, _, 4>(expected, |run| async move {
+        let step = run.step("step_name").start().await?;
 
         func(step).await?;
         Ok(())
@@ -240,7 +242,7 @@ async fn test_ocptv_error_macro_with_symptom_and_message_in_step() -> Result<()>
                 "symptom":"symptom"
             }
         },
-        "sequenceNumber": 3
+        "sequenceNumber": 4
     });
 
     check_output_step(&expected, "error", |step| async move {
@@ -258,7 +260,7 @@ async fn test_ocptv_error_macro_with_symptom_in_step() -> Result<()> {
                 "symptom": "symptom"
             }
         },
-        "sequenceNumber": 3
+        "sequenceNumber": 4
     });
 
     check_output_step(&expected, "error", |step| async move {
@@ -277,7 +279,7 @@ async fn test_ocptv_log_debug_in_step() -> Result<()> {
                 "severity": "DEBUG"
             }
         },
-        "sequenceNumber": 3
+        "sequenceNumber": 4
     });
 
     check_output_step(&expected, "log", |step| async move {
@@ -296,7 +298,7 @@ async fn test_ocptv_log_info_in_step() -> Result<()> {
                 "severity": "INFO"
             }
         },
-        "sequenceNumber": 3
+        "sequenceNumber": 4
     });
 
     check_output_step(&expected, "log", |step| async move {
@@ -315,7 +317,7 @@ async fn test_ocptv_log_warning_in_step() -> Result<()> {
                 "severity":"WARNING"
             }
         },
-        "sequenceNumber": 3
+        "sequenceNumber": 4
     });
 
     check_output_step(&expected, "log", |step| async move {
@@ -334,7 +336,7 @@ async fn test_ocptv_log_error_in_step() -> Result<()> {
                 "severity": "ERROR"
             }
         },
-        "sequenceNumber": 3
+        "sequenceNumber": 4
     });
 
     check_output_step(&expected, "log", |step| async move {
@@ -353,7 +355,7 @@ async fn test_ocptv_log_fatal_in_step() -> Result<()> {
                 "severity": "FATAL"
             }
         },
-        "sequenceNumber": 3
+        "sequenceNumber": 4
     });
 
     check_output_step(&expected, "log", |step| async move {

@@ -567,8 +567,8 @@ impl StartedTestRun {
         Ok(())
     }
 
-    pub fn step(&self, name: &str) -> Result<TestStep, emitters::WriterError> {
-        Ok(TestStep::new(name, self.run.state.clone()))
+    pub fn step(&self, name: &str) -> TestStep {
+        TestStep::new(name, self.run.state.clone())
     }
 }
 
@@ -578,7 +578,6 @@ impl StartedTestRun {
 pub struct TestStep {
     name: String,
     state: Arc<Mutex<TestState>>,
-    measurement_id_no: Arc<atomic::AtomicU64>,
 }
 
 impl TestStep {
@@ -586,7 +585,6 @@ impl TestStep {
         TestStep {
             name: name.to_string(),
             state,
-            measurement_id_no: Arc::new(atomic::AtomicU64::new(0)),
         }
     }
 
@@ -601,14 +599,12 @@ impl TestStep {
     /// # use ocptv::output::*;
     ///
     /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
-    ///
-    /// let step = run.step("step_name")?;
-    /// step.start().await?;
+    /// let step = run.step("step_name").start().await?;
     ///
     /// # Ok::<(), WriterError>(())
     /// # });
     /// ```
-    pub async fn start(&self) -> Result<(), emitters::WriterError> {
+    pub async fn start(self) -> Result<StartedTestStep, emitters::WriterError> {
         let start = objects::TestStepStart::new(&self.name);
         self.state
             .lock()
@@ -616,9 +612,58 @@ impl TestStep {
             .emitter
             .emit(&start.to_artifact())
             .await?;
-        Ok(())
+
+        Ok(StartedTestStep {
+            step: self,
+            measurement_id_no: Arc::new(atomic::AtomicU64::new(0)),
+        })
     }
 
+    // /// Builds a scope in the [`TestStep`] object, taking care of starting and
+    // /// ending it. View [`TestStep::start`] and [`TestStep::end`] methods.
+    // /// After the scope is constructed, additional objects may be added to it.
+    // /// This is the preferred usage for the [`TestStep`], since it guarantees
+    // /// all the messages are emitted between the start and end messages, the order
+    // /// is respected and no messages is lost.
+    // ///
+    // /// # Examples
+    // ///
+    // /// ```rust
+    // /// # tokio_test::block_on(async {
+    // /// # use ocptv::output::*;
+    // ///
+    // /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
+    // ///
+    // /// let step = run.step("first step")?;
+    // /// step.scope(|s| async {
+    // ///     s.log(
+    // ///         LogSeverity::Info,
+    // ///         "This is a log message with INFO severity",
+    // ///     ).await?;
+    // ///     Ok(TestStatus::Complete)
+    // /// }).await?;
+    // ///
+    // /// # Ok::<(), WriterError>(())
+    // /// # });
+    // /// ```
+    // pub async fn scope<'a, F, R>(&'a self, func: F) -> Result<(), emitters::WriterError>
+    // where
+    //     R: Future<Output = Result<models::TestStatus, emitters::WriterError>>,
+    //     F: std::ops::FnOnce(&'a TestStep) -> R,
+    // {
+    //     self.start().await?;
+    //     let status = func(self).await?;
+    //     self.end(status).await?;
+    //     Ok(())
+    // }
+}
+
+pub struct StartedTestStep {
+    step: TestStep,
+    measurement_id_no: Arc<atomic::AtomicU64>,
+}
+
+impl StartedTestStep {
     /// Ends the test step.
     ///
     /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#teststepend
@@ -631,8 +676,7 @@ impl TestStep {
     ///
     /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
     ///
-    /// let step = run.step("step_name")?;
-    /// step.start().await?;
+    /// let step = run.step("step_name").start().await?;
     /// step.end(TestStatus::Complete).await?;
     ///
     /// # Ok::<(), WriterError>(())
@@ -640,50 +684,13 @@ impl TestStep {
     /// ```
     pub async fn end(&self, status: models::TestStatus) -> Result<(), emitters::WriterError> {
         let end = objects::TestStepEnd::new(status);
-        self.state
+        self.step
+            .state
             .lock()
             .await
             .emitter
             .emit(&end.to_artifact())
             .await?;
-        Ok(())
-    }
-
-    /// Builds a scope in the [`TestStep`] object, taking care of starting and
-    /// ending it. View [`TestStep::start`] and [`TestStep::end`] methods.
-    /// After the scope is constructed, additional objects may be added to it.
-    /// This is the preferred usage for the [`TestStep`], since it guarantees
-    /// all the messages are emitted between the start and end messages, the order
-    /// is respected and no messages is lost.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # tokio_test::block_on(async {
-    /// # use ocptv::output::*;
-    ///
-    /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
-    ///
-    /// let step = run.step("first step")?;
-    /// step.scope(|s| async {
-    ///     s.log(
-    ///         LogSeverity::Info,
-    ///         "This is a log message with INFO severity",
-    ///     ).await?;
-    ///     Ok(TestStatus::Complete)
-    /// }).await?;
-    ///
-    /// # Ok::<(), WriterError>(())
-    /// # });
-    /// ```
-    pub async fn scope<'a, F, R>(&'a self, func: F) -> Result<(), emitters::WriterError>
-    where
-        R: Future<Output = Result<models::TestStatus, emitters::WriterError>>,
-        F: std::ops::FnOnce(&'a TestStep) -> R,
-    {
-        self.start().await?;
-        let status = func(self).await?;
-        self.end(status).await?;
         Ok(())
     }
 
@@ -701,8 +708,7 @@ impl TestStep {
     ///
     /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
     ///
-    /// let step = run.step("step_name")?;
-    /// step.start().await?;
+    /// let step = run.step("step_name").start().await?;
     /// step.log(
     ///     LogSeverity::Info,
     ///     "This is a log message with INFO severity",
@@ -722,8 +728,7 @@ impl TestStep {
     ///
     /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
     ///
-    /// let step = run.step("step_name")?;
-    /// step.start().await?;
+    /// let step = run.step("step_name").start().await?;
     /// ocptv_log_info!(step, "This is a log message with INFO severity").await?;
     /// step.end(TestStatus::Complete).await?;
     ///
@@ -736,7 +741,8 @@ impl TestStep {
         msg: &str,
     ) -> Result<(), emitters::WriterError> {
         let log = objects::Log::builder(msg).severity(severity).build();
-        self.state
+        self.step
+            .state
             .lock()
             .await
             .emitter
@@ -758,8 +764,7 @@ impl TestStep {
     ///
     /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
     ///
-    /// let step = run.step("step_name")?;
-    /// step.start().await?;
+    /// let step = run.step("step_name").start().await?;
     /// step.log_with_details(
     ///     &Log::builder("This is a log message with INFO severity")
     ///         .severity(LogSeverity::Info)
@@ -772,7 +777,8 @@ impl TestStep {
     /// # });
     /// ```
     pub async fn log_with_details(&self, log: &objects::Log) -> Result<(), emitters::WriterError> {
-        self.state
+        self.step
+            .state
             .lock()
             .await
             .emitter
@@ -794,8 +800,7 @@ impl TestStep {
     ///
     /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
     ///
-    /// let step = run.step("step_name")?;
-    /// step.start().await?;
+    /// let step = run.step("step_name").start().await?;
     /// step.error("symptom").await?;
     /// step.end(TestStatus::Complete).await?;
     ///
@@ -813,8 +818,7 @@ impl TestStep {
     ///
     /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
     ///
-    /// let step = run.step("step_name")?;
-    /// step.start().await?;
+    /// let step = run.step("step_name").start().await?;
     /// ocptv_error!(step, "symptom").await?;
     /// step.end(TestStatus::Complete).await?;
     ///
@@ -823,7 +827,8 @@ impl TestStep {
     /// ```
     pub async fn error(&self, symptom: &str) -> Result<(), emitters::WriterError> {
         let error = objects::Error::builder(symptom).build();
-        self.state
+        self.step
+            .state
             .lock()
             .await
             .emitter
@@ -846,8 +851,7 @@ impl TestStep {
     ///
     /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
     ///
-    /// let step = run.step("step_name")?;
-    /// step.start().await?;
+    /// let step = run.step("step_name").start().await?;
     /// step.error_with_msg("symptom", "error message").await?;
     /// step.end(TestStatus::Complete).await?;
     ///
@@ -865,8 +869,7 @@ impl TestStep {
     ///
     /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
     ///
-    /// let step = run.step("step_name")?;
-    /// step.start().await?;
+    /// let step = run.step("step_name").start().await?;
     /// ocptv_error!(step, "symptom", "error message").await?;
     /// step.end(TestStatus::Complete).await?;
     ///
@@ -879,7 +882,8 @@ impl TestStep {
         msg: &str,
     ) -> Result<(), emitters::WriterError> {
         let error = objects::Error::builder(symptom).message(msg).build();
-        self.state
+        self.step
+            .state
             .lock()
             .await
             .emitter
@@ -901,8 +905,7 @@ impl TestStep {
     ///
     /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
     ///
-    /// let step = run.step("step_name")?;
-    /// step.start().await?;
+    /// let step = run.step("step_name").start().await?;
     /// step.error_with_details(
     ///     &Error::builder("symptom")
     ///         .message("Error message")
@@ -919,7 +922,8 @@ impl TestStep {
         &self,
         error: &objects::Error,
     ) -> Result<(), emitters::WriterError> {
-        self.state
+        self.step
+            .state
             .lock()
             .await
             .emitter
@@ -940,8 +944,7 @@ impl TestStep {
     ///
     /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
     ///
-    /// let step = run.step("step_name")?;
-    /// step.start().await?;
+    /// let step = run.step("step_name").start().await?;
     /// step.add_measurement("name", 50.into()).await?;
     /// step.end(TestStatus::Complete).await?;
     ///
@@ -954,7 +957,8 @@ impl TestStep {
         value: Value,
     ) -> Result<(), emitters::WriterError> {
         let measurement = objects::Measurement::new(name, value);
-        self.state
+        self.step
+            .state
             .lock()
             .await
             .emitter
@@ -976,7 +980,7 @@ impl TestStep {
     ///
     /// let hwinfo = HardwareInfo::builder("id", "fan").build();
     /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
-    /// let step = run.step("step_name")?;
+    /// let step = run.step("step_name").start().await?;
     ///
     /// let measurement = Measurement::builder("name", 5000.into())
     ///     .hardware_info(&hwinfo)
@@ -994,7 +998,8 @@ impl TestStep {
         &self,
         measurement: &objects::Measurement,
     ) -> Result<(), emitters::WriterError> {
-        self.state
+        self.step
+            .state
             .lock()
             .await
             .emitter
@@ -1016,8 +1021,7 @@ impl TestStep {
     /// # use ocptv::output::*;
     ///
     /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
-    /// let step = run.step("step_name")?;
-    /// step.start().await?;
+    /// let step = run.step("step_name").start().await?;
     /// let series = step.measurement_series("name");
     ///
     /// # Ok::<(), WriterError>(())
@@ -1031,7 +1035,7 @@ impl TestStep {
             self.measurement_id_no.load(atomic::Ordering::SeqCst)
         );
 
-        MeasurementSeries::new(&series_id, name, self.state.clone())
+        MeasurementSeries::new(&series_id, name, self.step.state.clone())
     }
 
     /// Starts a Measurement Series (a time-series list of measurements).
@@ -1046,8 +1050,7 @@ impl TestStep {
     /// # use ocptv::output::*;
     ///
     /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
-    /// let step = run.step("step_name")?;
-    /// step.start().await?;
+    /// let step = run.step("step_name").start().await?;
     /// let series =
     ///     step.measurement_series_with_details(MeasurementSeriesStart::new("name", "series_id"));
     ///
@@ -1058,7 +1061,7 @@ impl TestStep {
         &self,
         start: objects::MeasurementSeriesStart,
     ) -> MeasurementSeries {
-        MeasurementSeries::new_with_details(start, self.state.clone())
+        MeasurementSeries::new_with_details(start, self.step.state.clone())
     }
 }
 
@@ -1114,9 +1117,7 @@ impl MeasurementSeries {
     /// # use ocptv::output::*;
     ///
     /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
-    ///
-    /// let step = run.step("step_name")?;
-    /// step.start().await?;
+    /// let step = run.step("step_name").start().await?;
     ///
     /// let series = step.measurement_series("name");
     /// series.start().await?;
@@ -1145,9 +1146,7 @@ impl MeasurementSeries {
     /// # use ocptv::output::*;
     ///
     /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
-    ///
-    /// let step = run.step("step_name")?;
-    /// step.start().await?;
+    /// let step = run.step("step_name").start().await?;
     ///
     /// let series = step.measurement_series("name");
     /// series.start().await?;
@@ -1181,9 +1180,7 @@ impl MeasurementSeries {
     /// # use ocptv::output::*;
     ///
     /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
-    ///
-    /// let step = run.step("step_name")?;
-    /// step.start().await?;
+    /// let step = run.step("step_name").start().await?;
     ///
     /// let series = step.measurement_series("name");
     /// series.start().await?;
@@ -1221,9 +1218,7 @@ impl MeasurementSeries {
     /// # use ocptv::output::*;
     ///
     /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
-    ///
-    /// let step = run.step("step_name")?;
-    /// step.start().await?;
+    /// let step = run.step("step_name").start().await?;
     ///
     /// let series = step.measurement_series("name");
     /// series.start().await?;
@@ -1269,9 +1264,7 @@ impl MeasurementSeries {
     /// # use ocptv::output::*;
     ///
     /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
-    ///
-    /// let step = run.step("step_name")?;
-    /// step.start().await?;
+    /// let step = run.step("step_name").start().await?;
     ///
     /// let series = step.measurement_series("name");
     /// series.start().await?;
