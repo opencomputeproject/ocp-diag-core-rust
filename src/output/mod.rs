@@ -16,7 +16,9 @@ mod run;
 mod step;
 mod writer;
 
-pub use crate::spec::{LogSeverity, TestResult, TestStatus, ValidatorType, SPEC_VERSION};
+pub use crate::spec::{
+    LogSeverity, SoftwareType, TestResult, TestStatus, ValidatorType, SPEC_VERSION,
+};
 pub use config::{Config, ConfigBuilder, TimestampProvider};
 pub use dut::{
     DutInfo, DutInfoBuilder, HardwareInfo, HardwareInfoBuilder, PlatformInfo, PlatformInfoBuilder,

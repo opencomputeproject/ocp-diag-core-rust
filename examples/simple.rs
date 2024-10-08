@@ -11,7 +11,7 @@ use ocptv::{
     ocptv_log_debug, ocptv_log_info,
     output::{self as tv},
 };
-use tv::{DutInfo, TestResult, TestRun, TestRunOutcome, TestStatus};
+use tv::{DutInfo, SoftwareInfo, SoftwareType, TestResult, TestRun, TestRunOutcome, TestStatus};
 
 macro_rules! run_demo {
     ($name: ident) => {
@@ -98,9 +98,44 @@ async fn demo_scope_step_fail() -> Result<()> {
     Ok(())
 }
 
+/// Show outputting an error message, triggered by a specific software component of the DUT.
+async fn demo_run_error_with_dut() -> Result<()> {
+    let swinfo = SoftwareInfo::builder("bmc", "bmc")
+        .software_type(SoftwareType::Firmware)
+        .version("2.5")
+        .build();
+    let dut = DutInfo::builder("dut0")
+        .name("dut0.server.net")
+        .add_software_info(&swinfo)
+        .build();
+
+    TestRun::builder("with dut", &dut, "1.0")
+        .build()
+        .scope(|r| {
+            async move {
+                r.add_error_with_details(
+                    &tv::Error::builder("power-fail")
+                        .add_software_info(&swinfo)
+                        .build(),
+                )
+                .await?;
+
+                Ok(TestRunOutcome {
+                    status: TestStatus::Complete,
+                    result: TestResult::Fail,
+                })
+            }
+            .boxed()
+        })
+        .await?;
+
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() {
     run_demo!(demo_no_scopes);
     run_demo!(demo_scope_run_skip);
     run_demo!(demo_scope_step_fail);
+    run_demo!(demo_run_error_with_dut);
 }
