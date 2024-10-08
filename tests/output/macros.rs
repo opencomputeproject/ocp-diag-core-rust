@@ -78,7 +78,7 @@ where
     F: FnOnce(StartedTestStep) -> R,
 {
     let actual = check_output::<_, _, 4>(expected, |run| async move {
-        let step = run.step("step_name").start().await?;
+        let step = run.add_step("step_name").start().await?;
 
         func(step).await?;
         Ok(())

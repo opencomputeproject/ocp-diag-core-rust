@@ -52,9 +52,9 @@ impl MeasurementSeries {
     /// # use ocptv::output::*;
     ///
     /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
-    /// let step = run.step("step_name").start().await?;
+    /// let step = run.add_step("step_name").start().await?;
     ///
-    /// let series = step.measurement_series("name");
+    /// let series = step.add_measurement_series("name");
     /// series.start().await?;
     ///
     /// # Ok::<(), OcptvError>(())
@@ -87,9 +87,9 @@ impl MeasurementSeries {
     // /// # use ocptv::output::*;
     // ///
     // /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
-    // /// let step = run.step("step_name").start().await?;
+    // /// let step = run.add_step("step_name").start().await?;
     // ///
-    // /// let series = step.measurement_series("name");
+    // /// let series = step.add_measurement_series("name");
     // /// series.start().await?;
     // /// series.scope(|s| async {
     // ///     s.add_measurement(60.into()).await?;
@@ -135,9 +135,9 @@ impl StartedMeasurementSeries {
     /// # use ocptv::output::*;
     ///
     /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
-    /// let step = run.step("step_name").start().await?;
+    /// let step = run.add_step("step_name").start().await?;
     ///
-    /// let series = step.measurement_series("name").start().await?;
+    /// let series = step.add_measurement_series("name").start().await?;
     /// series.end().await?;
     ///
     /// # Ok::<(), OcptvError>(())
@@ -168,9 +168,9 @@ impl StartedMeasurementSeries {
     /// # use ocptv::output::*;
     ///
     /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
-    /// let step = run.step("step_name").start().await?;
+    /// let step = run.add_step("step_name").start().await?;
     ///
-    /// let series = step.measurement_series("name").start().await?;
+    /// let series = step.add_measurement_series("name").start().await?;
     /// series.add_measurement(60.into()).await?;
     ///
     /// # Ok::<(), OcptvError>(())
@@ -207,9 +207,9 @@ impl StartedMeasurementSeries {
     /// # use ocptv::output::*;
     ///
     /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
-    /// let step = run.step("step_name").start().await?;
+    /// let step = run.add_step("step_name").start().await?;
     ///
-    /// let series = step.measurement_series("name").start().await?;
+    /// let series = step.add_measurement_series("name").start().await?;
     /// series.add_measurement_with_metadata(60.into(), vec![("key", "value".into())]).await?;
     ///
     /// # Ok::<(), OcptvError>(())

@@ -128,7 +128,7 @@ impl TestRun {
     // ///
     // /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0");
     // /// run.scope(|r| async {
-    // ///     r.log(LogSeverity::Info, "First message").await?;
+    // ///     r.add_log(LogSeverity::Info, "First message").await?;
     // ///     Ok(TestRunOutcome {
     // ///         status: TestStatus::Complete,
     // ///         result: TestResult::Pass,
@@ -329,7 +329,7 @@ impl StartedTestRun {
     /// # use ocptv::output::*;
     ///
     /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
-    /// run.log(
+    /// run.add_log(
     ///     LogSeverity::Info,
     ///     "This is a log message with INFO severity",
     /// ).await?;
@@ -338,7 +338,11 @@ impl StartedTestRun {
     /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn log(&self, severity: spec::LogSeverity, msg: &str) -> Result<(), tv::OcptvError> {
+    pub async fn add_log(
+        &self,
+        severity: spec::LogSeverity,
+        msg: &str,
+    ) -> Result<(), tv::OcptvError> {
         let log = log::Log::builder(msg).severity(severity).build();
 
         let artifact = spec::TestRunArtifact {
@@ -364,7 +368,7 @@ impl StartedTestRun {
     /// # use ocptv::output::*;
     ///
     /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
-    /// run.log_with_details(
+    /// run.add_log_with_details(
     ///     &Log::builder("This is a log message with INFO severity")
     ///         .severity(LogSeverity::Info)
     ///         .source("file", 1)
@@ -375,7 +379,7 @@ impl StartedTestRun {
     /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn log_with_details(&self, log: &log::Log) -> Result<(), tv::OcptvError> {
+    pub async fn add_log_with_details(&self, log: &log::Log) -> Result<(), tv::OcptvError> {
         let artifact = spec::TestRunArtifact {
             artifact: spec::TestRunArtifactImpl::Log(log.to_artifact()),
         };
@@ -399,13 +403,13 @@ impl StartedTestRun {
     /// # use ocptv::output::*;
     ///
     /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
-    /// run.error("symptom").await?;
+    /// run.add_error("symptom").await?;
     /// run.end(TestStatus::Complete, TestResult::Pass).await?;
     ///
     /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn error(&self, symptom: &str) -> Result<(), tv::OcptvError> {
+    pub async fn add_error(&self, symptom: &str) -> Result<(), tv::OcptvError> {
         let error = error::Error::builder(symptom).build();
 
         let artifact = spec::TestRunArtifact {
@@ -432,13 +436,13 @@ impl StartedTestRun {
     /// # use ocptv::output::*;
     ///
     /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
-    /// run.error_with_msg("symptom", "error messasge").await?;
+    /// run.add_error_with_msg("symptom", "error messasge").await?;
     /// run.end(TestStatus::Complete, TestResult::Pass).await?;
     ///
     /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn error_with_msg(&self, symptom: &str, msg: &str) -> Result<(), tv::OcptvError> {
+    pub async fn add_error_with_msg(&self, symptom: &str, msg: &str) -> Result<(), tv::OcptvError> {
         let error = error::Error::builder(symptom).message(msg).build();
 
         let artifact = spec::TestRunArtifact {
@@ -464,7 +468,7 @@ impl StartedTestRun {
     /// # use ocptv::output::*;
     ///
     /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
-    /// run.error_with_details(
+    /// run.add_error_with_details(
     ///     &Error::builder("symptom")
     ///         .message("Error message")
     ///         .source("file", 1)
@@ -476,7 +480,7 @@ impl StartedTestRun {
     /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn error_with_details(&self, error: &error::Error) -> Result<(), tv::OcptvError> {
+    pub async fn add_error_with_details(&self, error: &error::Error) -> Result<(), tv::OcptvError> {
         let artifact = spec::TestRunArtifact {
             artifact: spec::TestRunArtifactImpl::Error(error.to_artifact()),
         };
@@ -488,7 +492,9 @@ impl StartedTestRun {
         Ok(())
     }
 
-    pub fn step(&self, name: &str) -> TestStep {
+    /// Create a new step for this test run.
+    /// TODO: docs + example
+    pub fn add_step(&self, name: &str) -> TestStep {
         let step_id = format!("step_{}", self.step_seqno.fetch_add(1, Ordering::AcqRel));
         TestStep::new(&step_id, name, Arc::clone(&self.run.emitter))
     }
