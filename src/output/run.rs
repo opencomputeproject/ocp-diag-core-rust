@@ -11,12 +11,13 @@ use std::sync::Arc;
 
 use serde_json::Map;
 use serde_json::Value;
-use tokio::sync::Mutex;
 
 use crate::output as tv;
 use crate::spec;
 use tv::step::TestStep;
-use tv::{config, dut, emitter, error, log, state};
+use tv::{config, dut, emitter, error, log};
+
+use super::JsonEmitter;
 
 /// The outcome of a TestRun.
 /// It's returned when the scope method of the [`TestRun`] object is used.
@@ -37,7 +38,8 @@ pub struct TestRun {
     dut: dut::DutInfo,
     command_line: String,
     metadata: Option<serde_json::Map<String, tv::Value>>,
-    state: Arc<Mutex<state::TestState>>,
+
+    emitter: Arc<JsonEmitter>,
 }
 
 impl TestRun {
@@ -88,10 +90,7 @@ impl TestRun {
     /// ```
     pub async fn start(self) -> Result<StartedTestRun, emitter::WriterError> {
         // TODO: this likely will go into the emitter since it's not the run's job to emit the schema version
-        self.state
-            .lock()
-            .await
-            .emitter
+        self.emitter
             .emit(&spec::RootImpl::SchemaVersion(
                 spec::SchemaVersion::default(),
             ))
@@ -108,7 +107,7 @@ impl TestRun {
             }),
         });
 
-        self.state.lock().await.emitter.emit(&start).await?;
+        self.emitter.emit(&start).await?;
 
         Ok(StartedTestRun::new(self))
     }
@@ -260,7 +259,7 @@ impl TestRunBuilder {
     pub fn build(self) -> TestRun {
         let config = self.config.unwrap_or(config::Config::builder().build());
         let emitter = emitter::JsonEmitter::new(config.timezone, config.writer);
-        let state = state::TestState::new(emitter);
+
         TestRun {
             name: self.name,
             dut: self.dut,
@@ -268,7 +267,8 @@ impl TestRunBuilder {
             parameters: self.parameters,
             command_line: self.command_line,
             metadata: self.metadata,
-            state: Arc::new(Mutex::new(state)),
+
+            emitter: Arc::new(emitter),
         }
     }
 }
@@ -314,9 +314,7 @@ impl StartedTestRun {
             artifact: spec::TestRunArtifactImpl::TestRunEnd(spec::TestRunEnd { status, result }),
         });
 
-        let emitter = &self.run.state.lock().await.emitter;
-
-        emitter.emit(&end).await?;
+        self.run.emitter.emit(&end).await?;
         Ok(())
     }
 
@@ -349,12 +347,11 @@ impl StartedTestRun {
     ) -> Result<(), emitter::WriterError> {
         let log = log::Log::builder(msg).severity(severity).build();
 
-        let emitter = &self.run.state.lock().await.emitter;
-
         let artifact = spec::TestRunArtifact {
             artifact: spec::TestRunArtifactImpl::Log(log.to_artifact()),
         };
-        emitter
+        self.run
+            .emitter
             .emit(&spec::RootImpl::TestRunArtifact(artifact))
             .await?;
 
@@ -385,12 +382,11 @@ impl StartedTestRun {
     /// # });
     /// ```
     pub async fn log_with_details(&self, log: &log::Log) -> Result<(), emitter::WriterError> {
-        let emitter = &self.run.state.lock().await.emitter;
-
         let artifact = spec::TestRunArtifact {
             artifact: spec::TestRunArtifactImpl::Log(log.to_artifact()),
         };
-        emitter
+        self.run
+            .emitter
             .emit(&spec::RootImpl::TestRunArtifact(artifact))
             .await?;
 
@@ -417,12 +413,12 @@ impl StartedTestRun {
     /// ```
     pub async fn error(&self, symptom: &str) -> Result<(), emitter::WriterError> {
         let error = error::Error::builder(symptom).build();
-        let emitter = &self.run.state.lock().await.emitter;
 
         let artifact = spec::TestRunArtifact {
             artifact: spec::TestRunArtifactImpl::Error(error.to_artifact()),
         };
-        emitter
+        self.run
+            .emitter
             .emit(&spec::RootImpl::TestRunArtifact(artifact))
             .await?;
 
@@ -454,12 +450,12 @@ impl StartedTestRun {
         msg: &str,
     ) -> Result<(), emitter::WriterError> {
         let error = error::Error::builder(symptom).message(msg).build();
-        let emitter = &self.run.state.lock().await.emitter;
 
         let artifact = spec::TestRunArtifact {
             artifact: spec::TestRunArtifactImpl::Error(error.to_artifact()),
         };
-        emitter
+        self.run
+            .emitter
             .emit(&spec::RootImpl::TestRunArtifact(artifact))
             .await?;
 
@@ -494,12 +490,11 @@ impl StartedTestRun {
         &self,
         error: &error::Error,
     ) -> Result<(), emitter::WriterError> {
-        let emitter = &self.run.state.lock().await.emitter;
-
         let artifact = spec::TestRunArtifact {
             artifact: spec::TestRunArtifactImpl::Error(error.to_artifact()),
         };
-        emitter
+        self.run
+            .emitter
             .emit(&spec::RootImpl::TestRunArtifact(artifact))
             .await?;
 
@@ -508,6 +503,6 @@ impl StartedTestRun {
 
     pub fn step(&self, name: &str) -> TestStep {
         let step_id = format!("step_{}", self.step_seqno.fetch_add(1, Ordering::AcqRel));
-        TestStep::new(&step_id, name, self.run.state.clone())
+        TestStep::new(&step_id, name, Arc::clone(&self.run.emitter))
     }
 }

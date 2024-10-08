@@ -20,17 +20,15 @@ use tv::{dut, emitter, step};
 /// A Measurement Series is a time-series list of measurements.
 ///
 /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#measurementseriesstart
-pub struct MeasurementSeries<'a> {
-    // note: intentional design to only allow 1 thread to output; may need
-    // revisiting in the future, if there's a case for multithreaded writers
-    emitter: &'a step::StepEmitter,
+pub struct MeasurementSeries {
+    emitter: Arc<step::StepEmitter>,
 
     seq_no: Arc<Mutex<atomic::AtomicU64>>,
     start: MeasurementSeriesStart,
 }
 
-impl<'a> MeasurementSeries<'a> {
-    pub(crate) fn new(series_id: &str, name: &str, emitter: &'a step::StepEmitter) -> Self {
+impl MeasurementSeries {
+    pub(crate) fn new(series_id: &str, name: &str, emitter: Arc<step::StepEmitter>) -> Self {
         Self {
             emitter,
             seq_no: Arc::new(Mutex::new(atomic::AtomicU64::new(0))),
@@ -40,7 +38,7 @@ impl<'a> MeasurementSeries<'a> {
 
     pub(crate) fn new_with_details(
         start: MeasurementSeriesStart,
-        emitter: &'a step::StepEmitter,
+        emitter: Arc<step::StepEmitter>,
     ) -> Self {
         Self {
             emitter,
