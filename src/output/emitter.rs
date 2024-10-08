@@ -16,7 +16,7 @@ use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 use tokio::sync::Mutex;
 
-use crate::output::models;
+use crate::spec;
 
 #[derive(Debug, thiserror::Error, derive_more::Display)]
 #[non_exhaustive]
@@ -98,13 +98,13 @@ impl JsonEmitter {
         }
     }
 
-    fn serialize_artifact(&self, object: &models::OutputArtifactDescendant) -> serde_json::Value {
+    fn serialize_artifact(&self, object: &spec::RootArtifact) -> serde_json::Value {
         let now = chrono::Local::now();
         let now_tz = now.with_timezone(&self.timezone);
-        let out_artifact = models::OutputArtifactSpec {
-            descendant: object.clone(),
-            now: now_tz,
-            sequence_number: self.next_sequence_no(),
+        let out_artifact = spec::Root {
+            artifact: object.clone(),
+            timestamp: now_tz,
+            seqno: self.next_sequence_no(),
         };
         serde_json::json!(out_artifact)
     }
@@ -114,7 +114,7 @@ impl JsonEmitter {
         self.sequence_no.load(atomic::Ordering::SeqCst)
     }
 
-    pub async fn emit(&self, object: &models::OutputArtifactDescendant) -> Result<(), WriterError> {
+    pub async fn emit(&self, object: &spec::RootArtifact) -> Result<(), WriterError> {
         let serialized = self.serialize_artifact(object);
         match self.writer {
             WriterType::File(ref file) => file.write(&serialized.to_string()).await?,
@@ -127,20 +127,20 @@ impl JsonEmitter {
 
 #[cfg(test)]
 mod tests {
-    use anyhow::anyhow;
-    use anyhow::Result;
+    use anyhow::{anyhow, Result};
     use assert_json_diff::assert_json_include;
     use serde_json::json;
 
     use super::*;
-    use crate::output::objects::*;
+    use crate::output as tv;
+    use tv::run::SchemaVersion;
 
     #[tokio::test]
     async fn test_emit_using_buffer_writer() -> Result<()> {
         let expected = json!({
             "schemaVersion": {
-                "major": models::SPEC_VERSION.0,
-                "minor": models::SPEC_VERSION.1,
+                "major": spec::SPEC_VERSION.0,
+                "minor": spec::SPEC_VERSION.1,
             },
             "sequenceNumber": 1
         });
@@ -164,15 +164,15 @@ mod tests {
     async fn test_sequence_number_increments_at_each_call() -> Result<()> {
         let expected_1 = json!({
             "schemaVersion": {
-                "major": models::SPEC_VERSION.0,
-                "minor": models::SPEC_VERSION.1,
+                "major": spec::SPEC_VERSION.0,
+                "minor": spec::SPEC_VERSION.1,
             },
             "sequenceNumber": 1
         });
         let expected_2 = json!({
             "schemaVersion": {
-                "major": models::SPEC_VERSION.0,
-                "minor": models::SPEC_VERSION.1,
+                "major": spec::SPEC_VERSION.0,
+                "minor": spec::SPEC_VERSION.1,
             },
             "sequenceNumber": 2
         });

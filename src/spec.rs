@@ -41,50 +41,65 @@ mod rfc3339_format {
 #[derive(Debug, Serialize, PartialEq, Clone)]
 pub enum TestRunArtifactDescendant {
     #[serde(rename = "testRunStart")]
-    TestRunStart(TestRunStartSpec),
+    TestRunStart(TestRunStart),
+
     #[serde(rename = "testRunEnd")]
-    TestRunEnd(TestRunEndSpec),
+    TestRunEnd(TestRunEnd),
+
     #[serde(rename = "log")]
-    Log(LogSpec),
+    Log(Log),
+
     #[serde(rename = "error")]
-    Error(ErrorSpec),
+    Error(Error),
 }
 
 #[derive(Debug, Serialize, PartialEq, Clone)]
-pub enum OutputArtifactDescendant {
+pub enum RootArtifact {
     #[serde(rename = "schemaVersion")]
-    SchemaVersion(SchemaVersionSpec),
+    SchemaVersion(SchemaVersion),
+
     #[serde(rename = "testRunArtifact")]
-    TestRunArtifact(TestRunArtifactSpec),
+    TestRunArtifact(TestRunArtifact),
+
     #[serde(rename = "testStepArtifact")]
-    TestStepArtifact(TestStepArtifactSpec),
+    TestStepArtifact(TestStepArtifact),
 }
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Serialize, PartialEq, Clone)]
 pub enum TestStepArtifactDescendant {
     #[serde(rename = "testStepStart")]
-    TestStepStart(TestStepStartSpec),
+    TestStepStart(TestStepStart),
+
     #[serde(rename = "testStepEnd")]
-    TestStepEnd(TestStepEndSpec),
+    TestStepEnd(TestStepEnd),
+
     #[serde(rename = "measurement")]
-    Measurement(MeasurementSpec),
+    Measurement(Measurement),
+
     #[serde(rename = "measurementSeriesStart")]
-    MeasurementSeriesStart(MeasurementSeriesStartSpec),
+    MeasurementSeriesStart(MeasurementSeriesStart),
+
     #[serde(rename = "measurementSeriesEnd")]
-    MeasurementSeriesEnd(MeasurementSeriesEndSpec),
+    MeasurementSeriesEnd(MeasurementSeriesEnd),
+
     #[serde(rename = "measurementSeriesElement")]
-    MeasurementSeriesElement(MeasurementSeriesElementSpec),
+    MeasurementSeriesElement(MeasurementSeriesElement),
+
     #[serde(rename = "diagnosis")]
-    Diagnosis(DiagnosisSpec),
+    Diagnosis(Diagnosis),
+
     #[serde(rename = "log")]
-    Log(LogSpec),
+    Log(Log),
+
     #[serde(rename = "error")]
-    Error(ErrorSpec),
+    Error(Error),
+
     #[serde(rename = "file")]
-    File(FileSpec),
+    File(File),
+
     #[serde(rename = "extension")]
-    Extension(ExtensionSpec),
+    Extension(Extension),
 }
 
 #[derive(Debug, Serialize, Clone, PartialEq)]
@@ -127,6 +142,7 @@ pub enum SubcomponentType {
     Connector,
 }
 
+// TODO: this should be better typed
 #[derive(Debug, Serialize, PartialEq, Clone)]
 pub enum ExtensionContentType {
     #[serde(rename = "float")]
@@ -218,15 +234,17 @@ pub enum SoftwareType {
 }
 
 #[derive(Debug, Serialize, Clone)]
-pub struct OutputArtifactSpec {
+pub struct Root {
     #[serde(flatten)]
-    pub descendant: OutputArtifactDescendant,
+    pub artifact: RootArtifact,
+
     // TODO : manage different timezones
     #[serde(rename = "timestamp")]
     #[serde(with = "rfc3339_format")]
-    pub now: DateTime<chrono_tz::Tz>,
+    pub timestamp: DateTime<chrono_tz::Tz>,
+
     #[serde(rename = "sequenceNumber")]
-    pub sequence_number: u64,
+    pub seqno: u64,
 }
 
 /// Low-level model for the `schemaVersion` spec object.
@@ -236,9 +254,10 @@ pub struct OutputArtifactSpec {
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/output/$defs/schemaVersion
 #[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename = "schemaVersion")]
-pub struct SchemaVersionSpec {
+pub struct SchemaVersion {
     #[serde(rename = "major")]
     pub major: i8,
+
     #[serde(rename = "minor")]
     pub minor: i8,
 }
@@ -249,9 +268,9 @@ pub struct SchemaVersionSpec {
 /// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/test_run_artifact.json
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/testRunArtifact
 #[derive(Debug, Serialize, PartialEq, Clone)]
-pub struct TestRunArtifactSpec {
+pub struct TestRunArtifact {
     #[serde(flatten)]
-    pub descendant: TestRunArtifactDescendant,
+    pub artifact: TestRunArtifactDescendant,
 }
 
 /// Low-level model for the `testRunStart` spec object.
@@ -261,17 +280,22 @@ pub struct TestRunArtifactSpec {
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/testRunStart
 #[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename = "testRunStart")]
-pub struct TestRunStartSpec {
+pub struct TestRunStart {
     #[serde(rename = "name")]
     pub name: String,
+
     #[serde(rename = "version")]
     pub version: String,
+
     #[serde(rename = "commandLine")]
     pub command_line: String,
+
     #[serde(rename = "parameters")]
     pub parameters: Map<String, Value>,
+
     #[serde(rename = "dutInfo")]
-    pub dut_info: DutInfoSpec,
+    pub dut_info: DutInfo,
+
     #[serde(rename = "metadata")]
     pub metadata: Option<Map<String, Value>>,
 }
@@ -283,17 +307,22 @@ pub struct TestRunStartSpec {
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/dutInfo
 #[derive(Debug, Serialize, Default, Clone, PartialEq)]
 #[serde(rename = "dutInfo")]
-pub struct DutInfoSpec {
+pub struct DutInfo {
     #[serde(rename = "dutInfoId")]
     pub id: String,
+
     #[serde(rename = "name")]
     pub name: Option<String>,
+
     #[serde(rename = "platformInfos")]
-    pub platform_infos: Option<Vec<PlatformInfoSpec>>,
+    pub platform_infos: Option<Vec<PlatformInfo>>,
+
     #[serde(rename = "softwareInfos")]
-    pub software_infos: Option<Vec<SoftwareInfoSpec>>,
+    pub software_infos: Option<Vec<SoftwareInfo>>,
+
     #[serde(rename = "hardwareInfos")]
-    pub hardware_infos: Option<Vec<HardwareInfoSpec>>,
+    pub hardware_infos: Option<Vec<HardwareInfo>>,
+
     #[serde(rename = "metadata")]
     pub metadata: Option<Map<String, Value>>,
 }
@@ -305,7 +334,7 @@ pub struct DutInfoSpec {
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/dutInfo/$defs/platformInfo
 #[derive(Debug, Serialize, Default, Clone, PartialEq)]
 #[serde(rename = "platformInfo")]
-pub struct PlatformInfoSpec {
+pub struct PlatformInfo {
     #[serde(rename = "info")]
     pub info: String,
 }
@@ -317,17 +346,22 @@ pub struct PlatformInfoSpec {
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/dutInfo/$defs/softwareInfo
 #[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename = "softwareInfo")]
-pub struct SoftwareInfoSpec {
+pub struct SoftwareInfo {
     #[serde(rename = "softwareInfoId")]
     pub id: String,
+
     #[serde(rename = "name")]
     pub name: String,
+
     #[serde(rename = "version")]
     pub version: Option<String>,
+
     #[serde(rename = "revision")]
     pub revision: Option<String>,
+
     #[serde(rename = "softwareType")]
     pub software_type: Option<SoftwareType>,
+
     #[serde(rename = "computerSystem")]
     pub computer_system: Option<String>,
 }
@@ -339,29 +373,40 @@ pub struct SoftwareInfoSpec {
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/dutInfo/$defs/hardwareInfo
 #[derive(Debug, Serialize, Default, Clone, PartialEq)]
 #[serde(rename = "hardwareInfo")]
-pub struct HardwareInfoSpec {
+pub struct HardwareInfo {
     #[serde(rename = "hardwareInfoId")]
     pub id: String,
+
     #[serde(rename = "name")]
     pub name: String,
+
     #[serde(rename = "version")]
     pub version: Option<String>,
+
     #[serde(rename = "revision")]
     pub revision: Option<String>,
+
     #[serde(rename = "location")]
     pub location: Option<String>,
+
     #[serde(rename = "serialNumber")]
     pub serial_no: Option<String>,
+
     #[serde(rename = "partNumber")]
     pub part_no: Option<String>,
+
     #[serde(rename = "manufacturer")]
     pub manufacturer: Option<String>,
+
     #[serde(rename = "manufacturerPartNumber")]
     pub manufacturer_part_no: Option<String>,
+
     #[serde(rename = "odataId")]
     pub odata_id: Option<String>,
+
     #[serde(rename = "computerSystem")]
     pub computer_system: Option<String>,
+
     #[serde(rename = "manager")]
     pub manager: Option<String>,
 }
@@ -373,9 +418,10 @@ pub struct HardwareInfoSpec {
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/testRunEnd
 #[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename = "testRunEnd")]
-pub struct TestRunEndSpec {
+pub struct TestRunEnd {
     #[serde(rename = "status")]
     pub status: TestStatus,
+
     #[serde(rename = "result")]
     pub result: TestResult,
 }
@@ -388,16 +434,19 @@ pub struct TestRunEndSpec {
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/error
 #[derive(Debug, Serialize, Default, Clone, PartialEq)]
 #[serde(rename = "error")]
-pub struct ErrorSpec {
+pub struct Error {
     #[serde(rename = "symptom")]
     pub symptom: String,
+
     #[serde(rename = "message")]
     pub message: Option<String>,
+
     // TODO: support this field during serialization to print only the id of SoftwareInfo struct
     #[serde(rename = "softwareInfoIds")]
-    pub software_infos: Option<Vec<SoftwareInfoSpec>>,
+    pub software_infos: Option<Vec<SoftwareInfo>>,
+
     #[serde(rename = "sourceLocation")]
-    pub source_location: Option<SourceLocationSpec>,
+    pub source_location: Option<SourceLocation>,
 }
 
 /// Low-level model for `log` spec object.
@@ -407,13 +456,15 @@ pub struct ErrorSpec {
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/log
 #[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename = "log")]
-pub struct LogSpec {
+pub struct Log {
     #[serde(rename = "severity")]
     pub severity: LogSeverity,
+
     #[serde(rename = "message")]
     pub message: String,
+
     #[serde(rename = "sourceLocation")]
-    pub source_location: Option<SourceLocationSpec>,
+    pub source_location: Option<SourceLocation>,
 }
 
 /// Provides information about which file/line of the source code in
@@ -423,9 +474,10 @@ pub struct LogSpec {
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/sourceLocation
 #[derive(Debug, Serialize, Clone, Default, PartialEq)]
 #[serde(rename = "sourceLocation")]
-pub struct SourceLocationSpec {
+pub struct SourceLocation {
     #[serde(rename = "file")]
     pub file: String,
+
     #[serde(rename = "line")]
     pub line: i32,
 }
@@ -436,7 +488,7 @@ pub struct SourceLocationSpec {
 /// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/test_step_artifact.json
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/testStepArtifact
 #[derive(Debug, Serialize, PartialEq, Clone)]
-pub struct TestStepArtifactSpec {
+pub struct TestStepArtifact {
     #[serde(flatten)]
     pub descendant: TestStepArtifactDescendant,
 }
@@ -448,7 +500,7 @@ pub struct TestStepArtifactSpec {
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/testStepStart
 #[derive(Debug, Serialize, PartialEq, Clone)]
 #[serde(rename = "testStepStart")]
-pub struct TestStepStartSpec {
+pub struct TestStepStart {
     #[serde(rename = "name")]
     pub name: String,
 }
@@ -460,7 +512,7 @@ pub struct TestStepStartSpec {
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/testStepEnd
 #[derive(Debug, Serialize, PartialEq, Clone)]
 #[serde(rename = "testStepEnd")]
-pub struct TestStepEndSpec {
+pub struct TestStepEnd {
     #[serde(rename = "status")]
     pub status: TestStatus,
 }
@@ -472,19 +524,25 @@ pub struct TestStepEndSpec {
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/measurement
 #[derive(Debug, Serialize, PartialEq, Clone)]
 #[serde(rename = "measurement")]
-pub struct MeasurementSpec {
+pub struct Measurement {
     #[serde(rename = "name")]
     pub name: String,
+
     #[serde(rename = "value")]
     pub value: Value,
+
     #[serde(rename = "unit")]
     pub unit: Option<String>,
+
     #[serde(rename = "validators")]
-    pub validators: Option<Vec<ValidatorSpec>>,
+    pub validators: Option<Vec<Validator>>,
+
     #[serde(rename = "hardwareInfoId")]
     pub hardware_info_id: Option<String>,
+
     #[serde(rename = "subcomponent")]
-    pub subcomponent: Option<SubcomponentSpec>,
+    pub subcomponent: Option<Subcomponent>,
+
     #[serde(rename = "metadata")]
     pub metadata: Option<Map<String, Value>>,
 }
@@ -496,13 +554,16 @@ pub struct MeasurementSpec {
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/validator
 #[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename = "validator")]
-pub struct ValidatorSpec {
+pub struct Validator {
     #[serde(rename = "name")]
     pub name: Option<String>,
+
     #[serde(rename = "type")]
     pub validator_type: ValidatorType,
+
     #[serde(rename = "value")]
     pub value: Value,
+
     #[serde(rename = "metadata")]
     pub metadata: Option<Map<String, Value>>,
 }
@@ -514,15 +575,19 @@ pub struct ValidatorSpec {
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/subcomponent
 #[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename = "subcomponent")]
-pub struct SubcomponentSpec {
+pub struct Subcomponent {
     #[serde(rename = "type")]
     pub subcomponent_type: Option<SubcomponentType>,
+
     #[serde(rename = "name")]
     pub name: String,
+
     #[serde(rename = "location")]
     pub location: Option<String>,
+
     #[serde(rename = "version")]
     pub version: Option<String>,
+
     #[serde(rename = "revision")]
     pub revision: Option<String>,
 }
@@ -534,19 +599,25 @@ pub struct SubcomponentSpec {
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/measurementSeriesStart
 #[derive(Debug, Serialize, PartialEq, Clone)]
 #[serde(rename = "measurementSeriesStart")]
-pub struct MeasurementSeriesStartSpec {
+pub struct MeasurementSeriesStart {
     #[serde(rename = "name")]
     pub name: String,
+
     #[serde(rename = "unit")]
     pub unit: Option<String>,
+
     #[serde(rename = "measurementSeriesId")]
     pub series_id: String,
+
     #[serde(rename = "validators")]
-    pub validators: Option<Vec<ValidatorSpec>>,
+    pub validators: Option<Vec<Validator>>,
+
     #[serde(rename = "hardwareInfoId")]
-    pub hardware_info: Option<HardwareInfoSpec>,
+    pub hardware_info: Option<HardwareInfo>,
+
     #[serde(rename = "subComponent")]
-    pub subcomponent: Option<SubcomponentSpec>,
+    pub subcomponent: Option<Subcomponent>,
+
     #[serde(rename = "metadata")]
     pub metadata: Option<Map<String, Value>>,
 }
@@ -558,9 +629,10 @@ pub struct MeasurementSeriesStartSpec {
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/measurementSeriesEnd
 #[derive(Debug, Serialize, PartialEq, Clone)]
 #[serde(rename = "measurementSeriesEnd")]
-pub struct MeasurementSeriesEndSpec {
+pub struct MeasurementSeriesEnd {
     #[serde(rename = "measurementSeriesId")]
     pub series_id: String,
+
     #[serde(rename = "totalCount")]
     pub total_count: u64,
 }
@@ -572,15 +644,19 @@ pub struct MeasurementSeriesEndSpec {
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/measurementSeriesElement
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(rename = "measurementSeriesElement")]
-pub struct MeasurementSeriesElementSpec {
+pub struct MeasurementSeriesElement {
     #[serde(rename = "index")]
     pub index: u64,
+
     #[serde(rename = "value")]
     pub value: Value,
+
     #[serde(with = "rfc3339_format")]
     pub timestamp: DateTime<chrono_tz::Tz>,
+
     #[serde(rename = "measurementSeriesId")]
     pub series_id: String,
+
     #[serde(rename = "metadata")]
     pub metadata: Option<Map<String, Value>>,
 }
@@ -592,19 +668,24 @@ pub struct MeasurementSeriesElementSpec {
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/diagnosis
 #[derive(Debug, Serialize, PartialEq, Clone)]
 #[serde(rename = "diagnosis")]
-pub struct DiagnosisSpec {
+pub struct Diagnosis {
     #[serde(rename = "verdict")]
     pub verdict: String,
+
     #[serde(rename = "type")]
     pub diagnosis_type: DiagnosisType,
+
     #[serde(rename = "message")]
     pub message: Option<String>,
+
     #[serde(rename = "validators")]
-    pub hardware_info: Option<HardwareInfoSpec>,
+    pub hardware_info: Option<HardwareInfo>,
+
     #[serde(rename = "subComponent")]
-    pub subcomponent: Option<SubcomponentSpec>,
+    pub subcomponent: Option<Subcomponent>,
+
     #[serde(rename = "sourceLocation")]
-    pub source_location: Option<SourceLocationSpec>,
+    pub source_location: Option<SourceLocation>,
 }
 
 /// Low-level model for the `file` spec object.
@@ -614,17 +695,22 @@ pub struct DiagnosisSpec {
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/file
 #[derive(Debug, Serialize, PartialEq, Clone)]
 #[serde(rename = "file")]
-pub struct FileSpec {
+pub struct File {
     #[serde(rename = "name")]
     pub name: String,
+
     #[serde(rename = "uri")]
     pub uri: String,
+
     #[serde(rename = "isSnapshot")]
     pub is_snapshot: bool,
+
     #[serde(rename = "description")]
     pub description: Option<String>,
+
     #[serde(rename = "contentType")]
     pub content_type: Option<String>,
+
     #[serde(rename = "metadata")]
     pub metadata: Option<Map<String, Value>>,
 }
@@ -636,9 +722,10 @@ pub struct FileSpec {
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/testStepArtifact/$defs/extension
 #[derive(Debug, Serialize, PartialEq, Clone)]
 #[serde(rename = "extension")]
-pub struct ExtensionSpec {
+pub struct Extension {
     #[serde(rename = "name")]
     pub name: String,
+
     #[serde(rename = "content")]
     pub content: ExtensionContentType,
 }
@@ -655,7 +742,7 @@ mod tests {
     #[test]
     fn test_rfc3339_format_serialize() -> Result<()> {
         let test_date = "2022-01-01T00:00:00.000Z";
-        let msr = MeasurementSeriesElementSpec {
+        let msr = MeasurementSeriesElement {
             index: 0,
             value: 1.0.into(),
             timestamp: DateTime::parse_from_rfc3339(test_date)?.with_timezone(&chrono_tz::UTC),
@@ -675,7 +762,7 @@ mod tests {
         let test_date = "2022-01-01T00:00:00.000Z";
         let json = json!({"index":0,"measurementSeriesId":"test","metadata":null,"timestamp":"2022-01-01T00:00:00.000Z","value":1.0});
 
-        let msr = serde_json::from_value::<MeasurementSeriesElementSpec>(json)?;
+        let msr = serde_json::from_value::<MeasurementSeriesElement>(json)?;
         assert_eq!(
             msr.timestamp.to_rfc3339_opts(SecondsFormat::Millis, true),
             test_date
