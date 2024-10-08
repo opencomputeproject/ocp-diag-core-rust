@@ -1232,83 +1232,100 @@ async fn test_step_with_measurement_series_element_with_metadata_index_no() -> R
     .await
 }
 
-// #[tokio::test]
-// async fn test_step_with_measurement_series_scope() -> Result<()> {
-//     let expected = [
-//         json_schema_version(),
-//         json_run_default_start(),
-//         json_step_default_start(),
-//         json!({
-//             "testStepArtifact": {
-//                 "measurementSeriesStart": {
-//                     "measurementSeriesId": "series_0",
-//                     "name": "name"
-//                 }
-//             },
-//             "sequenceNumber": 3
-//         }),
-//         json!({
-//             "testStepArtifact": {
-//                 "measurementSeriesElement": {
-//                     "index": 0,
-//                     "measurementSeriesId": "series_0",
-//                     "value": 60
-//                 }
-//             },
-//             "sequenceNumber": 4
-//         }),
-//         json!({
-//             "testStepArtifact": {
-//                 "measurementSeriesElement": {
-//                     "index": 1,
-//                     "measurementSeriesId": "series_0",
-//                     "value": 70
-//                 }
-//             },
-//             "sequenceNumber": 5
-//         }),
-//         json!({
-//             "testStepArtifact": {
-//                 "measurementSeriesElement": {
-//                     "index": 2,
-//                     "measurementSeriesId": "series_0",
-//                     "value": 80
-//                 }
-//             },
-//             "sequenceNumber": 6
-//         }),
-//         json!({
-//             "testStepArtifact": {
-//                 "measurementSeriesEnd": {
-//                     "measurementSeriesId": "series_0",
-//                     "totalCount": 3
-//                 }
-//             },
-//             "sequenceNumber": 7
-//         }),
-//         json_step_complete(8),
-//         json_run_pass(9),
-//     ];
+#[cfg(feature = "boxed-scopes")]
+#[tokio::test]
+async fn test_step_with_measurement_series_scope() -> Result<()> {
+    let expected = [
+        json_schema_version(),
+        json_run_default_start(),
+        json_step_default_start(),
+        json!({
+            "testStepArtifact": {
+                "testStepId": "step_0",
+                "measurementSeriesStart": {
+                    "measurementSeriesId": "series_0",
+                    "name": "name"
+                }
+            },
+            "sequenceNumber": 3,
+            "timestamp": DATETIME_FORMATTED
+        }),
+        json!({
+            "testStepArtifact": {
+                "testStepId": "step_0",
+                "measurementSeriesElement": {
+                    "index": 0,
+                    "measurementSeriesId": "series_0",
+                    "value": 60,
+                    "timestamp": DATETIME_FORMATTED
+                }
+            },
+            "sequenceNumber": 4,
+            "timestamp": DATETIME_FORMATTED
+        }),
+        json!({
+            "testStepArtifact": {
+                "testStepId": "step_0",
+                "measurementSeriesElement": {
+                    "index": 1,
+                    "measurementSeriesId": "series_0",
+                    "value": 70,
+                    "timestamp": DATETIME_FORMATTED
+                }
+            },
+            "sequenceNumber": 5,
+            "timestamp": DATETIME_FORMATTED
+        }),
+        json!({
+            "testStepArtifact": {
+                "testStepId": "step_0",
+                "measurementSeriesElement": {
+                    "index": 2,
+                    "measurementSeriesId": "series_0",
+                    "value": 80,
+                    "timestamp": DATETIME_FORMATTED
+                }
+            },
+            "sequenceNumber": 6,
+            "timestamp": DATETIME_FORMATTED
+        }),
+        json!({
+            "testStepArtifact": {
+                "testStepId": "step_0",
+                "measurementSeriesEnd": {
+                    "measurementSeriesId": "series_0",
+                    "totalCount": 3
+                }
+            },
+            "sequenceNumber": 7,
+            "timestamp": DATETIME_FORMATTED
+        }),
+        json_step_complete(8),
+        json_run_pass(9),
+    ];
 
-//     check_output_step(&expected, |step| {
-//         async {
-//             let series = step.add_measurement_series("name");
-//             series
-//                 .scope(|s| async {
-//                     s.add_measurement(60.into()).await?;
-//                     s.add_measurement(70.into()).await?;
-//                     s.add_measurement(80.into()).await?;
+    check_output_step(&expected, |step| {
+        async {
+            let series = step.add_measurement_series("name");
+            series
+                .scope(|s| {
+                    async move {
+                        s.add_measurement(60.into()).await?;
+                        s.add_measurement(70.into()).await?;
+                        s.add_measurement(80.into()).await?;
 
-//                     Ok(())
-//                 })
-//                 .await?;
+                        Ok(())
+                    }
+                    .boxed()
+                })
+                .await?;
 
-//             Ok(())
-//         }
-//         .boxed()
-//     })
-//     .await
-// }
+            Ok(())
+        }
+        .boxed()
+    })
+    .await
+}
 
 // reasoning: the coverage(off) attribute is experimental in llvm-cov, so because we cannot
 // disable the coverage itself, only run this test when in coverage mode because assert_fs

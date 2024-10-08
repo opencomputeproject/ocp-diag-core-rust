@@ -70,7 +70,7 @@ impl TestStep {
     /// Builds a scope in the [`TestStep`] object, taking care of starting and
     /// ending it. View [`TestStep::start`] and [`TestStep::end`] methods.
     /// After the scope is constructed, additional objects may be added to it.
-    /// This is the preferred usage for the [`TestStep`], since it guarantees
+    /// This is the preferred usaggste for the [`TestStep`], since it guarantees
     /// all the messages are emitted between the start and end messages, the order
     /// is respected and no messages is lost.
     ///

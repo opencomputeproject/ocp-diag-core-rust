@@ -8,6 +8,8 @@ use std::collections::BTreeMap;
 use std::sync::atomic::{self, Ordering};
 use std::sync::Arc;
 
+#[cfg(feature = "boxed-scopes")]
+use futures::future::BoxFuture;
 use maplit::{btreemap, convert_args};
 
 use crate::output as tv;
@@ -73,44 +75,47 @@ impl MeasurementSeries {
         })
     }
 
-    // /// Builds a scope in the [`MeasurementSeries`] object, taking care of starting and
-    // /// ending it. View [`MeasurementSeries::start`] and [`MeasurementSeries::end`] methods.
-    // /// After the scope is constructed, additional objects may be added to it.
-    // /// This is the preferred usage for the [`MeasurementSeries`], since it guarantees
-    // /// all the messages are emitted between the start and end messages, the order
-    // /// is respected and no messages is lost.
-    // ///
-    // /// # Examples
-    // ///
-    // /// ```rust
-    // /// # tokio_test::block_on(async {
-    // /// # use ocptv::output::*;
-    // ///
-    // /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
-    // /// let step = run.add_step("step_name").start().await?;
-    // ///
-    // /// let series = step.add_measurement_series("name");
-    // /// series.start().await?;
-    // /// series.scope(|s| async {
-    // ///     s.add_measurement(60.into()).await?;
-    // ///     s.add_measurement(70.into()).await?;
-    // ///     s.add_measurement(80.into()).await?;
-    // ///     Ok(())
-    // /// }).await?;
-    // ///
-    // /// # Ok::<(), OcptvError>(())
-    // /// # });
-    // /// ```
-    // pub async fn scope<'s, F, R>(&'s self, func: F) -> Result<(), tv::OcptvError>
-    // where
-    //     R: Future<Output = Result<(), tv::OcptvError>>,
-    //     F: std::ops::FnOnce(&'s MeasurementSeries) -> R,
-    // {
-    //     self.start().await?;
-    //     func(self).await?;
-    //     self.end().await?;
-    //     Ok(())
-    // }
+    /// Builds a scope in the [`MeasurementSeries`] object, taking care of starting and
+    /// ending it. View [`MeasurementSeries::start`] and [`MeasurementSeries::end`] methods.
+    /// After the scope is constructed, additional objects may be added to it.
+    /// This is the preferred usage for the [`MeasurementSeries`], since it guarantees
+    /// all the messages are emitted between the start and end messages, the order
+    /// is respected and no messages is lost.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # tokio_test::block_on(async {
+    /// # use futures::FutureExt;
+    /// # use ocptv::output::*;
+    ///
+    /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
+    /// let step = run.add_step("step_name").start().await?;
+    ///
+    /// let series = step.add_measurement_series("name");
+    /// series.scope(|s| {
+    ///     async move {
+    ///         s.add_measurement(60.into()).await?;
+    ///         s.add_measurement(70.into()).await?;
+    ///         s.add_measurement(80.into()).await?;
+    ///         Ok(())
+    ///     }.boxed()
+    /// }).await?;
+    ///
+    /// # Ok::<(), OcptvError>(())
+    /// # });
+    /// ```
+    #[cfg(feature = "boxed-scopes")]
+    pub async fn scope<F>(self, func: F) -> Result<(), tv::OcptvError>
+    where
+        F: FnOnce(&StartedMeasurementSeries) -> BoxFuture<'_, Result<(), tv::OcptvError>>,
+    {
+        let series = self.start().await?;
+        func(&series).await?;
+        series.end().await?;
+
+        Ok(())
+    }
 }
 
 pub struct StartedMeasurementSeries {
