@@ -62,6 +62,11 @@ fn json_run_default_start() -> serde_json::Value {
                         "version": "22",
                         "softwareType": "SYSTEM",
                     }],
+                    "hardwareInfos": [{
+                        "hardwareInfoId": "hw0",
+                        "name": "fan",
+                        "location": "board0/fan"
+                    }]
                 },
                 "name": "run_name",
                 "parameters": {},
@@ -126,6 +131,12 @@ where
             .id(Ident::Exact("sw0".to_owned())) // name is important as fixture
             .version("22")
             .software_type(SoftwareType::System)
+            .build(),
+    );
+    dut.add_hardware_info(
+        HardwareInfo::builder("fan")
+            .id(Ident::Exact("hw0".to_owned()))
+            .location("board0/fan")
             .build(),
     );
 
@@ -674,19 +685,19 @@ async fn test_step_with_measurement_builder() -> Result<()> {
             "testStepArtifact": {
                 "testStepId": "step_0",
                 "measurement": {
-                    "hardwareInfoId": "id",
-                    "metadata": {
-                        "key": "value"
-                    },
                     "name": "name",
-                    "subcomponent": {
-                        "name": "name"
-                    },
+                    "value": 50,
                     "validators": [{
                         "type": "EQUAL",
                         "value": 30
                     }],
-                    "value": 50
+                    "hardwareInfoId": "hw0",
+                    "subcomponent": {
+                        "name": "name"
+                    },
+                    "metadata": {
+                        "key": "value"
+                    }
                 }
             },
             "sequenceNumber": 3,
@@ -696,12 +707,14 @@ async fn test_step_with_measurement_builder() -> Result<()> {
         json_run_pass(5),
     ];
 
-    check_output_step(&expected, |s, _| {
-        async {
+    check_output_step(&expected, |s, dut| {
+        async move {
+            let hw_info = dut.hardware_info("hw0").unwrap(); // must exist
+
             let measurement = Measurement::builder("name", 50.into())
-                .hardware_info(&HardwareInfo::builder("id", "name").build())
                 .add_validator(&Validator::builder(ValidatorType::Equal, 30.into()).build())
                 .add_metadata("key", "value".into())
+                .hardware_info(hw_info)
                 .subcomponent(&Subcomponent::builder("name").build())
                 .build();
             s.add_measurement_with_details(&measurement).await?;
@@ -885,22 +898,19 @@ async fn test_step_with_measurement_series_with_details_and_start_builder() -> R
             "testStepArtifact": {
                 "testStepId": "step_0",
                 "measurementSeriesStart": {
-                    "hardwareInfoId": {
-                        "hardwareInfoId": "id",
-                        "name": "name"
-                    },
                     "measurementSeriesId": "series_id",
-                    "metadata": {
-                        "key": "value"
-                    },
                     "name": "name",
-                    "subcomponent": {
-                        "name": "name"
-                    },
                     "validators": [{
                         "type": "EQUAL",
                         "value": 30
-                    }]
+                    }],
+                    "hardwareInfoId": "hw0",
+                    "subcomponent": {
+                        "name": "name"
+                    },
+                    "metadata": {
+                        "key": "value"
+                    }
                 }
             },
             "sequenceNumber": 3,
@@ -921,14 +931,16 @@ async fn test_step_with_measurement_series_with_details_and_start_builder() -> R
         json_run_pass(6),
     ];
 
-    check_output_step(&expected, |s, _| {
-        async {
+    check_output_step(&expected, |s, dut| {
+        async move {
+            let hw_info = dut.hardware_info("hw0").unwrap(); // must exist
+
             let series = s
                 .add_measurement_series_with_details(
                     MeasurementSeriesStart::builder("name", "series_id")
                         .add_metadata("key", "value".into())
                         .add_validator(&Validator::builder(ValidatorType::Equal, 30.into()).build())
-                        .hardware_info(&HardwareInfo::builder("id", "name").build())
+                        .hardware_info(hw_info)
                         .subcomponent(&Subcomponent::builder("name").build())
                         .build(),
                 )
@@ -1553,6 +1565,11 @@ async fn test_testrun_metadata() -> Result<()> {
                             "version": "22",
                             "softwareType": "SYSTEM",
                         }],
+                        "hardwareInfos": [{
+                            "hardwareInfoId": "hw0",
+                            "name": "fan",
+                            "location": "board0/fan"
+                        }]
                     },
                     "metadata": {"key": "value"},
                     "name": "run_name",
@@ -1597,6 +1614,11 @@ async fn test_testrun_builder() -> Result<()> {
                             "version": "22",
                             "softwareType": "SYSTEM",
                         }],
+                        "hardwareInfos": [{
+                            "hardwareInfoId": "hw0",
+                            "name": "fan",
+                            "location": "board0/fan"
+                        }]
                     },
                     "metadata": {
                         "key": "value",

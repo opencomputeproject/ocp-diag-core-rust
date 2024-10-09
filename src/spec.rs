@@ -422,6 +422,12 @@ pub struct HardwareInfo {
     pub manager: Option<String>,
 }
 
+impl serialize_ids::IdGetter for HardwareInfo {
+    fn id(&self) -> &str {
+        &self.id
+    }
+}
+
 /// Low-level model for the `testRunEnd` spec object.
 /// End marker signaling the finality of a diagnostic test.
 /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#testrunend
@@ -578,6 +584,7 @@ pub struct TestStepEnd {
 /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#measurement
 /// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/measurement.json
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/measurement
+#[serde_as]
 #[derive(Debug, Serialize, PartialEq, Clone)]
 #[serde(rename = "measurement")]
 pub struct Measurement {
@@ -597,7 +604,8 @@ pub struct Measurement {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "hardwareInfoId")]
-    pub hardware_info_id: Option<String>,
+    #[serde_as(as = "Option<serialize_ids::IdFromGetter>")]
+    pub hardware_info: Option<HardwareInfo>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "subcomponent")]
@@ -664,6 +672,7 @@ pub struct Subcomponent {
 /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#measurementseriesstart
 /// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/measurement_series_start.json
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/measurementSeriesStart
+#[serde_as]
 #[derive(Debug, Serialize, PartialEq, Clone)]
 #[serde(rename = "measurementSeriesStart")]
 pub struct MeasurementSeriesStart {
@@ -683,6 +692,7 @@ pub struct MeasurementSeriesStart {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "hardwareInfoId")]
+    #[serde_as(as = "Option<serialize_ids::IdFromGetter>")]
     pub hardware_info: Option<HardwareInfo>,
 
     #[serde(skip_serializing_if = "Option::is_none")]

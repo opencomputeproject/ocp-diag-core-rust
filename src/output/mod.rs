@@ -21,8 +21,8 @@ pub use crate::spec::{
 };
 pub use config::{Config, ConfigBuilder, TimestampProvider};
 pub use dut::{
-    DutInfo, DutInfoBuilder, DutSoftwareInfo, HardwareInfo, HardwareInfoBuilder, Ident,
-    PlatformInfo, PlatformInfoBuilder, SoftwareInfo, SoftwareInfoBuilder, Subcomponent,
+    DutHardwareInfo, DutInfo, DutInfoBuilder, DutSoftwareInfo, HardwareInfo, HardwareInfoBuilder,
+    Ident, PlatformInfo, PlatformInfoBuilder, SoftwareInfo, SoftwareInfoBuilder, Subcomponent,
     SubcomponentBuilder,
 };
 pub use error::{Error, ErrorBuilder};

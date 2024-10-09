@@ -332,27 +332,28 @@ impl ValidatorBuilder {
 /// ## Create a Measurement object with the `builder` method
 ///
 /// ```
-/// use ocptv::output::HardwareInfo;
-/// use ocptv::output::Measurement;
-/// use ocptv::output::Subcomponent;
-/// use ocptv::output::Validator;
-/// use ocptv::output::ValidatorType;
-/// use ocptv::output::Value;
+/// # use ocptv::output::*;
+///
+/// let mut dut = DutInfo::new("dut0");
+/// let hw_info = dut.add_hardware_info(HardwareInfo::builder("name").build());
 ///
 /// let measurement = Measurement::builder("name", 50.into())
-///     .hardware_info(&HardwareInfo::builder("id", "name").build())
 ///     .add_validator(&Validator::builder(ValidatorType::Equal, 30.into()).build())
 ///     .add_metadata("key", "value".into())
+///     .hardware_info(&hw_info)
 ///     .subcomponent(&Subcomponent::builder("name").build())
 ///     .build();
 /// ```
 pub struct Measurement {
     name: String,
+
     value: tv::Value,
     unit: Option<String>,
     validators: Option<Vec<Validator>>,
-    hardware_info: Option<dut::HardwareInfo>,
+
+    hardware_info: Option<dut::DutHardwareInfo>,
     subcomponent: Option<dut::Subcomponent>,
+
     metadata: Option<BTreeMap<String, tv::Value>>,
 }
 
@@ -384,17 +385,15 @@ impl Measurement {
     /// # Examples
     ///
     /// ```
-    /// use ocptv::output::HardwareInfo;
-    /// use ocptv::output::Measurement;
-    /// use ocptv::output::Subcomponent;
-    /// use ocptv::output::Validator;
-    /// use ocptv::output::ValidatorType;
-    /// use ocptv::output::Value;
+    /// # use ocptv::output::*;
+    ///
+    /// let mut dut = DutInfo::new("dut0");
+    /// let hw_info = dut.add_hardware_info(HardwareInfo::builder("name").build());
     ///
     /// let measurement = Measurement::builder("name", 50.into())
-    ///     .hardware_info(&HardwareInfo::builder("id", "name").build())
     ///     .add_validator(&Validator::builder(ValidatorType::Equal, 30.into()).build())
     ///     .add_metadata("key", "value".into())
+    ///     .hardware_info(&hw_info)
     ///     .subcomponent(&Subcomponent::builder("name").build())
     ///     .build();
     /// ```
@@ -422,10 +421,10 @@ impl Measurement {
                 .validators
                 .clone()
                 .map(|vals| vals.iter().map(|val| val.to_spec()).collect()),
-            hardware_info_id: self
+            hardware_info: self
                 .hardware_info
                 .as_ref()
-                .map(|hardware_info| hardware_info.id().to_owned()),
+                .map(dut::DutHardwareInfo::to_spec),
             subcomponent: self
                 .subcomponent
                 .as_ref()
@@ -440,28 +439,28 @@ impl Measurement {
 /// # Examples
 ///
 /// ```
-/// use ocptv::output::HardwareInfo;
-/// use ocptv::output::Measurement;
-/// use ocptv::output::MeasurementBuilder;
-/// use ocptv::output::Subcomponent;
-/// use ocptv::output::Validator;
-/// use ocptv::output::ValidatorType;
-/// use ocptv::output::Value;
+/// # use ocptv::output::*;
+///
+/// let mut dut = DutInfo::new("dut0");
+/// let hw_info = dut.add_hardware_info(HardwareInfo::builder("name").build());
 ///
 /// let builder = MeasurementBuilder::new("name", 50.into())
-///     .hardware_info(&HardwareInfo::builder("id", "name").build())
 ///     .add_validator(&Validator::builder(ValidatorType::Equal, 30.into()).build())
 ///     .add_metadata("key", "value".into())
+///     .hardware_info(&hw_info)
 ///     .subcomponent(&Subcomponent::builder("name").build());
 /// let measurement = builder.build();
 /// ```
 pub struct MeasurementBuilder {
     name: String,
+
     value: tv::Value,
     unit: Option<String>,
     validators: Option<Vec<Validator>>,
-    hardware_info: Option<dut::HardwareInfo>,
+
+    hardware_info: Option<dut::DutHardwareInfo>,
     subcomponent: Option<dut::Subcomponent>,
+
     metadata: Option<BTreeMap<String, tv::Value>>,
 }
 
@@ -493,12 +492,7 @@ impl MeasurementBuilder {
     /// # Examples
     ///
     /// ```
-    /// use ocptv::output::HardwareInfo;
-    /// use ocptv::output::MeasurementBuilder;
-    /// use ocptv::output::Subcomponent;
-    /// use ocptv::output::Validator;
-    /// use ocptv::output::ValidatorType;
-    /// use ocptv::output::Value;
+    /// # use ocptv::output::*;
     ///
     /// let builder = MeasurementBuilder::new("name", 50.into())
     ///     .add_validator(&Validator::builder(ValidatorType::Equal, 30.into()).build());
@@ -519,14 +513,15 @@ impl MeasurementBuilder {
     /// # Examples
     ///
     /// ```
-    /// use ocptv::output::HardwareInfo;
-    /// use ocptv::output::MeasurementBuilder;
-    /// use ocptv::output::Value;
+    /// # use ocptv::output::*;
+    ///
+    /// let mut dut = DutInfo::new("dut0");
+    /// let hw_info = dut.add_hardware_info(HardwareInfo::builder("name").build());
     ///
     /// let builder = MeasurementBuilder::new("name", 50.into())
-    ///     .hardware_info(&HardwareInfo::builder("id", "name").build());
+    ///     .hardware_info(&hw_info);
     /// ```
-    pub fn hardware_info(mut self, hardware_info: &dut::HardwareInfo) -> MeasurementBuilder {
+    pub fn hardware_info(mut self, hardware_info: &dut::DutHardwareInfo) -> MeasurementBuilder {
         self.hardware_info = Some(hardware_info.clone());
         self
     }
@@ -613,12 +608,15 @@ impl MeasurementBuilder {
 }
 
 pub struct MeasurementSeriesStart {
-    name: String,
-    unit: Option<String>,
     series_id: String,
+    name: String,
+
+    unit: Option<String>,
     validators: Option<Vec<Validator>>,
-    hardware_info: Option<dut::HardwareInfo>,
+
+    hardware_info: Option<dut::DutHardwareInfo>,
     subcomponent: Option<dut::Subcomponent>,
+
     metadata: Option<BTreeMap<String, tv::Value>>,
 }
 
@@ -651,7 +649,7 @@ impl MeasurementSeriesStart {
             hardware_info: self
                 .hardware_info
                 .as_ref()
-                .map(|hardware_info| hardware_info.to_spec()),
+                .map(dut::DutHardwareInfo::to_spec),
             subcomponent: self
                 .subcomponent
                 .as_ref()
@@ -662,12 +660,15 @@ impl MeasurementSeriesStart {
 }
 
 pub struct MeasurementSeriesStartBuilder {
-    name: String,
-    unit: Option<String>,
     series_id: String,
+    name: String,
+
+    unit: Option<String>,
     validators: Option<Vec<Validator>>,
-    hardware_info: Option<dut::HardwareInfo>,
+
+    hardware_info: Option<dut::DutHardwareInfo>,
     subcomponent: Option<dut::Subcomponent>,
+
     metadata: Option<BTreeMap<String, tv::Value>>,
 }
 
@@ -696,7 +697,7 @@ impl MeasurementSeriesStartBuilder {
 
     pub fn hardware_info(
         mut self,
-        hardware_info: &dut::HardwareInfo,
+        hardware_info: &dut::DutHardwareInfo,
     ) -> MeasurementSeriesStartBuilder {
         self.hardware_info = Some(hardware_info.clone());
         self
@@ -765,7 +766,7 @@ mod tests {
                 unit: None,
                 value,
                 validators: None,
-                hardware_info_id: None,
+                hardware_info: None,
                 subcomponent: None,
                 metadata: None,
             }
@@ -776,9 +777,11 @@ mod tests {
 
     #[test]
     fn test_measurement_builder_as_test_step_descendant_to_artifact() -> Result<()> {
+        let mut dut = DutInfo::new("dut0");
+
         let name = "name".to_owned();
         let value = tv::Value::from(50000);
-        let hardware_info = HardwareInfo::builder("id", "name").build();
+        let hw_info = dut.add_hardware_info(HardwareInfo::builder("name").build());
         let validator = Validator::builder(spec::ValidatorType::Equal, 30.into()).build();
 
         let meta_key = "key";
@@ -791,13 +794,12 @@ mod tests {
 
         let unit = "RPM";
         let measurement = Measurement::builder(&name, value.clone())
-            .hardware_info(&hardware_info)
-            .add_validator(&validator)
-            .add_validator(&validator)
-            .add_metadata(meta_key, meta_value.clone())
-            .add_metadata(meta_key, meta_value.clone())
-            .subcomponent(&subcomponent)
             .unit(unit)
+            .add_validator(&validator)
+            .add_validator(&validator)
+            .hardware_info(&hw_info)
+            .subcomponent(&subcomponent)
+            .add_metadata(meta_key, meta_value.clone())
             .build();
 
         let artifact = measurement.to_artifact();
@@ -805,10 +807,10 @@ mod tests {
             artifact,
             spec::Measurement {
                 name,
-                unit: Some(unit.to_string()),
                 value,
+                unit: Some(unit.to_string()),
                 validators: Some(vec![validator.to_spec(), validator.to_spec()]),
-                hardware_info_id: Some(hardware_info.to_spec().id.clone()),
+                hardware_info: Some(hw_info.to_spec()),
                 subcomponent: Some(subcomponent.to_spec()),
                 metadata: Some(metadata),
             }
@@ -842,29 +844,31 @@ mod tests {
 
     #[test]
     fn test_measurement_series_start_builder_to_artifact() -> Result<()> {
+        let mut dut = DutInfo::new("dut0");
+
         let name = "name".to_owned();
         let series_id = "series_id".to_owned();
         let validator = Validator::builder(spec::ValidatorType::Equal, 30.into()).build();
         let validator2 = Validator::builder(spec::ValidatorType::GreaterThen, 10.into()).build();
-        let hw_info = HardwareInfo::builder("id", "name").build();
+        let hw_info = dut.add_hardware_info(HardwareInfo::builder("name").build());
         let subcomponent = Subcomponent::builder("name").build();
         let series = MeasurementSeriesStart::builder(&name, &series_id)
             .unit("unit")
-            .add_metadata("key", "value".into())
-            .add_metadata("key2", "value2".into())
             .add_validator(&validator)
             .add_validator(&validator2)
             .hardware_info(&hw_info)
             .subcomponent(&subcomponent)
+            .add_metadata("key", "value".into())
+            .add_metadata("key2", "value2".into())
             .build();
 
         let artifact = series.to_artifact();
         assert_eq!(
             artifact,
             spec::MeasurementSeriesStart {
+                series_id: series_id.to_string(),
                 name,
                 unit: Some("unit".to_string()),
-                series_id: series_id.to_string(),
                 validators: Some(vec![validator.to_spec(), validator2.to_spec()]),
                 hardware_info: Some(hw_info.to_spec()),
                 subcomponent: Some(subcomponent.to_spec()),

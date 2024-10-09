@@ -449,17 +449,19 @@ impl StartedTestStep {
     /// # tokio_test::block_on(async {
     /// # use ocptv::output::*;
     ///
-    /// let hwinfo = HardwareInfo::builder("id", "fan").build();
-    /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
+    /// let mut dut = DutInfo::new("my_dut");
+    /// let hw_info = dut.add_hardware_info(HardwareInfo::builder("fan").build());
+    /// let run = TestRun::builder("diagnostic_name", &dut, "1.0").build().start().await?;
     /// let step = run.add_step("step_name").start().await?;
     ///
     /// let measurement = Measurement::builder("name", 5000.into())
-    ///     .hardware_info(&hwinfo)
     ///     .add_validator(&Validator::builder(ValidatorType::Equal, 30.into()).build())
     ///     .add_metadata("key", "value".into())
+    ///     .hardware_info(&hw_info)
     ///     .subcomponent(&Subcomponent::builder("name").build())
     ///     .build();
     /// step.add_measurement_with_details(&measurement).await?;
+    ///
     /// step.end(TestStatus::Complete).await?;
     ///
     /// # Ok::<(), OcptvError>(())
