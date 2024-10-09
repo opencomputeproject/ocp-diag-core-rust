@@ -4,16 +4,16 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
-use serde_json::Value;
 use std::io;
 use std::sync::atomic::{self, Ordering};
 use std::sync::Arc;
 
 use crate::output as tv;
-use crate::spec::TestStepStart;
-use crate::spec::{self, TestStepArtifactImpl};
+use crate::spec::{self, TestStepArtifactImpl, TestStepStart};
 use tv::measure::MeasurementSeries;
-use tv::{emitter, error, log, measure};
+use tv::{config, emitter, error, log, measure};
+
+use super::OcptvError;
 
 /// A single test step in the scope of a [`TestRun`].
 ///
@@ -30,7 +30,7 @@ impl TestStep {
             name: name.to_owned(),
             emitter: Arc::new(StepEmitter {
                 step_id: id.to_owned(),
-                run_emitter,
+                emitter: run_emitter,
             }),
         }
     }
@@ -358,6 +358,41 @@ impl StartedTestStep {
         Ok(())
     }
 
+    /// Emits an extension message;
+    ///
+    /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#extension
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # tokio_test::block_on(async {
+    /// # use ocptv::output::*;
+    ///
+    /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
+    /// let step = run.add_step("step_name").start().await?;
+    ///
+    /// #[derive(serde::Serialize)]
+    /// struct Ext { i: u32 }
+    ///
+    /// step.extension("ext_name", Ext { i: 42 }).await?;
+    ///
+    /// # Ok::<(), OcptvError>(())
+    /// # });
+    /// ```
+    pub async fn extension<S: serde::Serialize>(
+        &self,
+        name: &str,
+        any: S,
+    ) -> Result<(), tv::OcptvError> {
+        let ext = TestStepArtifactImpl::Extension(spec::Extension {
+            name: name.to_owned(),
+            content: serde_json::to_value(&any).map_err(|e| OcptvError::Format(Box::new(e)))?,
+        });
+
+        self.step.emitter.emit(&ext).await?;
+        Ok(())
+    }
+
     /// Emits a Measurement message.
     ///
     /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#measurement
@@ -377,7 +412,11 @@ impl StartedTestStep {
     /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn add_measurement(&self, name: &str, value: Value) -> Result<(), tv::OcptvError> {
+    pub async fn add_measurement(
+        &self,
+        name: &str,
+        value: tv::Value,
+    ) -> Result<(), tv::OcptvError> {
         let measurement = measure::Measurement::new(name, value);
 
         self.step
@@ -488,7 +527,8 @@ impl StartedTestStep {
 
 pub struct StepEmitter {
     step_id: String,
-    run_emitter: Arc<emitter::JsonEmitter>,
+    // root emitter
+    emitter: Arc<emitter::JsonEmitter>,
 }
 
 impl StepEmitter {
@@ -498,13 +538,12 @@ impl StepEmitter {
             // TODO: can these copies be avoided?
             artifact: object.clone(),
         });
-        self.run_emitter.emit(&root).await?;
+        self.emitter.emit(&root).await?;
 
         Ok(())
     }
 
-    // HACK:
-    pub fn timestamp_provider(&self) -> &dyn tv::config::TimestampProvider {
-        &*self.run_emitter.timestamp_provider
+    pub fn timestamp_provider(&self) -> &(dyn config::TimestampProvider + Send + Sync + 'static) {
+        self.emitter.timestamp_provider()
     }
 }

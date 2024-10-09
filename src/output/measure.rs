@@ -4,11 +4,11 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
+use std::collections::BTreeMap;
 use std::sync::atomic::{self, Ordering};
 use std::sync::Arc;
 
-use serde_json::Map;
-use serde_json::Value;
+use maplit::{btreemap, convert_args};
 
 use crate::output as tv;
 use crate::spec;
@@ -176,7 +176,7 @@ impl StartedMeasurementSeries {
     /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn add_measurement(&self, value: Value) -> Result<(), tv::OcptvError> {
+    pub async fn add_measurement(&self, value: tv::Value) -> Result<(), tv::OcptvError> {
         let element = spec::MeasurementSeriesElement {
             index: self.incr_seqno(),
             value: value.clone(),
@@ -217,17 +217,20 @@ impl StartedMeasurementSeries {
     /// ```
     pub async fn add_measurement_with_metadata(
         &self,
-        value: Value,
-        metadata: Vec<(&str, Value)>,
+        value: tv::Value,
+        metadata: Vec<(&str, tv::Value)>,
     ) -> Result<(), tv::OcptvError> {
         let element = spec::MeasurementSeriesElement {
             index: self.incr_seqno(),
             value: value.clone(),
             timestamp: self.parent.emitter.timestamp_provider().now(),
             series_id: self.parent.start.series_id.clone(),
-            metadata: Some(Map::from_iter(
-                metadata.iter().map(|(k, v)| (k.to_string(), v.clone())),
-            )),
+            metadata: Some(
+                metadata
+                    .iter()
+                    .map(|(k, v)| (k.to_string(), v.clone()))
+                    .collect(),
+            ),
         };
 
         self.parent
@@ -245,12 +248,12 @@ impl StartedMeasurementSeries {
 pub struct Validator {
     name: Option<String>,
     validator_type: spec::ValidatorType,
-    value: Value,
-    metadata: Option<Map<String, Value>>,
+    value: tv::Value,
+    metadata: Option<BTreeMap<String, tv::Value>>,
 }
 
 impl Validator {
-    pub fn builder(validator_type: spec::ValidatorType, value: Value) -> ValidatorBuilder {
+    pub fn builder(validator_type: spec::ValidatorType, value: tv::Value) -> ValidatorBuilder {
         ValidatorBuilder::new(validator_type, value)
     }
     pub fn to_spec(&self) -> spec::Validator {
@@ -267,12 +270,12 @@ impl Validator {
 pub struct ValidatorBuilder {
     name: Option<String>,
     validator_type: spec::ValidatorType,
-    value: Value,
-    metadata: Option<Map<String, Value>>,
+    value: tv::Value,
+    metadata: Option<BTreeMap<String, tv::Value>>,
 }
 
 impl ValidatorBuilder {
-    fn new(validator_type: spec::ValidatorType, value: Value) -> Self {
+    fn new(validator_type: spec::ValidatorType, value: tv::Value) -> Self {
         ValidatorBuilder {
             validator_type,
             value: value.clone(),
@@ -284,17 +287,15 @@ impl ValidatorBuilder {
         self.name = Some(value.to_string());
         self
     }
-    pub fn add_metadata(mut self, key: &str, value: Value) -> ValidatorBuilder {
+    pub fn add_metadata(mut self, key: &str, value: tv::Value) -> ValidatorBuilder {
         self.metadata = match self.metadata {
             Some(mut metadata) => {
                 metadata.insert(key.to_string(), value.clone());
                 Some(metadata)
             }
-            None => {
-                let mut metadata = Map::new();
-                metadata.insert(key.to_string(), value.clone());
-                Some(metadata)
-            }
+            None => Some(convert_args!(btreemap!(
+                key => value,
+            ))),
         };
         self
     }
@@ -342,12 +343,12 @@ impl ValidatorBuilder {
 /// ```
 pub struct Measurement {
     name: String,
-    value: Value,
+    value: tv::Value,
     unit: Option<String>,
     validators: Option<Vec<Validator>>,
     hardware_info: Option<dut::HardwareInfo>,
     subcomponent: Option<dut::Subcomponent>,
-    metadata: Option<Map<String, Value>>,
+    metadata: Option<BTreeMap<String, tv::Value>>,
 }
 
 impl Measurement {
@@ -361,7 +362,7 @@ impl Measurement {
     ///
     /// let measurement = Measurement::new("name", 50.into());
     /// ```
-    pub fn new(name: &str, value: Value) -> Self {
+    pub fn new(name: &str, value: tv::Value) -> Self {
         Measurement {
             name: name.to_string(),
             value: value.clone(),
@@ -392,7 +393,7 @@ impl Measurement {
     ///     .subcomponent(&Subcomponent::builder("name").build())
     ///     .build();
     /// ```
-    pub fn builder(name: &str, value: Value) -> MeasurementBuilder {
+    pub fn builder(name: &str, value: tv::Value) -> MeasurementBuilder {
         MeasurementBuilder::new(name, value)
     }
 
@@ -451,12 +452,12 @@ impl Measurement {
 /// ```
 pub struct MeasurementBuilder {
     name: String,
-    value: Value,
+    value: tv::Value,
     unit: Option<String>,
     validators: Option<Vec<Validator>>,
     hardware_info: Option<dut::HardwareInfo>,
     subcomponent: Option<dut::Subcomponent>,
-    metadata: Option<Map<String, Value>>,
+    metadata: Option<BTreeMap<String, tv::Value>>,
 }
 
 impl MeasurementBuilder {
@@ -470,7 +471,7 @@ impl MeasurementBuilder {
     ///
     /// let builder = MeasurementBuilder::new("name", 50.into());
     /// ```
-    pub fn new(name: &str, value: Value) -> Self {
+    pub fn new(name: &str, value: tv::Value) -> Self {
         MeasurementBuilder {
             name: name.to_string(),
             value: value.clone(),
@@ -553,15 +554,15 @@ impl MeasurementBuilder {
     /// let builder =
     ///     MeasurementBuilder::new("name", 50.into()).add_metadata("key", "value".into());
     /// ```
-    pub fn add_metadata(mut self, key: &str, value: Value) -> MeasurementBuilder {
+    pub fn add_metadata(mut self, key: &str, value: tv::Value) -> MeasurementBuilder {
         match self.metadata {
             Some(ref mut metadata) => {
                 metadata.insert(key.to_string(), value.clone());
             }
             None => {
-                let mut entries = serde_json::Map::new();
-                entries.insert(key.to_owned(), value);
-                self.metadata = Some(entries);
+                self.metadata = Some(convert_args!(btreemap!(
+                    key => value,
+                )));
             }
         };
         self
@@ -613,7 +614,7 @@ pub struct MeasurementSeriesStart {
     validators: Option<Vec<Validator>>,
     hardware_info: Option<dut::HardwareInfo>,
     subcomponent: Option<dut::Subcomponent>,
-    metadata: Option<Map<String, Value>>,
+    metadata: Option<BTreeMap<String, tv::Value>>,
 }
 
 impl MeasurementSeriesStart {
@@ -662,7 +663,7 @@ pub struct MeasurementSeriesStartBuilder {
     validators: Option<Vec<Validator>>,
     hardware_info: Option<dut::HardwareInfo>,
     subcomponent: Option<dut::Subcomponent>,
-    metadata: Option<Map<String, Value>>,
+    metadata: Option<BTreeMap<String, tv::Value>>,
 }
 
 impl MeasurementSeriesStartBuilder {
@@ -704,17 +705,15 @@ impl MeasurementSeriesStartBuilder {
         self
     }
 
-    pub fn add_metadata(mut self, key: &str, value: Value) -> MeasurementSeriesStartBuilder {
+    pub fn add_metadata(mut self, key: &str, value: tv::Value) -> MeasurementSeriesStartBuilder {
         self.metadata = match self.metadata {
             Some(mut metadata) => {
                 metadata.insert(key.to_string(), value.clone());
                 Some(metadata)
             }
-            None => {
-                let mut metadata = Map::new();
-                metadata.insert(key.to_string(), value.clone());
-                Some(metadata)
-            }
+            None => Some(convert_args!(btreemap!(
+                key => value,
+            ))),
         };
         self
     }
@@ -750,7 +749,7 @@ mod tests {
     #[test]
     fn test_measurement_as_test_step_descendant_to_artifact() -> Result<()> {
         let name = "name".to_owned();
-        let value = Value::from(50);
+        let value = tv::Value::from(50);
         let measurement = Measurement::new(&name, value.clone());
 
         let artifact = measurement.to_artifact();
@@ -773,15 +772,15 @@ mod tests {
     #[test]
     fn test_measurement_builder_as_test_step_descendant_to_artifact() -> Result<()> {
         let name = "name".to_owned();
-        let value = Value::from(50000);
+        let value = tv::Value::from(50000);
         let hardware_info = HardwareInfo::builder("id", "name").build();
         let validator = Validator::builder(spec::ValidatorType::Equal, 30.into()).build();
 
         let meta_key = "key";
-        let meta_value = Value::from("value");
-        let mut metadata = Map::new();
-        metadata.insert(meta_key.to_string(), meta_value.clone());
-        metadata.insert(meta_key.to_string(), meta_value.clone());
+        let meta_value = tv::Value::from("value");
+        let metadata = convert_args!(btreemap!(
+            meta_key => meta_value.clone(),
+        ));
 
         let subcomponent = Subcomponent::builder("name").build();
 
@@ -864,10 +863,10 @@ mod tests {
                 validators: Some(vec![validator.to_spec(), validator2.to_spec()]),
                 hardware_info: Some(hw_info.to_spec()),
                 subcomponent: Some(subcomponent.to_spec()),
-                metadata: Some(serde_json::Map::from_iter([
-                    ("key".to_string(), "value".into()),
-                    ("key2".to_string(), "value2".into())
-                ])),
+                metadata: Some(convert_args!(btreemap!(
+                    "key" => "value",
+                    "key2" => "value2",
+                ))),
             }
         );
 

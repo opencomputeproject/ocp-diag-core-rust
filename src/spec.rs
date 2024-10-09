@@ -4,11 +4,13 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
+use std::collections::BTreeMap;
+
 use chrono::DateTime;
 use serde::Deserialize;
 use serde::Serialize;
-use serde_json::Map;
-use serde_json::Value;
+
+use crate::output as tv;
 
 pub const SPEC_VERSION: (i8, i8) = (2, 0);
 
@@ -77,19 +79,6 @@ pub enum SubcomponentType {
     Function,
     #[serde(rename = "CONNECTOR")]
     Connector,
-}
-
-// TODO: this should be better typed
-#[derive(Debug, Serialize, PartialEq, Clone)]
-pub enum ExtensionContentType {
-    #[serde(rename = "float")]
-    Float(f64),
-    #[serde(rename = "int")]
-    Int(i64),
-    #[serde(rename = "bool")]
-    Bool(bool),
-    #[serde(rename = "str")]
-    Str(String),
 }
 
 /// Outcome of a diagnosis operation.
@@ -268,14 +257,14 @@ pub struct TestRunStart {
     pub command_line: String,
 
     #[serde(rename = "parameters")]
-    pub parameters: Map<String, Value>,
+    pub parameters: BTreeMap<String, tv::Value>,
 
     #[serde(rename = "dutInfo")]
     pub dut_info: DutInfo,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "metadata")]
-    pub metadata: Option<Map<String, Value>>,
+    pub metadata: Option<BTreeMap<String, tv::Value>>,
 }
 
 /// Low-level model for the `dutInfo` spec object.
@@ -307,7 +296,7 @@ pub struct DutInfo {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "metadata")]
-    pub metadata: Option<Map<String, Value>>,
+    pub metadata: Option<BTreeMap<String, tv::Value>>,
 }
 
 /// Low-level model for the `platformInfo` spec object.
@@ -570,7 +559,7 @@ pub struct Measurement {
     pub name: String,
 
     #[serde(rename = "value")]
-    pub value: Value,
+    pub value: tv::Value,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "unit")]
@@ -590,7 +579,7 @@ pub struct Measurement {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "metadata")]
-    pub metadata: Option<Map<String, Value>>,
+    pub metadata: Option<BTreeMap<String, tv::Value>>,
 }
 
 /// Low-level model for the `validator` spec object.
@@ -609,11 +598,11 @@ pub struct Validator {
     pub validator_type: ValidatorType,
 
     #[serde(rename = "value")]
-    pub value: Value,
+    pub value: tv::Value,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "metadata")]
-    pub metadata: Option<Map<String, Value>>,
+    pub metadata: Option<BTreeMap<String, tv::Value>>,
 }
 
 /// Low-level model for the `subcomponent` spec object.
@@ -676,7 +665,7 @@ pub struct MeasurementSeriesStart {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "metadata")]
-    pub metadata: Option<Map<String, Value>>,
+    pub metadata: Option<BTreeMap<String, tv::Value>>,
 }
 
 /// Low-level model for the `measurementSeriesEnd` spec object.
@@ -706,7 +695,7 @@ pub struct MeasurementSeriesElement {
     pub index: u64,
 
     #[serde(rename = "value")]
-    pub value: Value,
+    pub value: tv::Value,
 
     #[serde(with = "rfc3339_format")]
     pub timestamp: DateTime<chrono_tz::Tz>,
@@ -716,7 +705,7 @@ pub struct MeasurementSeriesElement {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "metadata")]
-    pub metadata: Option<Map<String, Value>>,
+    pub metadata: Option<BTreeMap<String, tv::Value>>,
 }
 
 /// Low-level model for the `diagnosis` spec object.
@@ -777,7 +766,7 @@ pub struct File {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "metadata")]
-    pub metadata: Option<Map<String, Value>>,
+    pub metadata: Option<BTreeMap<String, tv::Value>>,
 }
 
 /// Low-level model for the `extension` spec object.
@@ -791,8 +780,10 @@ pub struct Extension {
     #[serde(rename = "name")]
     pub name: String,
 
+    // note: have to use a json specific here; alternative is to propagate up an E: Serialize,
+    // which polutes all of the types. Trait Serialize is also not object safe.
     #[serde(rename = "content")]
-    pub content: ExtensionContentType,
+    pub content: serde_json::Value,
 }
 
 #[cfg(test)]

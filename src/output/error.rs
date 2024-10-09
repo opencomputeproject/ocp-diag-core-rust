@@ -83,6 +83,7 @@ impl ErrorBuilder {
 mod tests {
     use anyhow::Result;
     use assert_json_diff::assert_json_eq;
+    use serde_json::json;
 
     use super::*;
     use crate::output as tv;
@@ -135,7 +136,7 @@ mod tests {
 
     #[test]
     fn test_error() -> Result<()> {
-        let expected_run = serde_json::json!({
+        let expected_run = json!({
             "message": "message",
             "softwareInfoIds": [
                 {
@@ -153,7 +154,7 @@ mod tests {
             },
             "symptom": "symptom"
         });
-        let expected_step = serde_json::json!({
+        let expected_step = json!({
             "message": "message",
             "softwareInfoIds": [
                 {
@@ -178,11 +179,11 @@ mod tests {
             .build();
 
         let spec_error = error.to_artifact();
-        let actual = serde_json::json!(spec_error);
+        let actual = json!(spec_error);
         assert_json_eq!(actual, expected_run);
 
         let spec_error = error.to_artifact();
-        let actual = serde_json::json!(spec_error);
+        let actual = json!(spec_error);
         assert_json_eq!(actual, expected_step);
 
         Ok(())

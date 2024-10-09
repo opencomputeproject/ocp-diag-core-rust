@@ -17,8 +17,7 @@ use crate::output::{
 use crate::spec;
 
 pub struct JsonEmitter {
-    // HACK: public for tests, but this should come from config directly to where needed
-    pub(crate) timestamp_provider: Box<dyn config::TimestampProvider + Send + Sync + 'static>,
+    timestamp_provider: Box<dyn config::TimestampProvider + Send + Sync + 'static>,
     writer: writer::WriterType,
     seqno: Arc<atomic::AtomicU64>,
 }
@@ -35,21 +34,26 @@ impl JsonEmitter {
         }
     }
 
-    fn serialize_artifact(&self, object: &spec::RootImpl) -> serde_json::Value {
+    fn incr_seqno(&self) -> u64 {
+        self.seqno.fetch_add(1, Ordering::AcqRel)
+    }
+
+    fn serialize_artifact(&self, object: &spec::RootImpl) -> String {
         let root = spec::Root {
             artifact: object.clone(),
             timestamp: self.timestamp_provider.now(),
             seqno: self.incr_seqno(),
         };
-        serde_json::json!(root)
+
+        serde_json::json!(root).to_string()
     }
 
-    fn incr_seqno(&self) -> u64 {
-        self.seqno.fetch_add(1, Ordering::AcqRel)
+    pub fn timestamp_provider(&self) -> &(dyn config::TimestampProvider + Send + Sync + 'static) {
+        &*self.timestamp_provider
     }
 
     pub async fn emit(&self, object: &spec::RootImpl) -> Result<(), io::Error> {
-        let s = self.serialize_artifact(object).to_string();
+        let s = self.serialize_artifact(object);
 
         match &self.writer {
             WriterType::File(file) => file.write(&s).await?,
@@ -66,11 +70,25 @@ impl JsonEmitter {
 #[cfg(test)]
 mod tests {
     use anyhow::{anyhow, Result};
-    use assert_json_diff::assert_json_include;
+    use assert_json_diff::assert_json_eq;
     use serde_json::json;
     use tokio::sync::Mutex;
 
     use super::*;
+
+    pub struct NullTimestampProvider {}
+
+    impl NullTimestampProvider {
+        // warn: linter is wrong here, this is used in a serde_json::json! block
+        #[allow(dead_code)]
+        pub const FORMATTED: &str = "1970-01-01T00:00:00.000Z";
+    }
+
+    impl config::TimestampProvider for NullTimestampProvider {
+        fn now(&self) -> chrono::DateTime<chrono_tz::Tz> {
+            chrono::DateTime::from_timestamp_nanos(0).with_timezone(&chrono_tz::UTC)
+        }
+    }
 
     #[tokio::test]
     async fn test_emit_using_buffer_writer() -> Result<()> {
@@ -79,13 +97,14 @@ mod tests {
                 "major": spec::SPEC_VERSION.0,
                 "minor": spec::SPEC_VERSION.1,
             },
-            "sequenceNumber": 0
+            "sequenceNumber": 0,
+            "timestamp": NullTimestampProvider::FORMATTED,
         });
 
         let buffer = Arc::new(Mutex::new(vec![]));
         let writer = writer::BufferWriter::new(buffer.clone());
         let emitter = JsonEmitter::new(
-            Box::new(config::NullTimestampProvider {}),
+            Box::new(NullTimestampProvider {}),
             writer::WriterType::Buffer(writer),
         );
 
@@ -98,7 +117,7 @@ mod tests {
         let deserialized = serde_json::from_str::<serde_json::Value>(
             buffer.lock().await.first().ok_or(anyhow!("no outputs"))?,
         )?;
-        assert_json_include!(actual: deserialized, expected: expected);
+        assert_json_eq!(deserialized, expected);
 
         Ok(())
     }
@@ -110,20 +129,22 @@ mod tests {
                 "major": spec::SPEC_VERSION.0,
                 "minor": spec::SPEC_VERSION.1,
             },
-            "sequenceNumber": 0
+            "sequenceNumber": 0,
+            "timestamp": NullTimestampProvider::FORMATTED,
         });
         let expected_2 = json!({
             "schemaVersion": {
                 "major": spec::SPEC_VERSION.0,
                 "minor": spec::SPEC_VERSION.1,
             },
-            "sequenceNumber": 1
+            "sequenceNumber": 1,
+            "timestamp": NullTimestampProvider::FORMATTED,
         });
 
         let buffer = Arc::new(Mutex::new(vec![]));
         let writer = writer::BufferWriter::new(buffer.clone());
         let emitter = JsonEmitter::new(
-            Box::new(config::NullTimestampProvider {}),
+            Box::new(NullTimestampProvider {}),
             writer::WriterType::Buffer(writer),
         );
 
@@ -134,12 +155,12 @@ mod tests {
         let deserialized = serde_json::from_str::<serde_json::Value>(
             buffer.lock().await.first().ok_or(anyhow!("no outputs"))?,
         )?;
-        assert_json_include!(actual: deserialized, expected: expected_1);
+        assert_json_eq!(deserialized, expected_1);
 
         let deserialized = serde_json::from_str::<serde_json::Value>(
             buffer.lock().await.get(1).ok_or(anyhow!("no outputs"))?,
         )?;
-        assert_json_include!(actual: deserialized, expected: expected_2);
+        assert_json_eq!(deserialized, expected_2);
 
         Ok(())
     }
