@@ -135,7 +135,7 @@ where
 
 async fn check_output_run<F>(expected: &[serde_json::Value], test_fn: F) -> Result<()>
 where
-    F: for<'a> FnOnce(&'a StartedTestRun) -> BoxFuture<'a, Result<(), tv::WriterError>> + Send,
+    F: for<'a> FnOnce(&'a StartedTestRun) -> BoxFuture<'a, Result<(), tv::OcptvError>> + Send,
 {
     check_output(expected, |run_builder| async {
         let run = run_builder.build();
@@ -151,12 +151,12 @@ where
 
 async fn check_output_step<F>(expected: &[serde_json::Value], test_fn: F) -> Result<()>
 where
-    F: for<'a> FnOnce(&'a StartedTestStep) -> BoxFuture<'a, Result<(), tv::WriterError>>,
+    F: for<'a> FnOnce(&'a StartedTestStep) -> BoxFuture<'a, Result<(), tv::OcptvError>>,
 {
     check_output(expected, |run_builder| async {
         let run = run_builder.build().start().await?;
 
-        let step = run.step("first step").start().await?;
+        let step = run.add_step("first step").start().await?;
         test_fn(&step).await?;
         step.end(TestStatus::Complete).await?;
 
@@ -198,7 +198,7 @@ async fn test_testrun_with_log() -> Result<()> {
 
     check_output_run(&expected, |run| {
         async {
-            run.log(
+            run.add_log(
                 LogSeverity::Info,
                 "This is a log message with INFO severity",
             )
@@ -233,7 +233,7 @@ async fn test_testrun_with_log_with_details() -> Result<()> {
 
     check_output_run(&expected, |run| {
         async {
-            run.log_with_details(
+            run.add_log_with_details(
                 &Log::builder("This is a log message with INFO severity")
                     .severity(LogSeverity::Info)
                     .source("file", 1)
@@ -264,7 +264,7 @@ async fn test_testrun_with_error() -> Result<()> {
     ];
 
     check_output_run(&expected, |run| {
-        async { run.error("symptom").await }.boxed()
+        async { run.add_error("symptom").await }.boxed()
     })
     .await
 }
@@ -288,7 +288,7 @@ async fn test_testrun_with_error_with_message() -> Result<()> {
     ];
 
     check_output_run(&expected, |run| {
-        async { run.error_with_msg("symptom", "Error message").await }.boxed()
+        async { run.add_error_with_msg("symptom", "Error message").await }.boxed()
     })
     .await
 }
@@ -321,7 +321,7 @@ async fn test_testrun_with_error_with_details() -> Result<()> {
 
     check_output_run(&expected, |run| {
         async {
-            run.error_with_details(
+            run.add_error_with_details(
                 &Error::builder("symptom")
                     .message("Error message")
                     .source("file", 1)
@@ -356,7 +356,7 @@ async fn test_testrun_with_error_with_details() -> Result<()> {
 //         let run = run_builder.build();
 
 //         run.scope(|r| async {
-//             r.log(LogSeverity::Info, "First message").await?;
+//             r.add_log(LogSeverity::Info, "First message").await?;
 //             Ok(TestRunOutcome {
 //                 status: TestStatus::Complete,
 //                 result: TestResult::Pass,
@@ -405,7 +405,7 @@ async fn test_testrun_step_log() -> Result<()> {
 
     check_output_step(&expected, |step| {
         async {
-            step.log(
+            step.add_log(
                 LogSeverity::Info,
                 "This is a log message with INFO severity",
             )
@@ -445,7 +445,7 @@ async fn test_testrun_step_log_with_details() -> Result<()> {
 
     check_output_step(&expected, |step| {
         async {
-            step.log_with_details(
+            step.add_log_with_details(
                 &Log::builder("This is a log message with INFO severity")
                     .severity(LogSeverity::Info)
                     .source("file", 1)
@@ -482,7 +482,7 @@ async fn test_testrun_step_error() -> Result<()> {
 
     check_output_step(&expected, |step| {
         async {
-            step.error("symptom").await?;
+            step.add_error("symptom").await?;
 
             Ok(())
         }
@@ -514,7 +514,7 @@ async fn test_testrun_step_error_with_message() -> Result<()> {
 
     check_output_step(&expected, |step| {
         async {
-            step.error_with_msg("symptom", "Error message").await?;
+            step.add_error_with_msg("symptom", "Error message").await?;
 
             Ok(())
         }
@@ -554,7 +554,7 @@ async fn test_testrun_step_error_with_details() -> Result<()> {
 
     check_output_step(&expected, |step| {
         async {
-            step.error_with_details(
+            step.add_error_with_details(
                 &Error::builder("symptom")
                     .message("Error message")
                     .source("file", 1)
@@ -594,7 +594,7 @@ async fn test_testrun_step_error_with_details() -> Result<()> {
 //             run.step("first step")
 //                 .start()
 //                 .scope(|s| async {
-//                     s.log(
+//                     s.add_log(
 //                         LogSeverity::Info,
 //                         "This is a log message with INFO severity",
 //                     )
@@ -723,7 +723,7 @@ async fn test_step_with_measurement_series() -> Result<()> {
 
     check_output_step(&expected, |step| {
         async {
-            let series = step.measurement_series("name").start().await?;
+            let series = step.add_measurement_series("name").start().await?;
             series.end().await?;
 
             Ok(())
@@ -789,10 +789,10 @@ async fn test_step_with_multiple_measurement_series() -> Result<()> {
 
     check_output_step(&expected, |step| {
         async {
-            let series = step.measurement_series("name").start().await?;
+            let series = step.add_measurement_series("name").start().await?;
             series.end().await?;
 
-            let series_2 = step.measurement_series("name").start().await?;
+            let series_2 = step.add_measurement_series("name").start().await?;
             series_2.end().await?;
 
             Ok(())
@@ -836,7 +836,10 @@ async fn test_step_with_measurement_series_with_details() -> Result<()> {
     check_output_step(&expected, |step| {
         async {
             let series = step
-                .measurement_series_with_details(MeasurementSeriesStart::new("name", "series_id"))
+                .add_measurement_series_with_details(MeasurementSeriesStart::new(
+                    "name",
+                    "series_id",
+                ))
                 .start()
                 .await?;
             series.end().await?;
@@ -897,7 +900,7 @@ async fn test_step_with_measurement_series_with_details_and_start_builder() -> R
     check_output_step(&expected, |step| {
         async {
             let series = step
-                .measurement_series_with_details(
+                .add_measurement_series_with_details(
                     MeasurementSeriesStart::builder("name", "series_id")
                         .add_metadata("key", "value".into())
                         .add_validator(&Validator::builder(ValidatorType::Equal, 30.into()).build())
@@ -963,7 +966,7 @@ async fn test_step_with_measurement_series_element() -> Result<()> {
 
     check_output_step(&expected, |step| {
         async {
-            let series = step.measurement_series("name").start().await?;
+            let series = step.add_measurement_series("name").start().await?;
             series.add_measurement(60.into()).await?;
             series.end().await?;
 
@@ -1047,7 +1050,7 @@ async fn test_step_with_measurement_series_element_index_no() -> Result<()> {
 
     check_output_step(&expected, |step| {
         async {
-            let series = step.measurement_series("name").start().await?;
+            let series = step.add_measurement_series("name").start().await?;
             // add more than one element to check the index increments correctly
             series.add_measurement(60.into()).await?;
             series.add_measurement(70.into()).await?;
@@ -1111,7 +1114,7 @@ async fn test_step_with_measurement_series_element_with_metadata() -> Result<()>
 
     check_output_step(&expected, |step| {
         async {
-            let series = step.measurement_series("name").start().await?;
+            let series = step.add_measurement_series("name").start().await?;
             series
                 .add_measurement_with_metadata(60.into(), vec![("key", "value".into())])
                 .await?;
@@ -1200,7 +1203,7 @@ async fn test_step_with_measurement_series_element_with_metadata_index_no() -> R
 
     check_output_step(&expected, |step| {
         async {
-            let series = step.measurement_series("name").start().await?;
+            let series = step.add_measurement_series("name").start().await?;
             // add more than one element to check the index increments correctly
             series
                 .add_measurement_with_metadata(60.into(), vec![("key", "value".into())])
@@ -1280,7 +1283,7 @@ async fn test_step_with_measurement_series_element_with_metadata_index_no() -> R
 
 //     check_output_step(&expected, |step| {
 //         async {
-//             let series = step.measurement_series("name");
+//             let series = step.add_measurement_series("name");
 //             series
 //                 .scope(|s| async {
 //                     s.add_measurement(60.into()).await?;
@@ -1338,7 +1341,7 @@ async fn test_config_builder_with_file() -> Result<()> {
         .start()
         .await?;
 
-    run.error_with_msg("symptom", "Error message").await?;
+    run.add_error_with_msg("symptom", "Error message").await?;
 
     run.end(TestStatus::Complete, TestResult::Pass).await?;
 

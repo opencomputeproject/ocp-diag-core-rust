@@ -5,6 +5,7 @@
 // https://opensource.org/licenses/MIT.
 
 use serde_json::Value;
+use std::io;
 use std::sync::atomic::{self, Ordering};
 use std::sync::Arc;
 
@@ -13,9 +14,6 @@ use crate::spec::TestStepStart;
 use crate::spec::{self, TestStepArtifactImpl};
 use tv::measure::MeasurementSeries;
 use tv::{emitter, error, log, measure};
-
-use super::WriterError;
-use super::{JsonEmitter, TimestampProvider};
 
 /// A single test step in the scope of a [`TestRun`].
 ///
@@ -27,7 +25,7 @@ pub struct TestStep {
 }
 
 impl TestStep {
-    pub(crate) fn new(id: &str, name: &str, run_emitter: Arc<JsonEmitter>) -> Self {
+    pub(crate) fn new(id: &str, name: &str, run_emitter: Arc<emitter::JsonEmitter>) -> Self {
         TestStep {
             name: name.to_owned(),
             emitter: Arc::new(StepEmitter {
@@ -48,12 +46,12 @@ impl TestStep {
     /// # use ocptv::output::*;
     ///
     /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
-    /// let step = run.step("step_name").start().await?;
+    /// let step = run.add_step("step_name").start().await?;
     ///
-    /// # Ok::<(), WriterError>(())
+    /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn start(self) -> Result<StartedTestStep, emitter::WriterError> {
+    pub async fn start(self) -> Result<StartedTestStep, tv::OcptvError> {
         self.emitter
             .emit(&TestStepArtifactImpl::TestStepStart(TestStepStart {
                 name: self.name.clone(),
@@ -81,16 +79,16 @@ impl TestStep {
     // ///
     // /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
     // ///
-    // /// let step = run.step("first step")?;
+    // /// let step = run.add_step("first step")?;
     // /// step.scope(|s| async {
-    // ///     s.log(
+    // ///     s.add_log(
     // ///         LogSeverity::Info,
     // ///         "This is a log message with INFO severity",
     // ///     ).await?;
     // ///     Ok(TestStatus::Complete)
     // /// }).await?;
     // ///
-    // /// # Ok::<(), WriterError>(())
+    // /// # Ok::<(), OcptvError>(())
     // /// # });
     // /// ```
     // pub async fn scope<'a, F, R>(&'a self, func: F) -> Result<(), emitters::WriterError>
@@ -123,13 +121,13 @@ impl StartedTestStep {
     ///
     /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
     ///
-    /// let step = run.step("step_name").start().await?;
+    /// let step = run.add_step("step_name").start().await?;
     /// step.end(TestStatus::Complete).await?;
     ///
-    /// # Ok::<(), WriterError>(())
+    /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn end(&self, status: spec::TestStatus) -> Result<(), emitter::WriterError> {
+    pub async fn end(self, status: spec::TestStatus) -> Result<(), tv::OcptvError> {
         let end = TestStepArtifactImpl::TestStepEnd(spec::TestStepEnd { status });
 
         self.step.emitter.emit(&end).await?;
@@ -150,14 +148,14 @@ impl StartedTestStep {
     ///
     /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
     ///
-    /// let step = run.step("step_name").start().await?;
-    /// step.log(
+    /// let step = run.add_step("step_name").start().await?;
+    /// step.add_log(
     ///     LogSeverity::Info,
     ///     "This is a log message with INFO severity",
     /// ).await?;
     /// step.end(TestStatus::Complete).await?;
     ///
-    /// # Ok::<(), WriterError>(())
+    /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
     /// ## Using macros
@@ -170,18 +168,18 @@ impl StartedTestStep {
     ///
     /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
     ///
-    /// let step = run.step("step_name").start().await?;
+    /// let step = run.add_step("step_name").start().await?;
     /// ocptv_log_info!(step, "This is a log message with INFO severity").await?;
     /// step.end(TestStatus::Complete).await?;
     ///
-    /// # Ok::<(), WriterError>(())
+    /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn log(
+    pub async fn add_log(
         &self,
         severity: spec::LogSeverity,
         msg: &str,
-    ) -> Result<(), emitter::WriterError> {
+    ) -> Result<(), tv::OcptvError> {
         let log = log::Log::builder(msg).severity(severity).build();
 
         self.step
@@ -205,8 +203,8 @@ impl StartedTestStep {
     ///
     /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
     ///
-    /// let step = run.step("step_name").start().await?;
-    /// step.log_with_details(
+    /// let step = run.add_step("step_name").start().await?;
+    /// step.add_log_with_details(
     ///     &Log::builder("This is a log message with INFO severity")
     ///         .severity(LogSeverity::Info)
     ///         .source("file", 1)
@@ -214,10 +212,10 @@ impl StartedTestStep {
     /// ).await?;
     /// step.end(TestStatus::Complete).await?;
     ///
-    /// # Ok::<(), WriterError>(())
+    /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn log_with_details(&self, log: &log::Log) -> Result<(), emitter::WriterError> {
+    pub async fn add_log_with_details(&self, log: &log::Log) -> Result<(), tv::OcptvError> {
         self.step
             .emitter
             .emit(&TestStepArtifactImpl::Log(log.to_artifact()))
@@ -239,11 +237,11 @@ impl StartedTestStep {
     ///
     /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
     ///
-    /// let step = run.step("step_name").start().await?;
-    /// step.error("symptom").await?;
+    /// let step = run.add_step("step_name").start().await?;
+    /// step.add_error("symptom").await?;
     /// step.end(TestStatus::Complete).await?;
     ///
-    /// # Ok::<(), WriterError>(())
+    /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
     ///
@@ -257,14 +255,14 @@ impl StartedTestStep {
     ///
     /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
     ///
-    /// let step = run.step("step_name").start().await?;
+    /// let step = run.add_step("step_name").start().await?;
     /// ocptv_error!(step, "symptom").await?;
     /// step.end(TestStatus::Complete).await?;
     ///
-    /// # Ok::<(), WriterError>(())
+    /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn error(&self, symptom: &str) -> Result<(), emitter::WriterError> {
+    pub async fn add_error(&self, symptom: &str) -> Result<(), tv::OcptvError> {
         let error = error::Error::builder(symptom).build();
 
         self.step
@@ -289,11 +287,11 @@ impl StartedTestStep {
     ///
     /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
     ///
-    /// let step = run.step("step_name").start().await?;
-    /// step.error_with_msg("symptom", "error message").await?;
+    /// let step = run.add_step("step_name").start().await?;
+    /// step.add_error_with_msg("symptom", "error message").await?;
     /// step.end(TestStatus::Complete).await?;
     ///
-    /// # Ok::<(), WriterError>(())
+    /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
     ///
@@ -307,18 +305,14 @@ impl StartedTestStep {
     ///
     /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
     ///
-    /// let step = run.step("step_name").start().await?;
+    /// let step = run.add_step("step_name").start().await?;
     /// ocptv_error!(step, "symptom", "error message").await?;
     /// step.end(TestStatus::Complete).await?;
     ///
-    /// # Ok::<(), WriterError>(())
+    /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn error_with_msg(
-        &self,
-        symptom: &str,
-        msg: &str,
-    ) -> Result<(), emitter::WriterError> {
+    pub async fn add_error_with_msg(&self, symptom: &str, msg: &str) -> Result<(), tv::OcptvError> {
         let error = error::Error::builder(symptom).message(msg).build();
 
         self.step
@@ -342,8 +336,8 @@ impl StartedTestStep {
     ///
     /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
     ///
-    /// let step = run.step("step_name").start().await?;
-    /// step.error_with_details(
+    /// let step = run.add_step("step_name").start().await?;
+    /// step.add_error_with_details(
     ///     &Error::builder("symptom")
     ///         .message("Error message")
     ///         .source("file", 1)
@@ -352,13 +346,10 @@ impl StartedTestStep {
     /// ).await?;
     /// step.end(TestStatus::Complete).await?;
     ///
-    /// # Ok::<(), WriterError>(())
+    /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn error_with_details(
-        &self,
-        error: &error::Error,
-    ) -> Result<(), emitter::WriterError> {
+    pub async fn add_error_with_details(&self, error: &error::Error) -> Result<(), tv::OcptvError> {
         self.step
             .emitter
             .emit(&TestStepArtifactImpl::Error(error.to_artifact()))
@@ -379,18 +370,14 @@ impl StartedTestStep {
     ///
     /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
     ///
-    /// let step = run.step("step_name").start().await?;
+    /// let step = run.add_step("step_name").start().await?;
     /// step.add_measurement("name", 50.into()).await?;
     /// step.end(TestStatus::Complete).await?;
     ///
-    /// # Ok::<(), WriterError>(())
+    /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn add_measurement(
-        &self,
-        name: &str,
-        value: Value,
-    ) -> Result<(), emitter::WriterError> {
+    pub async fn add_measurement(&self, name: &str, value: Value) -> Result<(), tv::OcptvError> {
         let measurement = measure::Measurement::new(name, value);
 
         self.step
@@ -416,7 +403,7 @@ impl StartedTestStep {
     ///
     /// let hwinfo = HardwareInfo::builder("id", "fan").build();
     /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
-    /// let step = run.step("step_name").start().await?;
+    /// let step = run.add_step("step_name").start().await?;
     ///
     /// let measurement = Measurement::builder("name", 5000.into())
     ///     .hardware_info(&hwinfo)
@@ -427,13 +414,13 @@ impl StartedTestStep {
     /// step.add_measurement_with_details(&measurement).await?;
     /// step.end(TestStatus::Complete).await?;
     ///
-    /// # Ok::<(), WriterError>(())
+    /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
     pub async fn add_measurement_with_details(
         &self,
         measurement: &measure::Measurement,
-    ) -> Result<(), emitter::WriterError> {
+    ) -> Result<(), tv::OcptvError> {
         self.step
             .emitter
             .emit(&spec::TestStepArtifactImpl::Measurement(
@@ -444,7 +431,7 @@ impl StartedTestStep {
         Ok(())
     }
 
-    /// Starts a Measurement Series (a time-series list of measurements).
+    /// Create a Measurement Series (a time-series list of measurements).
     /// This method accepts a [`std::string::String`] as series ID and
     /// a [`std::string::String`] as series name.
     ///
@@ -457,13 +444,13 @@ impl StartedTestStep {
     /// # use ocptv::output::*;
     ///
     /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
-    /// let step = run.step("step_name").start().await?;
-    /// let series = step.measurement_series("name");
+    /// let step = run.add_step("step_name").start().await?;
+    /// let series = step.add_measurement_series("name");
     ///
-    /// # Ok::<(), WriterError>(())
+    /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub fn measurement_series(&self, name: &str) -> MeasurementSeries {
+    pub fn add_measurement_series(&self, name: &str) -> MeasurementSeries {
         let series_id: String = format!(
             "series_{}",
             self.measurement_id_seqno.fetch_add(1, Ordering::AcqRel)
@@ -472,7 +459,7 @@ impl StartedTestStep {
         MeasurementSeries::new(&series_id, name, Arc::clone(&self.step.emitter))
     }
 
-    /// Starts a Measurement Series (a time-series list of measurements).
+    /// Create a Measurement Series (a time-series list of measurements).
     /// This method accepts a [`objects::MeasurementSeriesStart`] object.
     ///
     /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#measurementseriesstart
@@ -484,14 +471,14 @@ impl StartedTestStep {
     /// # use ocptv::output::*;
     ///
     /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
-    /// let step = run.step("step_name").start().await?;
+    /// let step = run.add_step("step_name").start().await?;
     /// let series =
-    ///     step.measurement_series_with_details(MeasurementSeriesStart::new("name", "series_id"));
+    ///     step.add_measurement_series_with_details(MeasurementSeriesStart::new("name", "series_id"));
     ///
-    /// # Ok::<(), WriterError>(())
+    /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub fn measurement_series_with_details(
+    pub fn add_measurement_series_with_details(
         &self,
         start: measure::MeasurementSeriesStart,
     ) -> MeasurementSeries {
@@ -501,11 +488,11 @@ impl StartedTestStep {
 
 pub struct StepEmitter {
     step_id: String,
-    run_emitter: Arc<JsonEmitter>,
+    run_emitter: Arc<emitter::JsonEmitter>,
 }
 
 impl StepEmitter {
-    pub async fn emit(&self, object: &spec::TestStepArtifactImpl) -> Result<(), WriterError> {
+    pub async fn emit(&self, object: &spec::TestStepArtifactImpl) -> Result<(), io::Error> {
         let root = spec::RootImpl::TestStepArtifact(spec::TestStepArtifact {
             id: self.step_id.clone(),
             // TODO: can these copies be avoided?
@@ -516,7 +503,8 @@ impl StepEmitter {
         Ok(())
     }
 
-    pub fn timestamp_provider(&self) -> &dyn TimestampProvider {
+    // HACK:
+    pub fn timestamp_provider(&self) -> &dyn tv::config::TimestampProvider {
         &*self.run_emitter.timestamp_provider
     }
 }

@@ -31,7 +31,7 @@
 /// ocptv_error!(test_run, "symptom");
 /// test_run.end(TestStatus::Complete, TestResult::Pass).await?;
 ///
-/// # Ok::<(), WriterError>(())
+/// # Ok::<(), OcptvError>(())
 /// # });
 /// ```
 ///
@@ -47,13 +47,13 @@
 /// ocptv_error!(test_run, "symptom", "Error message");
 /// test_run.end(TestStatus::Complete, TestResult::Pass).await?;
 ///
-/// # Ok::<(), WriterError>(())
+/// # Ok::<(), OcptvError>(())
 /// # });
 /// ```
 #[macro_export]
 macro_rules! ocptv_error {
     ($runner:expr, $symptom:expr, $msg:expr) => {
-        $runner.error_with_details(
+        $runner.add_error_with_details(
             &$crate::output::Error::builder($symptom)
                 .message($msg)
                 .source(file!(), line!() as i32)
@@ -62,7 +62,7 @@ macro_rules! ocptv_error {
     };
 
     ($runner:expr, $symptom:expr) => {
-        $runner.error_with_details(
+        $runner.add_error_with_details(
             &$crate::output::Error::builder($symptom)
                 .source(file!(), line!() as i32)
                 .build(),
@@ -94,7 +94,7 @@ macro_rules! ocptv_error {
 /// ocptv_log_debug!(run, "Log message");
 /// run.end(TestStatus::Complete, TestResult::Pass).await?;
 ///
-/// # Ok::<(), WriterError>(())
+/// # Ok::<(), OcptvError>(())
 /// # });
 /// ```
 
@@ -103,7 +103,7 @@ macro_rules! ocptv_log {
         #[macro_export]
         macro_rules! $name {
             ($artifact:expr, $msg:expr) => {
-                $artifact.log_with_details(
+                $artifact.add_log_with_details(
                     &$crate::output::Log::builder($msg)
                         .severity($crate::output::LogSeverity::$severity)
                         .source(file!(), line!() as i32)

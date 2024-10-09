@@ -4,97 +4,29 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
-use core::fmt::Debug;
-use std::clone::Clone;
 use std::io;
-use std::io::Write;
-use std::path::Path;
 use std::sync::atomic::{self, Ordering};
 use std::sync::Arc;
 
-use tokio::fs::File;
-use tokio::io::AsyncWriteExt;
-use tokio::sync::Mutex;
+use unwrap_infallible::UnwrapInfallible;
 
-use crate::output::config;
+use crate::output::{
+    config,
+    writer::{self, WriterType},
+};
 use crate::spec;
-
-#[derive(Debug, thiserror::Error, derive_more::Display)]
-#[non_exhaustive]
-pub enum WriterError {
-    IoError(#[from] io::Error),
-}
-
-pub(crate) enum WriterType {
-    Stdout(StdoutWriter),
-    File(FileWriter),
-    Buffer(BufferWriter),
-}
-
-pub struct FileWriter {
-    file: Arc<Mutex<File>>,
-}
-
-impl FileWriter {
-    pub async fn new<P: AsRef<Path>>(path: P) -> Result<Self, WriterError> {
-        let file = File::create(path).await.map_err(WriterError::IoError)?;
-        Ok(FileWriter {
-            file: Arc::new(Mutex::new(file)),
-        })
-    }
-
-    async fn write(&self, s: &str) -> Result<(), WriterError> {
-        let mut handle = self.file.lock().await;
-        let mut buf = Vec::<u8>::new();
-        writeln!(buf, "{}", s)?;
-        handle.write_all(&buf).await.map_err(WriterError::IoError)?;
-        handle.flush().await.map_err(WriterError::IoError)?;
-        Ok(())
-    }
-}
-
-#[derive(Debug)]
-pub struct BufferWriter {
-    buffer: Arc<Mutex<Vec<String>>>,
-}
-
-impl BufferWriter {
-    pub fn new(buffer: Arc<Mutex<Vec<String>>>) -> Self {
-        Self { buffer }
-    }
-
-    async fn write(&self, s: &str) -> Result<(), WriterError> {
-        self.buffer.lock().await.push(s.to_string());
-        Ok(())
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct StdoutWriter {}
-
-#[allow(clippy::new_without_default)]
-impl StdoutWriter {
-    pub fn new() -> Self {
-        StdoutWriter {}
-    }
-
-    async fn write(&self, s: &str) -> Result<(), WriterError> {
-        println!("{}", s);
-        Ok(())
-    }
-}
 
 pub struct JsonEmitter {
     // HACK: public for tests, but this should come from config directly to where needed
     pub(crate) timestamp_provider: Box<dyn config::TimestampProvider + Send + Sync + 'static>,
-    writer: WriterType,
+    writer: writer::WriterType,
     seqno: Arc<atomic::AtomicU64>,
 }
 
 impl JsonEmitter {
     pub(crate) fn new(
         timestamp_provider: Box<dyn config::TimestampProvider + Send + Sync + 'static>,
-        writer: WriterType,
+        writer: writer::WriterType,
     ) -> Self {
         JsonEmitter {
             timestamp_provider,
@@ -116,13 +48,17 @@ impl JsonEmitter {
         self.seqno.fetch_add(1, Ordering::AcqRel)
     }
 
-    pub async fn emit(&self, object: &spec::RootImpl) -> Result<(), WriterError> {
-        let serialized = self.serialize_artifact(object);
-        match self.writer {
-            WriterType::File(ref file) => file.write(&serialized.to_string()).await?,
-            WriterType::Stdout(ref stdout) => stdout.write(&serialized.to_string()).await?,
-            WriterType::Buffer(ref buffer) => buffer.write(&serialized.to_string()).await?,
+    pub async fn emit(&self, object: &spec::RootImpl) -> Result<(), io::Error> {
+        let s = self.serialize_artifact(object).to_string();
+
+        match &self.writer {
+            WriterType::File(file) => file.write(&s).await?,
+            WriterType::Stdout(stdout) => stdout.write(&s).await.unwrap_infallible(),
+            WriterType::Buffer(buffer) => buffer.write(&s).await.unwrap_infallible(),
+
+            WriterType::Custom(custom) => custom.write(&s).await?,
         }
+
         Ok(())
     }
 }
@@ -132,6 +68,7 @@ mod tests {
     use anyhow::{anyhow, Result};
     use assert_json_diff::assert_json_include;
     use serde_json::json;
+    use tokio::sync::Mutex;
 
     use super::*;
 
@@ -146,10 +83,10 @@ mod tests {
         });
 
         let buffer = Arc::new(Mutex::new(vec![]));
-        let writer = BufferWriter::new(buffer.clone());
+        let writer = writer::BufferWriter::new(buffer.clone());
         let emitter = JsonEmitter::new(
             Box::new(config::NullTimestampProvider {}),
-            WriterType::Buffer(writer),
+            writer::WriterType::Buffer(writer),
         );
 
         emitter
@@ -184,10 +121,10 @@ mod tests {
         });
 
         let buffer = Arc::new(Mutex::new(vec![]));
-        let writer = BufferWriter::new(buffer.clone());
+        let writer = writer::BufferWriter::new(buffer.clone());
         let emitter = JsonEmitter::new(
             Box::new(config::NullTimestampProvider {}),
-            WriterType::Buffer(writer),
+            writer::WriterType::Buffer(writer),
         );
 
         let version = spec::RootImpl::SchemaVersion(spec::SchemaVersion::default());

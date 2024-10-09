@@ -3,6 +3,7 @@
 // Use of this source code is governed by an MIT-style
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
+#![deny(warnings)]
 
 mod config;
 mod dut;
@@ -13,19 +14,31 @@ mod macros;
 mod measure;
 mod run;
 mod step;
+mod writer;
 
-pub use crate::spec::LogSeverity;
-pub use crate::spec::TestResult;
-pub use crate::spec::TestStatus;
-pub use crate::spec::ValidatorType;
-pub use crate::spec::SPEC_VERSION;
-pub use config::*;
-pub use dut::*;
-pub use emitter::*;
-pub use error::*;
-pub use log::*;
-pub use measure::*;
-pub use run::*;
-pub use step::*;
+pub use crate::spec::{LogSeverity, TestResult, TestStatus, ValidatorType, SPEC_VERSION};
+pub use config::{Config, ConfigBuilder, TimestampProvider};
+pub use dut::{
+    DutInfo, DutInfoBuilder, HardwareInfo, HardwareInfoBuilder, PlatformInfo, PlatformInfoBuilder,
+    SoftwareInfo, SoftwareInfoBuilder, Subcomponent, SubcomponentBuilder,
+};
+pub use error::{Error, ErrorBuilder};
+pub use log::{Log, LogBuilder};
+pub use measure::{
+    Measurement, MeasurementBuilder, MeasurementSeries, MeasurementSeriesStart,
+    MeasurementSeriesStartBuilder, StartedMeasurementSeries, Validator, ValidatorBuilder,
+};
+pub use run::{StartedTestRun, TestRun, TestRunBuilder, TestRunOutcome};
+pub use step::{StartedTestStep, TestStep};
+pub use writer::{BufferWriter, FileWriter, StdoutWriter, Writer};
 
+// re-export this as a public type we present
 pub use serde_json::Value;
+
+#[derive(Debug, thiserror::Error)]
+#[non_exhaustive]
+pub enum OcptvError {
+    #[error("failed to write to output stream")]
+    IoError(#[from] std::io::Error),
+    // other?
+}
