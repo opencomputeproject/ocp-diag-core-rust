@@ -3,28 +3,24 @@
 // Use of this source code is governed by an MIT-style
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
-#![allow(unused_imports)]
 
-use std::fs;
 use std::sync::Arc;
 
 use anyhow::Result;
-use assert_fs::prelude::*;
+
 use assert_json_diff::{assert_json_eq, assert_json_include};
 use futures::future::BoxFuture;
 use futures::future::Future;
 use futures::FutureExt;
-use ocptv::output::OcptvError;
-use predicates::prelude::*;
 use serde_json::json;
 use tokio::sync::Mutex;
 
 use ocptv::output as tv;
+use ocptv::output::OcptvError;
 use tv::{
     Config, DutInfo, Error, HardwareInfo, Log, LogSeverity, Measurement, MeasurementSeriesStart,
     SoftwareInfo, StartedTestRun, StartedTestStep, Subcomponent, TestResult, TestRun,
-    TestRunBuilder, TestRunOutcome, TestStatus, TestStep, TimestampProvider, Validator,
-    ValidatorType,
+    TestRunBuilder, TestRunOutcome, TestStatus, TimestampProvider, Validator, ValidatorType,
 };
 
 const DATETIME: chrono::DateTime<chrono::offset::Utc> = chrono::DateTime::from_timestamp_nanos(0);
@@ -336,39 +332,45 @@ async fn test_testrun_with_error_with_details() -> Result<()> {
     .await
 }
 
-// #[tokio::test]
-// async fn test_testrun_with_scope() -> Result<()> {
-//     let expected = [
-//         json_schema_version(),
-//         json_run_default_start(),
-//         json!({
-//             "testRunArtifact": {
-//                 "log": {
-//                     "message": "First message",
-//                     "severity": "INFO"
-//                 }
-//             },
-//             "sequenceNumber": 2
-//         }),
-//         json_run_pass(3),
-//     ];
+#[cfg(feature = "boxed-scopes")]
+#[tokio::test]
+async fn test_testrun_with_scope() -> Result<()> {
+    let expected = [
+        json_schema_version(),
+        json_run_default_start(),
+        json!({
+            "testRunArtifact": {
+                "log": {
+                    "message": "First message",
+                    "severity": "INFO"
+                }
+            },
+            "sequenceNumber": 2,
+            "timestamp": DATETIME_FORMATTED
+        }),
+        json_run_pass(3),
+    ];
 
-//     check_output(&expected, |run_builder| async {
-//         let run = run_builder.build();
+    check_output(&expected, |run_builder| async {
+        let run = run_builder.build();
 
-//         run.scope(|r| async {
-//             r.add_log(LogSeverity::Info, "First message").await?;
-//             Ok(TestRunOutcome {
-//                 status: TestStatus::Complete,
-//                 result: TestResult::Pass,
-//             })
-//         })
-//         .await?;
+        run.scope(|r| {
+            async move {
+                r.add_log(LogSeverity::Info, "First message").await?;
 
-//         Ok(())
-//     })
-//     .await
-// }
+                Ok(TestRunOutcome {
+                    status: TestStatus::Complete,
+                    result: TestResult::Pass,
+                })
+            }
+            .boxed()
+        })
+        .await?;
+
+        Ok(())
+    })
+    .await
+}
 
 #[tokio::test]
 async fn test_testrun_with_step() -> Result<()> {
@@ -571,43 +573,49 @@ async fn test_testrun_step_error_with_details() -> Result<()> {
     .await
 }
 
-// #[tokio::test]
-// async fn test_testrun_step_scope_log() -> Result<()> {
-//     let expected = [
-//         json_schema_version(),
-//         json_run_default_start(),
-//         json_step_default_start(),
-//         json!({
-//             "sequenceNumber": 3,
-//             "testStepArtifact": {
-//                 "log": {
-//                     "message": "This is a log message with INFO severity",
-//                     "severity": "INFO"
-//                 }
-//             }
-//         }),
-//         json_step_complete(4),
-//         json_run_pass(5),
-//     ];
+#[cfg(feature = "boxed-scopes")]
+#[tokio::test]
+async fn test_testrun_step_scope_log() -> Result<()> {
+    let expected = [
+        json_schema_version(),
+        json_run_default_start(),
+        json_step_default_start(),
+        json!({
+            "testStepArtifact": {
+                "testStepId": "step_0",
+                "log": {
+                    "message": "This is a log message with INFO severity",
+                    "severity": "INFO"
+                }
+            },
+            "sequenceNumber": 3,
+            "timestamp": DATETIME_FORMATTED
+        }),
+        json_step_complete(4),
+        json_run_pass(5),
+    ];
 
-//     check_output_run(&expected, |run| {
-//         async {
-//             run.step("first step")
-//                 .start()
-//                 .scope(|s| async {
-//                     s.add_log(
-//                         LogSeverity::Info,
-//                         "This is a log message with INFO severity",
-//                     )
-//                     .await?;
-//                     Ok(TestStatus::Complete)
-//                 })
-//                 .await
-//         }
-//         .boxed()
-//     })
-//     .await
-// }
+    check_output_run(&expected, |run| {
+        async {
+            run.add_step("first step")
+                .scope(|s| {
+                    async move {
+                        s.add_log(
+                            LogSeverity::Info,
+                            "This is a log message with INFO severity",
+                        )
+                        .await?;
+
+                        Ok(TestStatus::Complete)
+                    }
+                    .boxed()
+                })
+                .await
+        }
+        .boxed()
+    })
+    .await
+}
 
 #[tokio::test]
 async fn test_step_with_measurement() -> Result<()> {
@@ -1224,83 +1232,100 @@ async fn test_step_with_measurement_series_element_with_metadata_index_no() -> R
     .await
 }
 
-// #[tokio::test]
-// async fn test_step_with_measurement_series_scope() -> Result<()> {
-//     let expected = [
-//         json_schema_version(),
-//         json_run_default_start(),
-//         json_step_default_start(),
-//         json!({
-//             "testStepArtifact": {
-//                 "measurementSeriesStart": {
-//                     "measurementSeriesId": "series_0",
-//                     "name": "name"
-//                 }
-//             },
-//             "sequenceNumber": 3
-//         }),
-//         json!({
-//             "testStepArtifact": {
-//                 "measurementSeriesElement": {
-//                     "index": 0,
-//                     "measurementSeriesId": "series_0",
-//                     "value": 60
-//                 }
-//             },
-//             "sequenceNumber": 4
-//         }),
-//         json!({
-//             "testStepArtifact": {
-//                 "measurementSeriesElement": {
-//                     "index": 1,
-//                     "measurementSeriesId": "series_0",
-//                     "value": 70
-//                 }
-//             },
-//             "sequenceNumber": 5
-//         }),
-//         json!({
-//             "testStepArtifact": {
-//                 "measurementSeriesElement": {
-//                     "index": 2,
-//                     "measurementSeriesId": "series_0",
-//                     "value": 80
-//                 }
-//             },
-//             "sequenceNumber": 6
-//         }),
-//         json!({
-//             "testStepArtifact": {
-//                 "measurementSeriesEnd": {
-//                     "measurementSeriesId": "series_0",
-//                     "totalCount": 3
-//                 }
-//             },
-//             "sequenceNumber": 7
-//         }),
-//         json_step_complete(8),
-//         json_run_pass(9),
-//     ];
+#[cfg(feature = "boxed-scopes")]
+#[tokio::test]
+async fn test_step_with_measurement_series_scope() -> Result<()> {
+    let expected = [
+        json_schema_version(),
+        json_run_default_start(),
+        json_step_default_start(),
+        json!({
+            "testStepArtifact": {
+                "testStepId": "step_0",
+                "measurementSeriesStart": {
+                    "measurementSeriesId": "series_0",
+                    "name": "name"
+                }
+            },
+            "sequenceNumber": 3,
+            "timestamp": DATETIME_FORMATTED
+        }),
+        json!({
+            "testStepArtifact": {
+                "testStepId": "step_0",
+                "measurementSeriesElement": {
+                    "index": 0,
+                    "measurementSeriesId": "series_0",
+                    "value": 60,
+                    "timestamp": DATETIME_FORMATTED
+                }
+            },
+            "sequenceNumber": 4,
+            "timestamp": DATETIME_FORMATTED
+        }),
+        json!({
+            "testStepArtifact": {
+                "testStepId": "step_0",
+                "measurementSeriesElement": {
+                    "index": 1,
+                    "measurementSeriesId": "series_0",
+                    "value": 70,
+                    "timestamp": DATETIME_FORMATTED
+                }
+            },
+            "sequenceNumber": 5,
+            "timestamp": DATETIME_FORMATTED
+        }),
+        json!({
+            "testStepArtifact": {
+                "testStepId": "step_0",
+                "measurementSeriesElement": {
+                    "index": 2,
+                    "measurementSeriesId": "series_0",
+                    "value": 80,
+                    "timestamp": DATETIME_FORMATTED
+                }
+            },
+            "sequenceNumber": 6,
+            "timestamp": DATETIME_FORMATTED
+        }),
+        json!({
+            "testStepArtifact": {
+                "testStepId": "step_0",
+                "measurementSeriesEnd": {
+                    "measurementSeriesId": "series_0",
+                    "totalCount": 3
+                }
+            },
+            "sequenceNumber": 7,
+            "timestamp": DATETIME_FORMATTED
+        }),
+        json_step_complete(8),
+        json_run_pass(9),
+    ];
 
-//     check_output_step(&expected, |step| {
-//         async {
-//             let series = step.add_measurement_series("name");
-//             series
-//                 .scope(|s| async {
-//                     s.add_measurement(60.into()).await?;
-//                     s.add_measurement(70.into()).await?;
-//                     s.add_measurement(80.into()).await?;
+    check_output_step(&expected, |step| {
+        async {
+            let series = step.add_measurement_series("name");
+            series
+                .scope(|s| {
+                    async move {
+                        s.add_measurement(60.into()).await?;
+                        s.add_measurement(70.into()).await?;
+                        s.add_measurement(80.into()).await?;
 
-//                     Ok(())
-//                 })
-//                 .await?;
+                        Ok(())
+                    }
+                    .boxed()
+                })
+                .await?;
 
-//             Ok(())
-//         }
-//         .boxed()
-//     })
-//     .await
-// }
+            Ok(())
+        }
+        .boxed()
+    })
+    .await
+}
 
 // reasoning: the coverage(off) attribute is experimental in llvm-cov, so because we cannot
 // disable the coverage itself, only run this test when in coverage mode because assert_fs
@@ -1308,6 +1333,10 @@ async fn test_step_with_measurement_series_element_with_metadata_index_no() -> R
 #[cfg(coverage)]
 #[tokio::test]
 async fn test_config_builder_with_file() -> Result<()> {
+    use assert_fs::prelude::*;
+    use predicates::prelude::*;
+    use std::fs;
+
     let expected = [
         json_schema_version(),
         json_run_default_start(),

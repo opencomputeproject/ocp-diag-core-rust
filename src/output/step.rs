@@ -8,6 +8,9 @@ use std::io;
 use std::sync::atomic::{self, Ordering};
 use std::sync::Arc;
 
+#[cfg(feature = "boxed-scopes")]
+use futures::future::BoxFuture;
+
 use crate::output as tv;
 use crate::spec::{self, TestStepArtifactImpl, TestStepStart};
 use tv::measure::MeasurementSeries;
@@ -64,43 +67,47 @@ impl TestStep {
         })
     }
 
-    // /// Builds a scope in the [`TestStep`] object, taking care of starting and
-    // /// ending it. View [`TestStep::start`] and [`TestStep::end`] methods.
-    // /// After the scope is constructed, additional objects may be added to it.
-    // /// This is the preferred usage for the [`TestStep`], since it guarantees
-    // /// all the messages are emitted between the start and end messages, the order
-    // /// is respected and no messages is lost.
-    // ///
-    // /// # Examples
-    // ///
-    // /// ```rust
-    // /// # tokio_test::block_on(async {
-    // /// # use ocptv::output::*;
-    // ///
-    // /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
-    // ///
-    // /// let step = run.add_step("first step")?;
-    // /// step.scope(|s| async {
-    // ///     s.add_log(
-    // ///         LogSeverity::Info,
-    // ///         "This is a log message with INFO severity",
-    // ///     ).await?;
-    // ///     Ok(TestStatus::Complete)
-    // /// }).await?;
-    // ///
-    // /// # Ok::<(), OcptvError>(())
-    // /// # });
-    // /// ```
-    // pub async fn scope<'a, F, R>(&'a self, func: F) -> Result<(), emitters::WriterError>
-    // where
-    //     R: Future<Output = Result<models::TestStatus, emitters::WriterError>>,
-    //     F: std::ops::FnOnce(&'a TestStep) -> R,
-    // {
-    //     self.start().await?;
-    //     let status = func(self).await?;
-    //     self.end(status).await?;
-    //     Ok(())
-    // }
+    /// Builds a scope in the [`TestStep`] object, taking care of starting and
+    /// ending it. View [`TestStep::start`] and [`TestStep::end`] methods.
+    /// After the scope is constructed, additional objects may be added to it.
+    /// This is the preferred usaggste for the [`TestStep`], since it guarantees
+    /// all the messages are emitted between the start and end messages, the order
+    /// is respected and no messages is lost.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # tokio_test::block_on(async {
+    /// # use futures::FutureExt;
+    /// # use ocptv::output::*;
+    ///
+    /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
+    ///
+    /// let step = run.add_step("first step");
+    /// step.scope(|s| {
+    ///     async move {
+    ///         s.add_log(
+    ///             LogSeverity::Info,
+    ///             "This is a log message with INFO severity",
+    ///         ).await?;
+    ///         Ok(TestStatus::Complete)
+    ///     }.boxed()
+    /// }).await?;
+    ///
+    /// # Ok::<(), OcptvError>(())
+    /// # });
+    /// ```
+    #[cfg(feature = "boxed-scopes")]
+    pub async fn scope<F>(self, func: F) -> Result<(), tv::OcptvError>
+    where
+        F: FnOnce(&StartedTestStep) -> BoxFuture<'_, Result<tv::TestStatus, tv::OcptvError>>,
+    {
+        let step = self.start().await?;
+        let status = func(&step).await?;
+        step.end(status).await?;
+
+        Ok(())
+    }
 }
 
 pub struct StartedTestStep {
