@@ -5,13 +5,18 @@
 // https://opensource.org/licenses/MIT.
 
 use anyhow::Result;
+#[cfg(feature = "boxed-scopes")]
 use futures::FutureExt;
 
+#[cfg(feature = "boxed-scopes")]
+use ocptv::ocptv_log_info;
 use ocptv::{
-    ocptv_log_debug, ocptv_log_info,
+    ocptv_log_debug,
     output::{self as tv},
 };
-use tv::{DutInfo, SoftwareInfo, SoftwareType, TestResult, TestRun, TestRunOutcome, TestStatus};
+use tv::{DutInfo, TestResult, TestRun, TestStatus};
+#[cfg(feature = "boxed-scopes")]
+use tv::{SoftwareInfo, SoftwareType, TestRunOutcome};
 
 macro_rules! run_demo {
     ($name: ident) => {
@@ -45,6 +50,7 @@ async fn demo_no_scopes() -> Result<()> {
 
 /// Show a context-scoped run that automatically exits the whole func
 /// because of the marker exception that triggers SKIP outcome.
+#[cfg(feature = "boxed-scopes")]
 async fn demo_scope_run_skip() -> Result<()> {
     let dut = DutInfo::builder("dut0").build();
     TestRun::builder("with dut", &dut, "1.0")
@@ -66,6 +72,7 @@ async fn demo_scope_run_skip() -> Result<()> {
 
 /// Show a scoped run with scoped steps, everything starts at "with" time and
 /// ends automatically when the block ends (regardless of unhandled exceptions).
+#[cfg(feature = "boxed-scopes")]
 async fn demo_scope_step_fail() -> Result<()> {
     let dut = DutInfo::builder("dut0").build();
     TestRun::builder("with dut", &dut, "1.0")
@@ -99,15 +106,15 @@ async fn demo_scope_step_fail() -> Result<()> {
 }
 
 /// Show outputting an error message, triggered by a specific software component of the DUT.
+#[cfg(feature = "boxed-scopes")]
 async fn demo_run_error_with_dut() -> Result<()> {
-    let swinfo = SoftwareInfo::builder("bmc", "bmc")
-        .software_type(SoftwareType::Firmware)
-        .version("2.5")
-        .build();
-    let dut = DutInfo::builder("dut0")
-        .name("dut0.server.net")
-        .add_software_info(&swinfo)
-        .build();
+    let mut dut = DutInfo::builder("dut0").name("dut0.server.net").build();
+    let sw_info = dut.add_software_info(
+        SoftwareInfo::builder("bmc")
+            .software_type(SoftwareType::Firmware)
+            .version("2.5")
+            .build(),
+    );
 
     TestRun::builder("with dut", &dut, "1.0")
         .build()
@@ -115,7 +122,7 @@ async fn demo_run_error_with_dut() -> Result<()> {
             async move {
                 r.add_error_with_details(
                     &tv::Error::builder("power-fail")
-                        .add_software_info(&swinfo)
+                        .add_software_info(&sw_info)
                         .build(),
                 )
                 .await?;
@@ -135,7 +142,13 @@ async fn demo_run_error_with_dut() -> Result<()> {
 #[tokio::main]
 async fn main() {
     run_demo!(demo_no_scopes);
+
+    #[cfg(feature = "boxed-scopes")]
     run_demo!(demo_scope_run_skip);
+
+    #[cfg(feature = "boxed-scopes")]
     run_demo!(demo_scope_step_fail);
+
+    #[cfg(feature = "boxed-scopes")]
     run_demo!(demo_run_error_with_dut);
 }

@@ -288,6 +288,7 @@ impl StartedTestRun {
             step_seqno: atomic::AtomicU64::new(0),
         }
     }
+
     /// Ends the test run.
     ///
     /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#testrunend
@@ -468,14 +469,18 @@ impl StartedTestRun {
     /// # tokio_test::block_on(async {
     /// # use ocptv::output::*;
     ///
-    /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
+    /// let mut dut = DutInfo::new("my_dut");
+    /// let sw_info = dut.add_software_info(SoftwareInfo::builder("name").build());
+    /// let run = TestRun::builder("diagnostic_name", &dut, "1.0").build().start().await?;
+    ///
     /// run.add_error_with_details(
     ///     &Error::builder("symptom")
     ///         .message("Error message")
     ///         .source("file", 1)
-    ///         .add_software_info(&SoftwareInfo::builder("id", "name").build())
+    ///         .add_software_info(&sw_info)
     ///         .build(),
     /// ).await?;
+    ///
     /// run.end(TestStatus::Complete, TestResult::Pass).await?;
     ///
     /// # Ok::<(), OcptvError>(())

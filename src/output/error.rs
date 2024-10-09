@@ -47,10 +47,12 @@ impl ErrorBuilder {
             software_infos: None,
         }
     }
+
     pub fn message(mut self, value: &str) -> ErrorBuilder {
         self.message = Some(value.to_string());
         self
     }
+
     pub fn source(mut self, file: &str, line: i32) -> ErrorBuilder {
         self.source_location = Some(spec::SourceLocation {
             file: file.to_string(),
@@ -58,7 +60,8 @@ impl ErrorBuilder {
         });
         self
     }
-    pub fn add_software_info(mut self, software_info: &dut::SoftwareInfo) -> ErrorBuilder {
+
+    pub fn add_software_info(mut self, software_info: &dut::DutSoftwareInfo) -> ErrorBuilder {
         self.software_infos = match self.software_infos {
             Some(mut software_infos) => {
                 software_infos.push(software_info.to_spec());
@@ -89,12 +92,16 @@ mod tests {
     use crate::output as tv;
     use crate::spec;
     use tv::dut;
+    use tv::Ident;
 
     #[test]
     fn test_error_output_as_test_run_descendant_to_artifact() -> Result<()> {
+        let mut dut = dut::DutInfo::new("dut0");
+        let sw_info = dut.add_software_info(dut::SoftwareInfo::builder("name").build());
+
         let error = Error::builder("symptom")
             .message("")
-            .add_software_info(&dut::SoftwareInfo::builder("id", "name").build())
+            .add_software_info(&sw_info)
             .source("", 1)
             .build();
 
@@ -114,9 +121,12 @@ mod tests {
 
     #[test]
     fn test_error_output_as_test_step_descendant_to_artifact() -> Result<()> {
+        let mut dut = dut::DutInfo::new("dut0");
+        let sw_info = dut.add_software_info(dut::SoftwareInfo::builder("name").build());
+
         let error = Error::builder("symptom")
             .message("")
-            .add_software_info(&dut::SoftwareInfo::builder("id", "name").build())
+            .add_software_info(&sw_info)
             .source("", 1)
             .build();
 
@@ -135,18 +145,12 @@ mod tests {
     }
 
     #[test]
-    fn test_error() -> Result<()> {
+    fn test_error_with_multiple_software() -> Result<()> {
         let expected_run = json!({
             "message": "message",
             "softwareInfoIds": [
-                {
-                    "name": "name",
-                    "softwareInfoId": "software_id",
-                },
-                {
-                    "name": "name",
-                    "softwareInfoId": "software_id",
-                }
+                "software_id",
+                "software_id"
             ],
             "sourceLocation": {
                 "file": "file.rs",
@@ -157,25 +161,25 @@ mod tests {
         let expected_step = json!({
             "message": "message",
             "softwareInfoIds": [
-                {
-                    "name": "name",
-                    "softwareInfoId": "software_id",
-                },
-                {
-                    "name": "name",
-                    "softwareInfoId": "software_id",
-                }
+                "software_id",
+                "software_id"
             ],
             "sourceLocation": {"file":"file.rs","line":1},
             "symptom":"symptom"
         });
 
-        let software = dut::SoftwareInfo::builder("software_id", "name").build();
+        let mut dut = dut::DutInfo::new("dut0");
+        let sw_info = dut.add_software_info(
+            dut::SoftwareInfo::builder("name")
+                .id(Ident::Exact("software_id".to_owned()))
+                .build(),
+        );
+
         let error = ErrorBuilder::new("symptom")
             .message("message")
             .source("file.rs", 1)
-            .add_software_info(&software)
-            .add_software_info(&software)
+            .add_software_info(&sw_info)
+            .add_software_info(&sw_info)
             .build();
 
         let spec_error = error.to_artifact();

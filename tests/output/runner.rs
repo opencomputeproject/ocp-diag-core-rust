@@ -17,10 +17,13 @@ use tokio::sync::Mutex;
 
 use ocptv::output as tv;
 use ocptv::output::OcptvError;
+#[cfg(feature = "boxed-scopes")]
+use tv::TestRunOutcome;
 use tv::{
-    Config, DutInfo, Error, HardwareInfo, Log, LogSeverity, Measurement, MeasurementSeriesStart,
-    SoftwareInfo, StartedTestRun, StartedTestStep, Subcomponent, TestResult, TestRun,
-    TestRunBuilder, TestRunOutcome, TestStatus, TimestampProvider, Validator, ValidatorType,
+    Config, DutInfo, Error, HardwareInfo, Ident, Log, LogSeverity, Measurement,
+    MeasurementSeriesStart, SoftwareInfo, SoftwareType, StartedTestRun, StartedTestStep,
+    Subcomponent, TestResult, TestRun, TestRunBuilder, TestStatus, TimestampProvider, Validator,
+    ValidatorType,
 };
 
 const DATETIME: chrono::DateTime<chrono::offset::Utc> = chrono::DateTime::from_timestamp_nanos(0);
@@ -52,7 +55,13 @@ fn json_run_default_start() -> serde_json::Value {
         "testRunArtifact": {
             "testRunStart": {
                 "dutInfo": {
-                    "dutInfoId": "dut_id"
+                    "dutInfoId": "dut_id",
+                    "softwareInfos": [{
+                        "softwareInfoId": "sw0",
+                        "name": "ubuntu",
+                        "version": "22",
+                        "softwareType": "SYSTEM",
+                    }],
                 },
                 "name": "run_name",
                 "parameters": {},
@@ -108,10 +117,18 @@ fn json_step_complete(seqno: i32) -> serde_json::Value {
 async fn check_output<F, R>(expected: &[serde_json::Value], test_fn: F) -> Result<()>
 where
     R: Future<Output = Result<()>>,
-    F: FnOnce(TestRunBuilder) -> R,
+    F: FnOnce(TestRunBuilder, DutInfo) -> R,
 {
     let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
-    let dut = DutInfo::builder("dut_id").build();
+    let mut dut = DutInfo::builder("dut_id").build();
+    dut.add_software_info(
+        SoftwareInfo::builder("ubuntu")
+            .id(Ident::Exact("sw0".to_owned())) // name is important as fixture
+            .version("22")
+            .software_type(SoftwareType::System)
+            .build(),
+    );
+
     let run_builder = TestRun::builder("run_name", &dut, "1.0").config(
         Config::builder()
             .with_buffer_output(Arc::clone(&buffer))
@@ -120,7 +137,7 @@ where
     );
 
     // run the main test closure
-    test_fn(run_builder).await?;
+    test_fn(run_builder, dut).await?;
 
     for (i, entry) in buffer.lock().await.iter().enumerate() {
         let value = serde_json::from_str::<serde_json::Value>(entry)?;
@@ -132,13 +149,13 @@ where
 
 async fn check_output_run<F>(expected: &[serde_json::Value], test_fn: F) -> Result<()>
 where
-    F: for<'a> FnOnce(&'a StartedTestRun) -> BoxFuture<'a, Result<(), tv::OcptvError>> + Send,
+    F: for<'a> FnOnce(&'a StartedTestRun, DutInfo) -> BoxFuture<'a, Result<(), tv::OcptvError>>,
 {
-    check_output(expected, |run_builder| async {
+    check_output(expected, |run_builder, dutinfo| async move {
         let run = run_builder.build();
 
         let run = run.start().await?;
-        test_fn(&run).await?;
+        test_fn(&run, dutinfo).await?;
         run.end(TestStatus::Complete, TestResult::Pass).await?;
 
         Ok(())
@@ -148,13 +165,13 @@ where
 
 async fn check_output_step<F>(expected: &[serde_json::Value], test_fn: F) -> Result<()>
 where
-    F: for<'a> FnOnce(&'a StartedTestStep) -> BoxFuture<'a, Result<(), tv::OcptvError>>,
+    F: for<'a> FnOnce(&'a StartedTestStep, DutInfo) -> BoxFuture<'a, Result<(), tv::OcptvError>>,
 {
-    check_output(expected, |run_builder| async {
+    check_output(expected, |run_builder, dutinfo| async move {
         let run = run_builder.build().start().await?;
 
         let step = run.add_step("first step").start().await?;
-        test_fn(&step).await?;
+        test_fn(&step, dutinfo).await?;
         step.end(TestStatus::Complete).await?;
 
         run.end(TestStatus::Complete, TestResult::Pass).await?;
@@ -172,7 +189,7 @@ async fn test_testrun_start_and_end() -> Result<()> {
         json_run_pass(2),
     ];
 
-    check_output_run(&expected, |_| async { Ok(()) }.boxed()).await
+    check_output_run(&expected, |_, _| async { Ok(()) }.boxed()).await
 }
 
 #[tokio::test]
@@ -193,9 +210,9 @@ async fn test_testrun_with_log() -> Result<()> {
         json_run_pass(3),
     ];
 
-    check_output_run(&expected, |run| {
+    check_output_run(&expected, |r, _| {
         async {
-            run.add_log(
+            r.add_log(
                 LogSeverity::Info,
                 "This is a log message with INFO severity",
             )
@@ -228,9 +245,9 @@ async fn test_testrun_with_log_with_details() -> Result<()> {
         json_run_pass(3),
     ];
 
-    check_output_run(&expected, |run| {
+    check_output_run(&expected, |r, _| {
         async {
-            run.add_log_with_details(
+            r.add_log_with_details(
                 &Log::builder("This is a log message with INFO severity")
                     .severity(LogSeverity::Info)
                     .source("file", 1)
@@ -260,8 +277,8 @@ async fn test_testrun_with_error() -> Result<()> {
         json_run_pass(3),
     ];
 
-    check_output_run(&expected, |run| {
-        async { run.add_error("symptom").await }.boxed()
+    check_output_run(&expected, |r, _| {
+        async { r.add_error("symptom").await }.boxed()
     })
     .await
 }
@@ -284,8 +301,8 @@ async fn test_testrun_with_error_with_message() -> Result<()> {
         json_run_pass(3),
     ];
 
-    check_output_run(&expected, |run| {
-        async { run.add_error_with_msg("symptom", "Error message").await }.boxed()
+    check_output_run(&expected, |r, _| {
+        async { r.add_error_with_msg("symptom", "Error message").await }.boxed()
     })
     .await
 }
@@ -299,10 +316,9 @@ async fn test_testrun_with_error_with_details() -> Result<()> {
             "testRunArtifact": {
                 "error": {
                     "message": "Error message",
-                    "softwareInfoIds": [{
-                        "name": "name",
-                        "softwareInfoId": "id"
-                    }],
+                    "softwareInfoIds": [
+                        "sw0"
+                    ],
                     "sourceLocation": {
                         "file": "file",
                         "line": 1
@@ -316,13 +332,13 @@ async fn test_testrun_with_error_with_details() -> Result<()> {
         json_run_pass(3),
     ];
 
-    check_output_run(&expected, |run| {
-        async {
-            run.add_error_with_details(
+    check_output_run(&expected, |r, dut| {
+        async move {
+            r.add_error_with_details(
                 &Error::builder("symptom")
                     .message("Error message")
                     .source("file", 1)
-                    .add_software_info(&SoftwareInfo::builder("id", "name").build())
+                    .add_software_info(dut.software_info("sw0").unwrap()) // must exist
                     .build(),
             )
             .await
@@ -351,7 +367,7 @@ async fn test_testrun_with_scope() -> Result<()> {
         json_run_pass(3),
     ];
 
-    check_output(&expected, |run_builder| async {
+    check_output(&expected, |run_builder, _| async {
         let run = run_builder.build();
 
         run.scope(|r| {
@@ -382,7 +398,7 @@ async fn test_testrun_with_step() -> Result<()> {
         json_run_pass(4),
     ];
 
-    check_output_step(&expected, |_| async { Ok(()) }.boxed()).await
+    check_output_step(&expected, |_, _| async { Ok(()) }.boxed()).await
 }
 
 #[tokio::test]
@@ -406,9 +422,9 @@ async fn test_testrun_step_log() -> Result<()> {
         json_run_pass(5),
     ];
 
-    check_output_step(&expected, |step| {
+    check_output_step(&expected, |s, _| {
         async {
-            step.add_log(
+            s.add_log(
                 LogSeverity::Info,
                 "This is a log message with INFO severity",
             )
@@ -446,9 +462,9 @@ async fn test_testrun_step_log_with_details() -> Result<()> {
         json_run_pass(5),
     ];
 
-    check_output_step(&expected, |step| {
+    check_output_step(&expected, |s, _| {
         async {
-            step.add_log_with_details(
+            s.add_log_with_details(
                 &Log::builder("This is a log message with INFO severity")
                     .severity(LogSeverity::Info)
                     .source("file", 1)
@@ -483,9 +499,9 @@ async fn test_testrun_step_error() -> Result<()> {
         json_run_pass(5),
     ];
 
-    check_output_step(&expected, |step| {
+    check_output_step(&expected, |s, _| {
         async {
-            step.add_error("symptom").await?;
+            s.add_error("symptom").await?;
 
             Ok(())
         }
@@ -515,9 +531,9 @@ async fn test_testrun_step_error_with_message() -> Result<()> {
         json_run_pass(5),
     ];
 
-    check_output_step(&expected, |step| {
+    check_output_step(&expected, |s, _| {
         async {
-            step.add_error_with_msg("symptom", "Error message").await?;
+            s.add_error_with_msg("symptom", "Error message").await?;
 
             Ok(())
         }
@@ -537,10 +553,9 @@ async fn test_testrun_step_error_with_details() -> Result<()> {
                 "testStepId": "step_0",
                 "error": {
                     "message": "Error message",
-                    "softwareInfoIds": [{
-                        "name": "name",
-                        "softwareInfoId": "id"
-                    }],
+                    "softwareInfoIds": [
+                        "sw0"
+                    ],
                     "sourceLocation": {
                         "file": "file",
                         "line": 1
@@ -555,13 +570,13 @@ async fn test_testrun_step_error_with_details() -> Result<()> {
         json_run_pass(5),
     ];
 
-    check_output_step(&expected, |step| {
-        async {
-            step.add_error_with_details(
+    check_output_step(&expected, |s, dut| {
+        async move {
+            s.add_error_with_details(
                 &Error::builder("symptom")
                     .message("Error message")
                     .source("file", 1)
-                    .add_software_info(&SoftwareInfo::builder("id", "name").build())
+                    .add_software_info(dut.software_info("sw0").unwrap())
                     .build(),
             )
             .await?;
@@ -595,9 +610,9 @@ async fn test_testrun_step_scope_log() -> Result<()> {
         json_run_pass(5),
     ];
 
-    check_output_run(&expected, |run| {
+    check_output_run(&expected, |r, _| {
         async {
-            run.add_step("first step")
+            r.add_step("first step")
                 .scope(|s| {
                     async move {
                         s.add_log(
@@ -638,9 +653,9 @@ async fn test_step_with_measurement() -> Result<()> {
         json_run_pass(5),
     ];
 
-    check_output_step(&expected, |step| {
+    check_output_step(&expected, |s, _| {
         async {
-            step.add_measurement("name", 50.into()).await?;
+            s.add_measurement("name", 50.into()).await?;
 
             Ok(())
         }
@@ -681,7 +696,7 @@ async fn test_step_with_measurement_builder() -> Result<()> {
         json_run_pass(5),
     ];
 
-    check_output_step(&expected, |step| {
+    check_output_step(&expected, |s, _| {
         async {
             let measurement = Measurement::builder("name", 50.into())
                 .hardware_info(&HardwareInfo::builder("id", "name").build())
@@ -689,7 +704,7 @@ async fn test_step_with_measurement_builder() -> Result<()> {
                 .add_metadata("key", "value".into())
                 .subcomponent(&Subcomponent::builder("name").build())
                 .build();
-            step.add_measurement_with_details(&measurement).await?;
+            s.add_measurement_with_details(&measurement).await?;
 
             Ok(())
         }
@@ -730,9 +745,9 @@ async fn test_step_with_measurement_series() -> Result<()> {
         json_run_pass(6),
     ];
 
-    check_output_step(&expected, |step| {
+    check_output_step(&expected, |s, _| {
         async {
-            let series = step.add_measurement_series("name").start().await?;
+            let series = s.add_measurement_series("name").start().await?;
             series.end().await?;
 
             Ok(())
@@ -796,12 +811,12 @@ async fn test_step_with_multiple_measurement_series() -> Result<()> {
         json_run_pass(8),
     ];
 
-    check_output_step(&expected, |step| {
+    check_output_step(&expected, |s, _| {
         async {
-            let series = step.add_measurement_series("name").start().await?;
+            let series = s.add_measurement_series("name").start().await?;
             series.end().await?;
 
-            let series_2 = step.add_measurement_series("name").start().await?;
+            let series_2 = s.add_measurement_series("name").start().await?;
             series_2.end().await?;
 
             Ok(())
@@ -842,9 +857,9 @@ async fn test_step_with_measurement_series_with_details() -> Result<()> {
         json_run_pass(6),
     ];
 
-    check_output_step(&expected, |step| {
+    check_output_step(&expected, |s, _| {
         async {
-            let series = step
+            let series = s
                 .add_measurement_series_with_details(MeasurementSeriesStart::new(
                     "name",
                     "series_id",
@@ -906,9 +921,9 @@ async fn test_step_with_measurement_series_with_details_and_start_builder() -> R
         json_run_pass(6),
     ];
 
-    check_output_step(&expected, |step| {
+    check_output_step(&expected, |s, _| {
         async {
-            let series = step
+            let series = s
                 .add_measurement_series_with_details(
                     MeasurementSeriesStart::builder("name", "series_id")
                         .add_metadata("key", "value".into())
@@ -973,9 +988,9 @@ async fn test_step_with_measurement_series_element() -> Result<()> {
         json_run_pass(7),
     ];
 
-    check_output_step(&expected, |step| {
+    check_output_step(&expected, |s, _| {
         async {
-            let series = step.add_measurement_series("name").start().await?;
+            let series = s.add_measurement_series("name").start().await?;
             series.add_measurement(60.into()).await?;
             series.end().await?;
 
@@ -1057,9 +1072,9 @@ async fn test_step_with_measurement_series_element_index_no() -> Result<()> {
         json_run_pass(9),
     ];
 
-    check_output_step(&expected, |step| {
+    check_output_step(&expected, |s, _| {
         async {
-            let series = step.add_measurement_series("name").start().await?;
+            let series = s.add_measurement_series("name").start().await?;
             // add more than one element to check the index increments correctly
             series.add_measurement(60.into()).await?;
             series.add_measurement(70.into()).await?;
@@ -1121,9 +1136,9 @@ async fn test_step_with_measurement_series_element_with_metadata() -> Result<()>
         json_run_pass(7),
     ];
 
-    check_output_step(&expected, |step| {
+    check_output_step(&expected, |s, _| {
         async {
-            let series = step.add_measurement_series("name").start().await?;
+            let series = s.add_measurement_series("name").start().await?;
             series
                 .add_measurement_with_metadata(60.into(), vec![("key", "value".into())])
                 .await?;
@@ -1210,9 +1225,9 @@ async fn test_step_with_measurement_series_element_with_metadata_index_no() -> R
         json_run_pass(9),
     ];
 
-    check_output_step(&expected, |step| {
+    check_output_step(&expected, |s, _| {
         async {
-            let series = step.add_measurement_series("name").start().await?;
+            let series = s.add_measurement_series("name").start().await?;
             // add more than one element to check the index increments correctly
             series
                 .add_measurement_with_metadata(60.into(), vec![("key", "value".into())])
@@ -1304,9 +1319,9 @@ async fn test_step_with_measurement_series_scope() -> Result<()> {
         json_run_pass(9),
     ];
 
-    check_output_step(&expected, |step| {
+    check_output_step(&expected, |s, _| {
         async {
-            let series = step.add_measurement_series("name");
+            let series = s.add_measurement_series("name");
             series
                 .scope(|s| {
                     async move {
@@ -1339,7 +1354,21 @@ async fn test_config_builder_with_file() -> Result<()> {
 
     let expected = [
         json_schema_version(),
-        json_run_default_start(),
+        json!({
+            "testRunArtifact": {
+                "testRunStart": {
+                    "dutInfo": {
+                        "dutInfoId": "dut_id"
+                    },
+                    "name": "run_name",
+                    "parameters": {},
+                    "version": "1.0",
+                    "commandLine": ""
+                }
+            },
+            "sequenceNumber": 1,
+            "timestamp": DATETIME_FORMATTED
+        }),
         json!({
             "testRunArtifact": {
                 "error": {
@@ -1421,9 +1450,9 @@ async fn test_step_with_extension() -> Result<()> {
         number_field: u32,
     }
 
-    check_output_step(&expected, |step| {
+    check_output_step(&expected, |s, _| {
         async {
-            step.extension(
+            s.extension(
                 "extension",
                 Ext {
                     r#type: "TestExtension".to_owned(),
@@ -1517,7 +1546,13 @@ async fn test_testrun_metadata() -> Result<()> {
             "testRunArtifact": {
                 "testRunStart": {
                     "dutInfo": {
-                        "dutInfoId": "dut_id"
+                        "dutInfoId": "dut_id",
+                        "softwareInfos": [{
+                            "softwareInfoId": "sw0",
+                            "name": "ubuntu",
+                            "version": "22",
+                            "softwareType": "SYSTEM",
+                        }],
                     },
                     "metadata": {"key": "value"},
                     "name": "run_name",
@@ -1533,7 +1568,7 @@ async fn test_testrun_metadata() -> Result<()> {
         json_run_pass(2),
     ];
 
-    check_output(&expected, |run_builder| async {
+    check_output(&expected, |run_builder, _| async {
         let run = run_builder
             .add_metadata("key", "value".into())
             .build()
@@ -1555,7 +1590,13 @@ async fn test_testrun_builder() -> Result<()> {
                 "testRunStart": {
                     "commandLine": "cmd_line",
                     "dutInfo": {
-                        "dutInfoId": "dut_id"
+                        "dutInfoId": "dut_id",
+                        "softwareInfos": [{
+                            "softwareInfoId": "sw0",
+                            "name": "ubuntu",
+                            "version": "22",
+                            "softwareType": "SYSTEM",
+                        }],
                     },
                     "metadata": {
                         "key": "value",
@@ -1574,7 +1615,7 @@ async fn test_testrun_builder() -> Result<()> {
         json_run_pass(2),
     ];
 
-    check_output(&expected, |run_builder| async {
+    check_output(&expected, |run_builder, _| async {
         let run = run_builder
             .add_metadata("key", "value".into())
             .add_metadata("key2", "value2".into())

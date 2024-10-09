@@ -70,7 +70,7 @@ impl TestStep {
     /// Builds a scope in the [`TestStep`] object, taking care of starting and
     /// ending it. View [`TestStep::start`] and [`TestStep::end`] methods.
     /// After the scope is constructed, additional objects may be added to it.
-    /// This is the preferred usaggste for the [`TestStep`], since it guarantees
+    /// This is the preferred usage for the [`TestStep`], since it guarantees
     /// all the messages are emitted between the start and end messages, the order
     /// is respected and no messages is lost.
     ///
@@ -341,14 +341,16 @@ impl StartedTestStep {
     /// # tokio_test::block_on(async {
     /// # use ocptv::output::*;
     ///
-    /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
+    /// let mut dut = DutInfo::new("my_dut");
+    /// let sw_info = dut.add_software_info(SoftwareInfo::builder("name").build());
+    /// let run = TestRun::builder("diagnostic_name", &dut, "1.0").build().start().await?;
     ///
     /// let step = run.add_step("step_name").start().await?;
     /// step.add_error_with_details(
     ///     &Error::builder("symptom")
     ///         .message("Error message")
     ///         .source("file", 1)
-    ///         .add_software_info(&SoftwareInfo::builder("id", "name").build())
+    ///         .add_software_info(&sw_info)
     ///         .build(),
     /// ).await?;
     /// step.end(TestStatus::Complete).await?;
