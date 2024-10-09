@@ -180,7 +180,7 @@ impl StartedMeasurementSeries {
         let element = spec::MeasurementSeriesElement {
             index: self.incr_seqno(),
             value: value.clone(),
-            timestamp: chrono::Local::now().with_timezone(&chrono_tz::Tz::UTC),
+            timestamp: self.parent.emitter.timestamp_provider().now(),
             series_id: self.parent.start.series_id.clone(),
             metadata: None,
         };
@@ -223,7 +223,7 @@ impl StartedMeasurementSeries {
         let element = spec::MeasurementSeriesElement {
             index: self.incr_seqno(),
             value: value.clone(),
-            timestamp: chrono::Local::now().with_timezone(&chrono_tz::Tz::UTC),
+            timestamp: self.parent.emitter.timestamp_provider().now(),
             series_id: self.parent.start.series_id.clone(),
             metadata: Some(Map::from_iter(
                 metadata.iter().map(|(k, v)| (k.to_string(), v.clone())),
@@ -736,24 +736,6 @@ impl MeasurementSeriesStartBuilder {
         }
     }
 }
-
-// pub struct MeasurementSeriesEmitter {
-//     series_id: String,
-//     step_emitter: Arc<step::StepEmitter>,
-// }
-
-// impl StepEmitter {
-//     pub async fn emit(&self, object: &spec::TestStepArtifactImpl) -> Result<(), WriterError> {
-//         let root = spec::RootImpl::TestStepArtifact(spec::TestStepArtifact {
-//             id: self.step_id.clone(),
-//             // TODO: can these copies be avoided?
-//             artifact: object.clone(),
-//         });
-//         self.run_emitter.emit(&root).await?;
-
-//         Ok(())
-//     }
-// }
 
 #[cfg(test)]
 mod tests {

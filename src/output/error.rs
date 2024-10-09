@@ -82,8 +82,7 @@ impl ErrorBuilder {
 #[cfg(test)]
 mod tests {
     use anyhow::Result;
-
-    use assert_json_diff::assert_json_include;
+    use assert_json_diff::assert_json_eq;
 
     use super::*;
     use crate::output as tv;
@@ -140,45 +139,30 @@ mod tests {
             "message": "message",
             "softwareInfoIds": [
                 {
-                    "computerSystem": null,
                     "name": "name",
-                    "revision": null,
-                    "softwareInfoId":
-                    "software_id",
-                    "softwareType": null,
-                    "version": null
+                    "softwareInfoId": "software_id",
                 },
                 {
-                    "computerSystem": null,
                     "name": "name",
-                    "revision": null,
-                    "softwareInfoId":
-                    "software_id",
-                    "softwareType": null,
-                    "version": null
+                    "softwareInfoId": "software_id",
                 }
             ],
-            "sourceLocation": {"file": "file.rs", "line": 1},
+            "sourceLocation": {
+                "file": "file.rs",
+                "line": 1
+            },
             "symptom": "symptom"
         });
         let expected_step = serde_json::json!({
             "message": "message",
             "softwareInfoIds": [
                 {
-                    "computerSystem": null,
                     "name": "name",
-                    "revision": null,
                     "softwareInfoId": "software_id",
-                    "softwareType": null,
-                    "version": null
                 },
                 {
-                    "computerSystem": null,
                     "name": "name",
-                    "revision": null,
                     "softwareInfoId": "software_id",
-                    "softwareType": null,
-                    "version": null
                 }
             ],
             "sourceLocation": {"file":"file.rs","line":1},
@@ -195,11 +179,11 @@ mod tests {
 
         let spec_error = error.to_artifact();
         let actual = serde_json::json!(spec_error);
-        assert_json_include!(actual: actual, expected: &expected_run);
+        assert_json_eq!(actual, expected_run);
 
         let spec_error = error.to_artifact();
         let actual = serde_json::json!(spec_error);
-        assert_json_include!(actual: actual, expected: &expected_step);
+        assert_json_eq!(actual, expected_step);
 
         Ok(())
     }

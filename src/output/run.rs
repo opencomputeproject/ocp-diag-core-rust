@@ -258,7 +258,7 @@ impl TestRunBuilder {
 
     pub fn build(self) -> TestRun {
         let config = self.config.unwrap_or(config::Config::builder().build());
-        let emitter = emitter::JsonEmitter::new(config.timezone, config.writer);
+        let emitter = emitter::JsonEmitter::new(config.timestamp_provider, config.writer);
 
         TestRun {
             name: self.name,

@@ -16,6 +16,7 @@ use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 use tokio::sync::Mutex;
 
+use crate::output::config;
 use crate::spec;
 
 #[derive(Debug, thiserror::Error, derive_more::Display)]
@@ -84,26 +85,28 @@ impl StdoutWriter {
 }
 
 pub struct JsonEmitter {
-    timezone: chrono_tz::Tz,
+    // HACK: public for tests, but this should come from config directly to where needed
+    pub(crate) timestamp_provider: Box<dyn config::TimestampProvider + Send + Sync + 'static>,
     writer: WriterType,
     seqno: Arc<atomic::AtomicU64>,
 }
 
 impl JsonEmitter {
-    pub(crate) fn new(timezone: chrono_tz::Tz, writer: WriterType) -> Self {
+    pub(crate) fn new(
+        timestamp_provider: Box<dyn config::TimestampProvider + Send + Sync + 'static>,
+        writer: WriterType,
+    ) -> Self {
         JsonEmitter {
-            timezone,
+            timestamp_provider,
             writer,
             seqno: Arc::new(atomic::AtomicU64::new(0)),
         }
     }
 
     fn serialize_artifact(&self, object: &spec::RootImpl) -> serde_json::Value {
-        let now = chrono::Local::now();
-        let now_tz = now.with_timezone(&self.timezone);
         let root = spec::Root {
             artifact: object.clone(),
-            timestamp: now_tz,
+            timestamp: self.timestamp_provider.now(),
             seqno: self.incr_seqno(),
         };
         serde_json::json!(root)
@@ -144,7 +147,10 @@ mod tests {
 
         let buffer = Arc::new(Mutex::new(vec![]));
         let writer = BufferWriter::new(buffer.clone());
-        let emitter = JsonEmitter::new(chrono_tz::UTC, WriterType::Buffer(writer));
+        let emitter = JsonEmitter::new(
+            Box::new(config::NullTimestampProvider {}),
+            WriterType::Buffer(writer),
+        );
 
         emitter
             .emit(&spec::RootImpl::SchemaVersion(
@@ -179,7 +185,10 @@ mod tests {
 
         let buffer = Arc::new(Mutex::new(vec![]));
         let writer = BufferWriter::new(buffer.clone());
-        let emitter = JsonEmitter::new(chrono_tz::UTC, WriterType::Buffer(writer));
+        let emitter = JsonEmitter::new(
+            Box::new(config::NullTimestampProvider {}),
+            WriterType::Buffer(writer),
+        );
 
         let version = spec::RootImpl::SchemaVersion(spec::SchemaVersion::default());
         emitter.emit(&version).await?;
