@@ -24,7 +24,7 @@ pub struct DutInfo {
     id: String,
     name: Option<String>,
 
-    platform_infos: Option<Vec<PlatformInfo>>,
+    platform_infos: Vec<PlatformInfo>,
     software_infos: Vec<DutSoftwareInfo>,
     hardware_infos: Vec<DutHardwareInfo>,
 
@@ -74,37 +74,19 @@ impl DutInfo {
         spec::DutInfo {
             id: self.id.clone(),
             name: self.name.clone(),
-            platform_infos: self
-                .platform_infos
-                .clone()
-                .map(|infos| infos.iter().map(|info| info.to_spec()).collect()),
-            software_infos: match self.software_infos.len() {
-                0 => None,
-                _ => Some(
-                    self.software_infos
-                        .iter()
-                        .map(|info| info.to_spec())
-                        .collect(),
-                ),
-            },
-            hardware_infos: match self.hardware_infos.len() {
-                0 => None,
-                _ => Some(
-                    self.hardware_infos
-                        .iter()
-                        .map(|info| info.to_spec())
-                        .collect(),
-                ),
-            },
+            platform_infos: self.platform_infos.map_option(PlatformInfo::to_spec),
+            software_infos: self.software_infos.map_option(DutSoftwareInfo::to_spec),
+            hardware_infos: self.hardware_infos.map_option(DutHardwareInfo::to_spec),
             metadata: self.metadata.clone(),
         }
     }
 }
 
+#[derive(Default)]
 pub struct DutInfoBuilder {
     id: String,
     name: Option<String>,
-    platform_infos: Option<Vec<PlatformInfo>>,
+    platform_infos: Vec<PlatformInfo>,
     metadata: Option<BTreeMap<String, tv::Value>>,
 }
 
@@ -112,24 +94,17 @@ impl DutInfoBuilder {
     pub fn new(id: &str) -> DutInfoBuilder {
         DutInfoBuilder {
             id: id.to_string(),
-            name: None,
-            platform_infos: None,
-            metadata: None,
+            ..Default::default()
         }
     }
+
     pub fn name(mut self, value: &str) -> DutInfoBuilder {
         self.name = Some(value.to_string());
         self
     }
 
     pub fn add_platform_info(mut self, platform_info: &PlatformInfo) -> DutInfoBuilder {
-        self.platform_infos = match self.platform_infos {
-            Some(mut platform_infos) => {
-                platform_infos.push(platform_info.clone());
-                Some(platform_infos)
-            }
-            None => Some(vec![platform_info.clone()]),
-        };
+        self.platform_infos.push(platform_info.clone());
         self
     }
 
@@ -517,11 +492,26 @@ impl HardwareInfoBuilder {
     }
 }
 
+trait VecExt<T, U> {
+    fn map_option<F>(&self, func: F) -> Option<Vec<U>>
+    where
+        F: Fn(&T) -> U;
+}
+
+impl<T, U> VecExt<T, U> for Vec<T> {
+    fn map_option<F>(&self, func: F) -> Option<Vec<U>>
+    where
+        F: Fn(&T) -> U,
+    {
+        (!self.is_empty()).then_some(self.iter().map(func).collect())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::spec;
-    use anyhow::Result;
+    use anyhow::{bail, Result};
 
     #[test]
     fn test_dut_creation_from_builder_with_defaults() -> Result<()> {
@@ -530,68 +520,72 @@ mod tests {
         Ok(())
     }
 
-    // #[test]
-    // fn test_dut_builder() -> Result<()> {
-    //     let platform = PlatformInfo::builder("platform_info").build();
-    //     let software = SoftwareInfo::builder("software_id", "name").build();
-    //     let hardware = HardwareInfo::builder("hardware_id", "name").build();
-    //     let dut = DutInfo::builder("1234")
-    //         .name("DUT")
-    //         .add_metadata("key", "value".into())
-    //         .add_metadata("key2", "value2".into())
-    //         .add_hardware_info(&hardware)
-    //         .add_hardware_info(&hardware)
-    //         .add_platform_info(&platform)
-    //         .add_platform_info(&platform)
-    //         .add_software_info(&software)
-    //         .add_software_info(&software)
-    //         .build();
+    #[test]
+    fn test_dut_builder() -> Result<()> {
+        let mut dut = DutInfo::builder("1234")
+            .name("dut")
+            .add_metadata("key", "value".into())
+            .add_metadata("key2", "value2".into())
+            .add_platform_info(&PlatformInfo::builder("platform_info").build())
+            .build();
 
-    //     let spec_dut = dut.to_spec();
+        dut.add_software_info(
+            SoftwareInfo::builder("name")
+                .id(Ident::Exact("software_id".to_owned()))
+                .build(),
+        );
 
-    //     assert_eq!(spec_dut.id, "1234");
-    //     assert_eq!(spec_dut.name, Some("DUT".to_owned()));
+        dut.add_hardware_info(
+            HardwareInfo::builder("name")
+                .id(Ident::Exact("hardware_id".to_owned()))
+                .build(),
+        );
 
-    //     match spec_dut.metadata {
-    //         Some(m) => {
-    //             assert_eq!(m["key"], "value");
-    //             assert_eq!(m["key2"], "value2");
-    //         }
-    //         _ => bail!("metadata is empty"),
-    //     }
+        let spec_dut = dut.to_spec();
 
-    //     match spec_dut.hardware_infos {
-    //         Some(infos) => match infos.first() {
-    //             Some(info) => {
-    //                 assert_eq!(info.id, "hardware_id");
-    //             }
-    //             _ => bail!("hardware_infos is empty"),
-    //         },
-    //         _ => bail!("hardware_infos is missing"),
-    //     }
+        assert_eq!(spec_dut.id, "1234");
+        assert_eq!(spec_dut.name, Some("dut".to_owned()));
 
-    //     match spec_dut.software_infos {
-    //         Some(infos) => match infos.first() {
-    //             Some(info) => {
-    //                 assert_eq!(info.id, "software_id");
-    //             }
-    //             _ => bail!("software_infos is empty"),
-    //         },
-    //         _ => bail!("software_infos is missing"),
-    //     }
+        match spec_dut.platform_infos {
+            Some(infos) => match infos.first() {
+                Some(info) => {
+                    assert_eq!(info.info, "platform_info");
+                }
+                _ => bail!("platform_infos is empty"),
+            },
+            _ => bail!("platform_infos is missing"),
+        }
 
-    //     match spec_dut.platform_infos {
-    //         Some(infos) => match infos.first() {
-    //             Some(info) => {
-    //                 assert_eq!(info.info, "platform_info");
-    //             }
-    //             _ => bail!("platform_infos is empty"),
-    //         },
-    //         _ => bail!("platform_infos is missing"),
-    //     }
+        match spec_dut.software_infos {
+            Some(infos) => match infos.first() {
+                Some(info) => {
+                    assert_eq!(info.id, "software_id");
+                }
+                _ => bail!("software_infos is empty"),
+            },
+            _ => bail!("software_infos is missing"),
+        }
 
-    //     Ok(())
-    // }
+        match spec_dut.hardware_infos {
+            Some(infos) => match infos.first() {
+                Some(info) => {
+                    assert_eq!(info.id, "hardware_id");
+                }
+                _ => bail!("hardware_infos is empty"),
+            },
+            _ => bail!("hardware_infos is missing"),
+        }
+
+        match spec_dut.metadata {
+            Some(m) => {
+                assert_eq!(m["key"], "value");
+                assert_eq!(m["key2"], "value2");
+            }
+            _ => bail!("metadata is empty"),
+        }
+
+        Ok(())
+    }
 
     #[test]
     fn test_hardware_info() -> Result<()> {
@@ -691,6 +685,24 @@ mod tests {
             spec_subcomponent.subcomponent_type,
             Some(spec::SubcomponentType::Asic)
         );
+
+        Ok(())
+    }
+
+    /// 100% coverage test, since there's no way to exclude code
+    #[test]
+    fn test_infos_eq() -> Result<()> {
+        let sw = DutSoftwareInfo {
+            id: "sw0".to_owned(),
+            source: SoftwareInfo::builder("sw").build(),
+        };
+        assert_eq!(sw, sw);
+
+        let hw = DutHardwareInfo {
+            id: "hw0".to_owned(),
+            source: HardwareInfo::builder("hw").build(),
+        };
+        assert_eq!(hw, hw);
 
         Ok(())
     }
