@@ -48,7 +48,8 @@ impl TestStep {
     /// # tokio_test::block_on(async {
     /// # use ocptv::output::*;
     ///
-    /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
+    /// let dut = DutInfo::new("my_dut");
+    /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
     /// let step = run.add_step("step_name").start().await?;
     ///
     /// # Ok::<(), OcptvError>(())
@@ -81,7 +82,8 @@ impl TestStep {
     /// # use futures::FutureExt;
     /// # use ocptv::output::*;
     ///
-    /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
+    /// let dut = DutInfo::new("my_dut");
+    /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
     ///
     /// let step = run.add_step("first step");
     /// step.scope(|s| {
@@ -126,7 +128,8 @@ impl StartedTestStep {
     /// # tokio_test::block_on(async {
     /// # use ocptv::output::*;
     ///
-    /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
+    /// let dut = DutInfo::new("my_dut");
+    /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
     ///
     /// let step = run.add_step("step_name").start().await?;
     /// step.end(TestStatus::Complete).await?;
@@ -153,7 +156,8 @@ impl StartedTestStep {
     /// # tokio_test::block_on(async {
     /// # use ocptv::output::*;
     ///
-    /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
+    /// let dut = DutInfo::new("my_dut");
+    /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
     ///
     /// let step = run.add_step("step_name").start().await?;
     /// step.add_log(
@@ -173,7 +177,8 @@ impl StartedTestStep {
     ///
     /// use ocptv::ocptv_log_info;
     ///
-    /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
+    /// let dut = DutInfo::new("my_dut");
+    /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
     ///
     /// let step = run.add_step("step_name").start().await?;
     /// ocptv_log_info!(step, "This is a log message with INFO severity").await?;
@@ -208,7 +213,8 @@ impl StartedTestStep {
     /// # tokio_test::block_on(async {
     /// # use ocptv::output::*;
     ///
-    /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
+    /// let dut = DutInfo::new("my_dut");
+    /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
     ///
     /// let step = run.add_step("step_name").start().await?;
     /// step.add_log_with_details(
@@ -242,7 +248,8 @@ impl StartedTestStep {
     /// # tokio_test::block_on(async {
     /// # use ocptv::output::*;
     ///
-    /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
+    /// let dut = DutInfo::new("my_dut");
+    /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
     ///
     /// let step = run.add_step("step_name").start().await?;
     /// step.add_error("symptom").await?;
@@ -260,7 +267,8 @@ impl StartedTestStep {
     ///
     /// use ocptv::ocptv_error;
     ///
-    /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
+    /// let dut = DutInfo::new("my_dut");
+    /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
     ///
     /// let step = run.add_step("step_name").start().await?;
     /// ocptv_error!(step, "symptom").await?;
@@ -292,7 +300,8 @@ impl StartedTestStep {
     /// # tokio_test::block_on(async {
     /// # use ocptv::output::*;
     ///
-    /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
+    /// let dut = DutInfo::new("my_dut");
+    /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
     ///
     /// let step = run.add_step("step_name").start().await?;
     /// step.add_error_with_msg("symptom", "error message").await?;
@@ -310,7 +319,8 @@ impl StartedTestStep {
     ///
     /// use ocptv::ocptv_error;
     ///
-    /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
+    /// let dut = DutInfo::new("my_dut");
+    /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
     ///
     /// let step = run.add_step("step_name").start().await?;
     /// ocptv_error!(step, "symptom", "error message").await?;
@@ -343,7 +353,7 @@ impl StartedTestStep {
     ///
     /// let mut dut = DutInfo::new("my_dut");
     /// let sw_info = dut.add_software_info(SoftwareInfo::builder("name").build());
-    /// let run = TestRun::builder("diagnostic_name", &dut, "1.0").build().start().await?;
+    /// let run = TestRun::builder("diagnostic_name", "1.0").build().start(dut).await?;
     ///
     /// let step = run.add_step("step_name").start().await?;
     /// step.add_error_with_details(
@@ -377,7 +387,8 @@ impl StartedTestStep {
     /// # tokio_test::block_on(async {
     /// # use ocptv::output::*;
     ///
-    /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
+    /// let dut = DutInfo::new("my_dut");
+    /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
     /// let step = run.add_step("step_name").start().await?;
     ///
     /// #[derive(serde::Serialize)]
@@ -412,7 +423,8 @@ impl StartedTestStep {
     /// # tokio_test::block_on(async {
     /// # use ocptv::output::*;
     ///
-    /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
+    /// let dut = DutInfo::new("my_dut");
+    /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
     ///
     /// let step = run.add_step("step_name").start().await?;
     /// step.add_measurement("name", 50.into()).await?;
@@ -451,7 +463,7 @@ impl StartedTestStep {
     ///
     /// let mut dut = DutInfo::new("my_dut");
     /// let hw_info = dut.add_hardware_info(HardwareInfo::builder("fan").build());
-    /// let run = TestRun::builder("diagnostic_name", &dut, "1.0").build().start().await?;
+    /// let run = TestRun::builder("diagnostic_name", "1.0").build().start(dut).await?;
     /// let step = run.add_step("step_name").start().await?;
     ///
     /// let measurement = Measurement::builder("name", 5000.into())
@@ -493,7 +505,8 @@ impl StartedTestStep {
     /// # tokio_test::block_on(async {
     /// # use ocptv::output::*;
     ///
-    /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
+    /// let dut = DutInfo::new("my_dut");
+    /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
     /// let step = run.add_step("step_name").start().await?;
     /// let series = step.add_measurement_series("name");
     ///
@@ -520,7 +533,8 @@ impl StartedTestStep {
     /// # tokio_test::block_on(async {
     /// # use ocptv::output::*;
     ///
-    /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
+    /// let dut = DutInfo::new("my_dut");
+    /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
     /// let step = run.add_step("step_name").start().await?;
     /// let series =
     ///     step.add_measurement_series_with_details(MeasurementSeriesStart::new("name", "series_id"));

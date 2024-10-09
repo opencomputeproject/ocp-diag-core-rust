@@ -38,9 +38,17 @@ impl JsonEmitter {
         self.seqno.fetch_add(1, Ordering::AcqRel)
     }
 
-    fn serialize_artifact(&self, object: &spec::RootImpl) -> String {
+    async fn emit_version(&self) -> Result<(), io::Error> {
+        let s = self.serialize(&spec::RootImpl::SchemaVersion(
+            spec::SchemaVersion::default(),
+        ));
+
+        self.write(s).await
+    }
+
+    fn serialize(&self, root: &spec::RootImpl) -> String {
         let root = spec::Root {
-            artifact: object.clone(),
+            artifact: root.clone(),
             timestamp: self.timestamp_provider.now(),
             seqno: self.incr_seqno(),
         };
@@ -48,13 +56,7 @@ impl JsonEmitter {
         serde_json::json!(root).to_string()
     }
 
-    pub fn timestamp_provider(&self) -> &(dyn config::TimestampProvider + Send + Sync + 'static) {
-        &*self.timestamp_provider
-    }
-
-    pub async fn emit(&self, object: &spec::RootImpl) -> Result<(), io::Error> {
-        let s = self.serialize_artifact(object);
-
+    async fn write(&self, s: String) -> Result<(), io::Error> {
         match &self.writer {
             WriterType::File(file) => file.write(&s).await?,
             WriterType::Stdout(stdout) => stdout.write(&s).await.unwrap_infallible(),
@@ -64,6 +66,18 @@ impl JsonEmitter {
         }
 
         Ok(())
+    }
+
+    pub fn timestamp_provider(&self) -> &(dyn config::TimestampProvider + Send + Sync + 'static) {
+        &*self.timestamp_provider
+    }
+
+    pub async fn emit(&self, root: &spec::RootImpl) -> Result<(), io::Error> {
+        if self.seqno.load(Ordering::Acquire) == 0 {
+            self.emit_version().await?;
+        }
+
+        self.write(self.serialize(root)).await
     }
 }
 

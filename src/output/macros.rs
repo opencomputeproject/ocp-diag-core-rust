@@ -27,7 +27,8 @@
 ///
 /// use ocptv::ocptv_error;
 ///
-/// let test_run = TestRun::new("run_name", "my_dut", "1.0").start().await?;
+/// let dut = DutInfo::new("my_dut");
+/// let test_run = TestRun::new("run_name", "1.0").start(dut).await?;
 /// ocptv_error!(test_run, "symptom");
 /// test_run.end(TestStatus::Complete, TestResult::Pass).await?;
 ///
@@ -43,7 +44,8 @@
 ///
 /// use ocptv::ocptv_error;
 ///
-/// let test_run = TestRun::new("run_name", "my_dut", "1.0").start().await?;
+/// let dut = DutInfo::new("my_dut");
+/// let test_run = TestRun::new("run_name", "1.0").start(dut).await?;
 /// ocptv_error!(test_run, "symptom", "Error message");
 /// test_run.end(TestStatus::Complete, TestResult::Pass).await?;
 ///
@@ -90,7 +92,8 @@ macro_rules! ocptv_error {
 ///
 /// use ocptv::ocptv_log_debug;
 ///
-/// let run = TestRun::new("run_name", "my_dut", "1.0").start().await?;
+/// let dut = DutInfo::new("my_dut");
+/// let run = TestRun::new("run_name", "1.0").start(dut).await?;
 /// ocptv_log_debug!(run, "Log message");
 /// run.end(TestStatus::Complete, TestResult::Pass).await?;
 ///

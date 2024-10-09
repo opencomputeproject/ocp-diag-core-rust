@@ -14,6 +14,7 @@ mod macros;
 mod measure;
 mod run;
 mod step;
+mod trait_ext;
 mod writer;
 
 pub use crate::spec::{

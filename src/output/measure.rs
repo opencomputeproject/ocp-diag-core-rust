@@ -53,7 +53,8 @@ impl MeasurementSeries {
     /// # tokio_test::block_on(async {
     /// # use ocptv::output::*;
     ///
-    /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
+    /// let dut = DutInfo::new("my_dut");
+    /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
     /// let step = run.add_step("step_name").start().await?;
     ///
     /// let series = step.add_measurement_series("name");
@@ -89,7 +90,8 @@ impl MeasurementSeries {
     /// # use futures::FutureExt;
     /// # use ocptv::output::*;
     ///
-    /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
+    /// let dut = DutInfo::new("my_dut");
+    /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
     /// let step = run.add_step("step_name").start().await?;
     ///
     /// let series = step.add_measurement_series("name");
@@ -139,7 +141,8 @@ impl StartedMeasurementSeries {
     /// # tokio_test::block_on(async {
     /// # use ocptv::output::*;
     ///
-    /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
+    /// let dut = DutInfo::new("my_dut");
+    /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
     /// let step = run.add_step("step_name").start().await?;
     ///
     /// let series = step.add_measurement_series("name").start().await?;
@@ -172,7 +175,8 @@ impl StartedMeasurementSeries {
     /// # tokio_test::block_on(async {
     /// # use ocptv::output::*;
     ///
-    /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
+    /// let dut = DutInfo::new("my_dut");
+    /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
     /// let step = run.add_step("step_name").start().await?;
     ///
     /// let series = step.add_measurement_series("name").start().await?;
@@ -211,7 +215,8 @@ impl StartedMeasurementSeries {
     /// # tokio_test::block_on(async {
     /// # use ocptv::output::*;
     ///
-    /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
+    /// let dut = DutInfo::new("my_dut");
+    /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
     /// let step = run.add_step("step_name").start().await?;
     ///
     /// let series = step.add_measurement_series("name").start().await?;

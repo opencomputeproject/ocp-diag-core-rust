@@ -9,6 +9,7 @@ use std::collections::BTreeMap;
 
 use crate::output as tv;
 use crate::spec;
+use tv::trait_ext::VecExt;
 
 // TODO: docs
 #[derive(Clone, Debug, PartialEq, Default)]
@@ -489,21 +490,6 @@ impl HardwareInfoBuilder {
             computer_system: self.computer_system,
             manager: self.manager,
         }
-    }
-}
-
-trait VecExt<T, U> {
-    fn map_option<F>(&self, func: F) -> Option<Vec<U>>
-    where
-        F: Fn(&T) -> U;
-}
-
-impl<T, U> VecExt<T, U> for Vec<T> {
-    fn map_option<F>(&self, func: F) -> Option<Vec<U>>
-    where
-        F: Fn(&T) -> U,
-    {
-        (!self.is_empty()).then_some(self.iter().map(func).collect())
     }
 }
 

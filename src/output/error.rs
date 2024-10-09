@@ -6,12 +6,12 @@
 
 use crate::output as tv;
 use crate::spec;
-use tv::dut;
+use tv::{dut, trait_ext::VecExt, DutSoftwareInfo};
 
 pub struct Error {
     symptom: String,
     message: Option<String>,
-    software_infos: Option<Vec<spec::SoftwareInfo>>,
+    software_infos: Vec<dut::DutSoftwareInfo>,
     source_location: Option<spec::SourceLocation>,
 }
 
@@ -24,17 +24,17 @@ impl Error {
         spec::Error {
             symptom: self.symptom.clone(),
             message: self.message.clone(),
-            software_infos: self.software_infos.clone(),
+            software_infos: self.software_infos.map_option(DutSoftwareInfo::to_spec),
             source_location: self.source_location.clone(),
         }
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct ErrorBuilder {
     symptom: String,
     message: Option<String>,
-    software_infos: Option<Vec<spec::SoftwareInfo>>,
+    software_infos: Vec<dut::DutSoftwareInfo>,
     source_location: Option<spec::SourceLocation>,
 }
 
@@ -42,9 +42,7 @@ impl ErrorBuilder {
     fn new(symptom: &str) -> Self {
         ErrorBuilder {
             symptom: symptom.to_string(),
-            message: None,
-            source_location: None,
-            software_infos: None,
+            ..Default::default()
         }
     }
 
@@ -62,13 +60,7 @@ impl ErrorBuilder {
     }
 
     pub fn add_software_info(mut self, software_info: &dut::DutSoftwareInfo) -> ErrorBuilder {
-        self.software_infos = match self.software_infos {
-            Some(mut software_infos) => {
-                software_infos.push(software_info.to_spec());
-                Some(software_infos)
-            }
-            None => Some(vec![software_info.to_spec()]),
-        };
+        self.software_infos.push(software_info.clone());
         self
     }
 
@@ -111,7 +103,7 @@ mod tests {
             spec::Error {
                 symptom: error.symptom.clone(),
                 message: error.message.clone(),
-                software_infos: error.software_infos.clone(),
+                software_infos: Some(vec![sw_info.to_spec()]),
                 source_location: error.source_location.clone(),
             }
         );
@@ -136,7 +128,7 @@ mod tests {
             spec::Error {
                 symptom: error.symptom.clone(),
                 message: error.message.clone(),
-                software_infos: error.software_infos.clone(),
+                software_infos: Some(vec![sw_info.to_spec()]),
                 source_location: error.source_location.clone(),
             }
         );

@@ -140,7 +140,7 @@ where
             .build(),
     );
 
-    let run_builder = TestRun::builder("run_name", &dut, "1.0").config(
+    let run_builder = TestRun::builder("run_name", "1.0").config(
         Config::builder()
             .with_buffer_output(Arc::clone(&buffer))
             .with_timestamp_provider(Box::new(FixedTsProvider {}))
@@ -162,11 +162,11 @@ async fn check_output_run<F>(expected: &[serde_json::Value], test_fn: F) -> Resu
 where
     F: for<'a> FnOnce(&'a StartedTestRun, DutInfo) -> BoxFuture<'a, Result<(), tv::OcptvError>>,
 {
-    check_output(expected, |run_builder, dutinfo| async move {
+    check_output(expected, |run_builder, dut| async move {
         let run = run_builder.build();
 
-        let run = run.start().await?;
-        test_fn(&run, dutinfo).await?;
+        let run = run.start(dut.clone()).await?;
+        test_fn(&run, dut).await?;
         run.end(TestStatus::Complete, TestResult::Pass).await?;
 
         Ok(())
@@ -178,11 +178,11 @@ async fn check_output_step<F>(expected: &[serde_json::Value], test_fn: F) -> Res
 where
     F: for<'a> FnOnce(&'a StartedTestStep, DutInfo) -> BoxFuture<'a, Result<(), tv::OcptvError>>,
 {
-    check_output(expected, |run_builder, dutinfo| async move {
-        let run = run_builder.build().start().await?;
+    check_output(expected, |run_builder, dut| async move {
+        let run = run_builder.build().start(dut.clone()).await?;
 
         let step = run.add_step("first step").start().await?;
-        test_fn(&step, dutinfo).await?;
+        test_fn(&step, dut).await?;
         step.end(TestStatus::Complete).await?;
 
         run.end(TestStatus::Complete, TestResult::Pass).await?;
@@ -359,6 +359,100 @@ async fn test_testrun_with_error_with_details() -> Result<()> {
     .await
 }
 
+#[tokio::test]
+async fn test_testrun_with_error_before_start() -> Result<()> {
+    let expected = [
+        json_schema_version(),
+        json!({
+            "testRunArtifact": {
+                "error": {
+                    "symptom": "no-dut",
+                }
+            },
+            "sequenceNumber": 1,
+            "timestamp": DATETIME_FORMATTED
+        }),
+    ];
+
+    check_output(&expected, |run_builder, _| {
+        async move {
+            let run = run_builder.build();
+            run.add_error("no-dut").await?;
+
+            Ok(())
+        }
+        .boxed()
+    })
+    .await
+}
+
+#[tokio::test]
+async fn test_testrun_with_error_with_message_before_start() -> Result<()> {
+    let expected = [
+        json_schema_version(),
+        json!({
+            "testRunArtifact": {
+                "error": {
+                    "symptom": "no-dut",
+                    "message": "failed to find dut",
+                }
+            },
+            "sequenceNumber": 1,
+            "timestamp": DATETIME_FORMATTED
+        }),
+    ];
+
+    check_output(&expected, |run_builder, _| {
+        async move {
+            let run = run_builder.build();
+            run.add_error_with_msg("no-dut", "failed to find dut")
+                .await?;
+
+            Ok(())
+        }
+        .boxed()
+    })
+    .await
+}
+
+#[tokio::test]
+async fn test_testrun_with_error_with_details_before_start() -> Result<()> {
+    let expected = [
+        json_schema_version(),
+        json!({
+            "testRunArtifact": {
+                "error": {
+                    "message": "failed to find dut",
+                    "sourceLocation": {
+                        "file": "file",
+                        "line": 1
+                    },
+                    "symptom": "no-dut"
+                }
+            },
+            "sequenceNumber": 1,
+            "timestamp": DATETIME_FORMATTED
+        }),
+    ];
+
+    check_output(&expected, |run_builder, _| {
+        async move {
+            let run = run_builder.build();
+            run.add_error_with_details(
+                &Error::builder("no-dut")
+                    .message("failed to find dut")
+                    .source("file", 1)
+                    .build(),
+            )
+            .await?;
+
+            Ok(())
+        }
+        .boxed()
+    })
+    .await
+}
+
 #[cfg(feature = "boxed-scopes")]
 #[tokio::test]
 async fn test_testrun_with_scope() -> Result<()> {
@@ -378,10 +472,10 @@ async fn test_testrun_with_scope() -> Result<()> {
         json_run_pass(3),
     ];
 
-    check_output(&expected, |run_builder, _| async {
+    check_output(&expected, |run_builder, dut| async {
         let run = run_builder.build();
 
-        run.scope(|r| {
+        run.scope(dut, |r| {
             async move {
                 r.add_log(LogSeverity::Info, "First message").await?;
 
@@ -1399,7 +1493,7 @@ async fn test_config_builder_with_file() -> Result<()> {
 
     let dut = DutInfo::builder("dut_id").build();
 
-    let run = TestRun::builder("run_name", &dut, "1.0")
+    let run = TestRun::builder("run_name", "1.0")
         .config(
             Config::builder()
                 .timezone(chrono_tz::Europe::Rome)
@@ -1409,7 +1503,7 @@ async fn test_config_builder_with_file() -> Result<()> {
                 .build(),
         )
         .build()
-        .start()
+        .start(dut)
         .await?;
 
     run.add_error_with_msg("symptom", "Error message").await?;
@@ -1504,7 +1598,7 @@ async fn test_step_with_extension_which_fails() -> Result<()> {
 
     let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
     let dut = DutInfo::builder("dut_id").build();
-    let run = TestRun::builder("run_name", &dut, "1.0")
+    let run = TestRun::builder("run_name", "1.0")
         .config(
             Config::builder()
                 .with_buffer_output(Arc::clone(&buffer))
@@ -1512,7 +1606,7 @@ async fn test_step_with_extension_which_fails() -> Result<()> {
                 .build(),
         )
         .build()
-        .start()
+        .start(dut)
         .await?;
     let step = run.add_step("first step").start().await?;
 
@@ -1539,7 +1633,8 @@ async fn test_testrun_instantiation_with_new() -> Result<()> {
     ];
     let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
-    let run = TestRun::new("run_name", "dut_id", "1.0").start().await?;
+    let dut = DutInfo::builder("dut_id").build();
+    let run = TestRun::new("run_name", "1.0").start(dut).await?;
     run.end(TestStatus::Complete, TestResult::Pass).await?;
 
     for (idx, entry) in buffer.lock().await.iter().enumerate() {
@@ -1585,11 +1680,11 @@ async fn test_testrun_metadata() -> Result<()> {
         json_run_pass(2),
     ];
 
-    check_output(&expected, |run_builder, _| async {
+    check_output(&expected, |run_builder, dut| async {
         let run = run_builder
             .add_metadata("key", "value".into())
             .build()
-            .start()
+            .start(dut)
             .await?;
 
         run.end(TestStatus::Complete, TestResult::Pass).await?;
@@ -1637,14 +1732,14 @@ async fn test_testrun_builder() -> Result<()> {
         json_run_pass(2),
     ];
 
-    check_output(&expected, |run_builder, _| async {
+    check_output(&expected, |run_builder, dut| async {
         let run = run_builder
             .add_metadata("key", "value".into())
             .add_metadata("key2", "value2".into())
             .add_parameter("key", "value".into())
             .command_line("cmd_line")
             .build()
-            .start()
+            .start(dut)
             .await?;
 
         run.end(TestStatus::Complete, TestResult::Pass).await?;

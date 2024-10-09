@@ -29,10 +29,10 @@ where
     let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
     let dut = DutInfo::builder("dut_id").build();
-    let run = TestRun::builder("run_name", &dut, "1.0")
+    let run = TestRun::builder("run_name", "1.0")
         .config(Config::builder().with_buffer_output(buffer.clone()).build())
         .build()
-        .start()
+        .start(dut)
         .await?;
 
     func(run).await?;
