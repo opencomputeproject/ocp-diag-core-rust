@@ -648,19 +648,15 @@ impl StartedTestStep {
     /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
     ///
     /// let step = run.add_step("step_name").start().await?;
-    /// step.file("name", "/path/to/file", false).await?;
+    /// let uri = Uri::parse("file:///tmp/foo").unwrap();
+    /// step.file("name", uri).await?;
     /// step.end(TestStatus::Complete).await?;
     ///
     /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn file(
-        &self,
-        name: &str,
-        uri: &str,
-        is_snapshot: bool,
-    ) -> Result<(), tv::OcptvError> {
-        let file = file::File::new(name, uri, is_snapshot);
+    pub async fn file(&self, name: &str, uri: tv::Uri) -> Result<(), tv::OcptvError> {
+        let file = file::File::new(name, uri);
 
         self.step
             .emitter
@@ -683,9 +679,12 @@ impl StartedTestStep {
     ///
     /// let dut = DutInfo::new("my_dut");
     /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
+    /// let uri = Uri::parse("file:///tmp/foo").unwrap();
+    ///
     /// let step = run.add_step("step_name").start().await?;
     ///
-    /// let file = File::builder("name", "/path/to/file", false)
+    /// let uri = Uri::parse("file:///tmp/foo").unwrap();
+    /// let file = File::builder("name", uri)
     ///     .description("description")
     ///     .content_type("text/plain")
     ///     .add_metadata("key", "value".into())

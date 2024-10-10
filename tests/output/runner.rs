@@ -1406,6 +1406,7 @@ async fn test_step_with_diagnosis_builder() -> Result<()> {
 
 #[tokio::test]
 async fn test_step_with_file() -> Result<()> {
+    let uri = tv::Uri::parse("file:///tmp/foo")?;
     let expected = [
         json_schema_version(),
         json_run_default_start(),
@@ -1415,7 +1416,7 @@ async fn test_step_with_file() -> Result<()> {
                 "testStepId": "step0",
                 "file": {
                     "name": "name",
-                    "uri": "uri",
+                    "uri": uri.clone().as_str().to_owned(),
                     "isSnapshot": false
                 }
             },
@@ -1427,8 +1428,8 @@ async fn test_step_with_file() -> Result<()> {
     ];
 
     check_output_step(&expected, |s, _| {
-        async move {
-            s.file("name", "uri", false).await?;
+        async {
+            s.file("name", uri).await?;
 
             Ok(())
         }
@@ -1439,6 +1440,7 @@ async fn test_step_with_file() -> Result<()> {
 
 #[tokio::test]
 async fn test_step_with_file_builder() -> Result<()> {
+    let uri = tv::Uri::parse("file:///tmp/foo")?;
     let expected = [
         json_schema_version(),
         json_run_default_start(),
@@ -1448,7 +1450,7 @@ async fn test_step_with_file_builder() -> Result<()> {
                 "testStepId": "step0",
                 "file": {
                     "name": "name",
-                    "uri": "uri",
+                    "uri": uri.clone().as_str().to_owned(),
                     "isSnapshot": false,
                     "contentType": "text/plain",
                     "description": "description",
@@ -1465,8 +1467,8 @@ async fn test_step_with_file_builder() -> Result<()> {
     ];
 
     check_output_step(&expected, |s, _| {
-        async move {
-            let file = File::builder("name", "uri", false)
+        async {
+            let file = File::builder("name", uri)
                 .content_type("text/plain")
                 .description("description")
                 .add_metadata("key", "value".into())

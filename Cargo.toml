@@ -30,6 +30,7 @@ tokio = { version = "1.40.0", features = [
     "sync",
 ] }
 unwrap-infallible = "0.1.5"
+url = "2.5.2"
 
 [dev-dependencies]
 anyhow = "1.0.89"
