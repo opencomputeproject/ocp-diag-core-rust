@@ -68,11 +68,11 @@ pub enum ValidatorType {
     #[serde(rename = "LESS_THAN")]
     LessThan,
     #[serde(rename = "LESS_THAN_OR_EQUAL")]
-    LessThenOrEqual,
+    LessThanOrEqual,
     #[serde(rename = "GREATER_THAN")]
-    GreaterThen,
+    GreaterThan,
     #[serde(rename = "GREATER_THAN_OR_EQUAL")]
-    GreaterThenOrEqual,
+    GreaterThanOrEqual,
     #[serde(rename = "REGEX_MATCH")]
     RegexMatch,
     #[serde(rename = "REGEX_NO_MATCH")]
