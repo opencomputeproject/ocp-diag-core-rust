@@ -14,7 +14,7 @@ use futures::future::BoxFuture;
 use crate::output as tv;
 use crate::spec::{self, TestStepArtifactImpl, TestStepStart};
 use tv::measure::MeasurementSeries;
-use tv::{config, emitter, error, log, measure};
+use tv::{config, diagnosis, emitter, error, log, measure};
 
 use super::OcptvError;
 
@@ -529,6 +529,81 @@ impl StartedTestStep {
         start: measure::MeasurementSeriesStart,
     ) -> MeasurementSeries {
         MeasurementSeries::new_with_details(start, Arc::clone(&self.step.emitter))
+    }
+
+    /// Emits a Diagnosis message.
+    ///
+    /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#diagnosis
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # tokio_test::block_on(async {
+    /// # use ocptv::output::*;
+    ///
+    /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
+    ///
+    /// let step = run.add_step("step_name").start().await?;
+    /// step.diagnosis("verdict", DiagnosisType::Pass).await?;
+    /// step.end(TestStatus::Complete).await?;
+    ///
+    /// # Ok::<(), OcptvError>(())
+    /// # });
+    /// ```
+    pub async fn diagnosis(
+        &self,
+        verdict: &str,
+        diagnosis_type: spec::DiagnosisType,
+    ) -> Result<(), tv::OcptvError> {
+        let diagnosis = diagnosis::Diagnosis::new(verdict, diagnosis_type);
+
+        self.step
+            .emitter
+            .emit(&TestStepArtifactImpl::Diagnosis(diagnosis.to_artifact()))
+            .await?;
+
+        Ok(())
+    }
+
+    /// Emits a Diagnosis message.
+    /// This method accepts a [`objects::Error`] object.
+    ///
+    /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#diagnosis
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # tokio_test::block_on(async {
+    /// # use ocptv::output::*;
+    ///
+    /// let hwinfo = HardwareInfo::builder("id", "fan").build();
+    /// let run = TestRun::new("diagnostic_name", "my_dut", "1.0").start().await?;
+    /// let step = run.add_step("step_name").start().await?;
+    ///
+    /// let diagnosis = Diagnosis::builder("verdict", DiagnosisType::Pass)
+    ///     .hardware_info(&hwinfo)
+    ///     .message("message")
+    ///     .subcomponent(&Subcomponent::builder("name").build())
+    ///     .source("file.rs", 1)
+    ///     .build();
+    /// step.diagnosis_with_details(&diagnosis).await?;
+    /// step.end(TestStatus::Complete).await?;
+    ///
+    /// # Ok::<(), OcptvError>(())
+    /// # });
+    /// ```
+    pub async fn diagnosis_with_details(
+        &self,
+        diagnosis: &diagnosis::Diagnosis,
+    ) -> Result<(), tv::OcptvError> {
+        self.step
+            .emitter
+            .emit(&spec::TestStepArtifactImpl::Diagnosis(
+                diagnosis.to_artifact(),
+            ))
+            .await?;
+
+        Ok(())
     }
 }
 

@@ -15,7 +15,10 @@ use tokio::sync::Mutex;
 
 use ocptv::ocptv_error;
 use ocptv::output as tv;
-use ocptv::{ocptv_log_debug, ocptv_log_error, ocptv_log_fatal, ocptv_log_info, ocptv_log_warning};
+use ocptv::{
+    ocptv_diagnosis_fail, ocptv_diagnosis_pass, ocptv_diagnosis_unknown, ocptv_log_debug,
+    ocptv_log_error, ocptv_log_fatal, ocptv_log_info, ocptv_log_warning,
+};
 use tv::{Config, DutInfo, StartedTestRun, StartedTestStep, TestRun};
 
 async fn check_output<F, R, const N: usize>(
@@ -360,6 +363,63 @@ async fn test_ocptv_log_fatal_in_step() -> Result<()> {
 
     check_output_step(&expected, "log", |step| async move {
         ocptv_log_fatal!(step, "log message").await?;
+        Ok(())
+    })
+    .await
+}
+
+#[tokio::test]
+async fn test_ocptv_diagnosis_pass_in_step() -> Result<()> {
+    let expected = json!({
+        "testStepArtifact": {
+            "diagnosis": {
+                    "verdict": "verdict",
+                    "type": "PASS",
+                }
+        },
+        "sequenceNumber": 3
+    });
+
+    check_output_step(&expected, "diagnosis", |step| async move {
+        ocptv_diagnosis_pass!(step, "verdict").await?;
+        Ok(())
+    })
+    .await
+}
+
+#[tokio::test]
+async fn test_ocptv_diagnosis_fail_in_step() -> Result<()> {
+    let expected = json!({
+        "testStepArtifact": {
+            "diagnosis": {
+                    "verdict": "verdict",
+                    "type": "FAIL",
+                }
+        },
+        "sequenceNumber": 3
+    });
+
+    check_output_step(&expected, "diagnosis", |step| async move {
+        ocptv_diagnosis_fail!(step, "verdict").await?;
+        Ok(())
+    })
+    .await
+}
+
+#[tokio::test]
+async fn test_ocptv_diagnosis_unknown_in_step() -> Result<()> {
+    let expected = json!({
+        "testStepArtifact": {
+            "diagnosis": {
+                    "verdict": "verdict",
+                    "type": "UNKNOWN",
+                }
+        },
+        "sequenceNumber": 3
+    });
+
+    check_output_step(&expected, "diagnosis", |step| async move {
+        ocptv_diagnosis_unknown!(step, "verdict").await?;
         Ok(())
     })
     .await
