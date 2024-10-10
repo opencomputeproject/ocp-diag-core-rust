@@ -28,12 +28,13 @@ use maplit::{btreemap, convert_args};
 ///
 /// ```
 /// # use ocptv::output::*;
+/// # use std::str::FromStr;
 ///
 /// let uri = Uri::parse("file:///tmp/foo").unwrap();
 /// let file = File::builder("name", uri)
 ///     .is_snapshot(true)
 ///     .description("description")
-///     .content_type("text/plain")
+///     .content_type(Mime::from_str("text/plain").unwrap())
 ///     .add_metadata("key", "value".into())
 ///     .build();
 /// ```
@@ -42,7 +43,7 @@ pub struct File {
     uri: tv::Uri,
     is_snapshot: bool,
     description: Option<String>,
-    content_type: Option<String>,
+    content_type: Option<tv::Mime>,
     metadata: Option<BTreeMap<String, tv::Value>>,
 }
 
@@ -74,11 +75,12 @@ impl File {
     ///
     /// ```
     /// # use ocptv::output::*;
+    /// # use std::str::FromStr;
     ///
     /// let uri = Uri::parse("file:///tmp/foo").unwrap();
     /// let file = File::builder("name", uri)
     ///     .description("description")
-    ///     .content_type("text/plain")
+    ///     .content_type(Mime::from_str("text/plain").unwrap())
     ///     .add_metadata("key", "value".into())
     ///     .build();
     /// ```
@@ -103,7 +105,7 @@ impl File {
             uri: self.uri.as_str().to_owned(),
             is_snapshot: self.is_snapshot,
             description: self.description.clone(),
-            content_type: self.content_type.clone(),
+            content_type: self.content_type.as_ref().map(|ct| ct.to_string()),
             metadata: self.metadata.clone(),
         }
     }
@@ -115,11 +117,12 @@ impl File {
 ///
 /// ```
 /// # use ocptv::output::*;
+/// # use std::str::FromStr;
 ///
 /// let uri = Uri::parse("file:///tmp/foo").unwrap();
 /// let builder = File::builder("name", uri)
 ///     .description("description")
-///     .content_type("text/plain")
+///     .content_type(Mime::from_str("text/plain").unwrap())
 ///     .add_metadata("key", "value".into());
 /// let file = builder.build();
 /// ```
@@ -128,7 +131,7 @@ pub struct FileBuilder {
     uri: tv::Uri,
     is_snapshot: bool,
     description: Option<String>,
-    content_type: Option<String>,
+    content_type: Option<tv::Mime>,
     metadata: Option<BTreeMap<String, tv::Value>>,
 }
 
@@ -192,13 +195,14 @@ impl FileBuilder {
     ///
     /// ```
     /// # use ocptv::output::*;
+    /// # use std::str::FromStr;
     ///
     /// let uri = Uri::parse("file:///tmp/foo").unwrap();
     /// let builder = FileBuilder::new("name", uri)
-    ///     .content_type("text/plain");
+    ///     .content_type(Mime::from_str("text/plain").unwrap());
     /// ```
-    pub fn content_type(mut self, content_type: &str) -> FileBuilder {
-        self.content_type = Some(content_type.to_owned());
+    pub fn content_type(mut self, content_type: tv::Mime) -> FileBuilder {
+        self.content_type = Some(content_type);
         self
     }
 
@@ -252,6 +256,8 @@ impl FileBuilder {
 
 #[cfg(test)]
 mod tests {
+    use std::str::FromStr;
+
     use super::*;
     use crate::output as tv;
     use crate::spec;
@@ -287,7 +293,7 @@ mod tests {
         let uri = tv::Uri::parse("file:///tmp/foo")?;
         let is_snapshot = false;
         let description = "description".to_owned();
-        let content_type = "content_type".to_owned();
+        let content_type = tv::Mime::from_str("text/plain")?;
         let meta_key = "key";
         let meta_value = tv::Value::from("value");
         let metadata = convert_args!(btreemap!(
@@ -297,7 +303,7 @@ mod tests {
         let file = File::builder(&name, uri.clone())
             .is_snapshot(is_snapshot)
             .description(&description)
-            .content_type(&content_type)
+            .content_type(content_type.clone())
             .add_metadata(meta_key, meta_value.clone())
             .add_metadata(meta_key, meta_value.clone())
             .build();
@@ -310,7 +316,7 @@ mod tests {
                 uri: uri.as_str().to_owned(),
                 is_snapshot,
                 description: Some(description),
-                content_type: Some(content_type),
+                content_type: Some(content_type.to_string()),
                 metadata: Some(metadata),
             }
         );

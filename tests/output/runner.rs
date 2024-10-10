@@ -26,6 +26,8 @@ use tv::{
     TimestampProvider, Validator, ValidatorType,
 };
 
+use std::str::FromStr;
+
 const DATETIME: chrono::DateTime<chrono::offset::Utc> = chrono::DateTime::from_timestamp_nanos(0);
 const DATETIME_FORMATTED: &str = "1970-01-01T00:00:00.000Z";
 struct FixedTsProvider {}
@@ -1469,7 +1471,7 @@ async fn test_step_with_file_builder() -> Result<()> {
     check_output_step(&expected, |s, _| {
         async {
             let file = File::builder("name", uri)
-                .content_type("text/plain")
+                .content_type(tv::Mime::from_str("text/plain").unwrap())
                 .description("description")
                 .add_metadata("key", "value".into())
                 .build();

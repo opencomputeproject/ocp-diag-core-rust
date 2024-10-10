@@ -43,6 +43,7 @@ pub use step::{StartedTestStep, TestStep};
 pub use writer::{BufferWriter, FileWriter, StdoutWriter, Writer};
 
 // re-export these as a public types we present
+pub use mime::Mime;
 pub use serde_json::Value;
 pub use url::Url as Uri;
 

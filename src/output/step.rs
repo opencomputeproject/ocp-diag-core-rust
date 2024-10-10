@@ -676,6 +676,7 @@ impl StartedTestStep {
     /// ```rust
     /// # tokio_test::block_on(async {
     /// # use ocptv::output::*;
+    /// # use std::str::FromStr;
     ///
     /// let dut = DutInfo::new("my_dut");
     /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
@@ -686,7 +687,7 @@ impl StartedTestStep {
     /// let uri = Uri::parse("file:///tmp/foo").unwrap();
     /// let file = File::builder("name", uri)
     ///     .description("description")
-    ///     .content_type("text/plain")
+    ///     .content_type(Mime::from_str("text/plain").unwrap())
     ///     .add_metadata("key", "value".into())
     ///     .build();
     /// step.file_with_details(&file).await?;
