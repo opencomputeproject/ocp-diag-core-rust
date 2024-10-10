@@ -84,6 +84,7 @@ pub enum ValidatorType {
 }
 
 #[derive(Debug, Serialize, Clone, PartialEq)]
+#[non_exhaustive]
 pub enum SubcomponentType {
     #[serde(rename = "UNSPECIFIED")]
     Unspecified,

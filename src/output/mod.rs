@@ -18,13 +18,13 @@ mod trait_ext;
 mod writer;
 
 pub use crate::spec::{
-    LogSeverity, SoftwareType, TestResult, TestStatus, ValidatorType, SPEC_VERSION,
+    LogSeverity, SoftwareType, TestResult, TestStatus, ValidatorType, SubcomponentType, SPEC_VERSION,
 };
 pub use config::{Config, ConfigBuilder, TimestampProvider};
 pub use dut::{
     DutHardwareInfo, DutInfo, DutInfoBuilder, DutSoftwareInfo, HardwareInfo, HardwareInfoBuilder,
     Ident, PlatformInfo, PlatformInfoBuilder, SoftwareInfo, SoftwareInfoBuilder, Subcomponent,
-    SubcomponentBuilder,
+    SubcomponentBuilder
 };
 pub use error::{Error, ErrorBuilder};
 pub use log::{Log, LogBuilder};

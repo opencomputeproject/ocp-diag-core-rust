@@ -210,6 +210,12 @@ pub struct PlatformInfo {
 }
 
 impl PlatformInfo {
+    pub fn new(info: &str) -> Self {
+        Self {
+            info: info.to_owned(),
+        }
+    }
+
     pub fn builder(info: &str) -> PlatformInfoBuilder {
         PlatformInfoBuilder::new(info)
     }
@@ -645,9 +651,15 @@ mod tests {
     }
 
     #[test]
-    fn test_platform_info() -> Result<()> {
-        let info = PlatformInfo::builder("info").build();
+    fn test_platform_info_new() -> Result<()> {
+        let info = PlatformInfo::new("info");
+        assert_eq!(info.to_spec().info, "info");
+        Ok(())
+    }
 
+    #[test]
+    fn test_platform_info_builder() -> Result<()> {
+        let info = PlatformInfo::builder("info").build();
         assert_eq!(info.to_spec().info, "info");
         Ok(())
     }
