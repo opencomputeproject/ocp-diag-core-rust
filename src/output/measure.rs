@@ -30,6 +30,8 @@ pub struct MeasurementSeries {
 }
 
 impl MeasurementSeries {
+    // note: this object is crate public but users should only construct
+    // instances through the `StartedTestStep.add_measurement_series_*` apis
     pub(crate) fn new(
         series_id: &str,
         info: MeasurementSeriesInfo,
@@ -668,6 +670,8 @@ impl MeasurementBuilder {
 }
 
 pub struct MeasurementSeriesInfo {
+    // note: this object is crate public and we need access to this field
+    // when making a new series in `StartedTestStep.add_measurement_series*`
     pub(crate) id: tv::Ident,
     name: String,
 
@@ -846,47 +850,6 @@ mod tests {
 
         Ok(())
     }
-
-    // #[test]
-    // fn test_measurement_series_start_builder_to_artifact() -> Result<()> {
-    //     let mut dut = DutInfo::new("dut0");
-
-    //     let name = "name".to_owned();
-    //     let series_id = "series_id".to_owned();
-    //     let validator = Validator::builder(spec::ValidatorType::Equal, 30.into()).build();
-    //     let validator2 = Validator::builder(spec::ValidatorType::GreaterThen, 10.into()).build();
-    //     let hw_info = dut.add_hardware_info(HardwareInfo::builder("name").build());
-    //     let subcomponent = Subcomponent::builder("name").build();
-    //     let series = MeasurementSeriesInfo::builder(&name)
-    //         .id(Ident::Exact(series_id.clone()))
-    //         .unit("unit")
-    //         .add_validator(&validator)
-    //         .add_validator(&validator2)
-    //         .hardware_info(&hw_info)
-    //         .subcomponent(&subcomponent)
-    //         .add_metadata("key", "value".into())
-    //         .add_metadata("key2", "value2".into())
-    //         .build();
-
-    //     let artifact = series.to_spec();
-    //     assert_eq!(
-    //         artifact,
-    //         spec::MeasurementSeriesStart {
-    //             series_id: series_id.to_string(),
-    //             name,
-    //             unit: Some("unit".to_string()),
-    //             validators: Some(vec![validator.to_spec(), validator2.to_spec()]),
-    //             hardware_info: Some(hw_info.to_spec()),
-    //             subcomponent: Some(subcomponent.to_spec()),
-    //             metadata: Some(convert_args!(btreemap!(
-    //                 "key" => "value",
-    //                 "key2" => "value2",
-    //             ))),
-    //         }
-    //     );
-
-    //     Ok(())
-    // }
 
     #[test]
     fn test_validator() -> Result<()> {

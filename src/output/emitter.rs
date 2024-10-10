@@ -23,7 +23,7 @@ pub struct JsonEmitter {
 }
 
 impl JsonEmitter {
-    pub(crate) fn new(
+    pub fn new(
         timestamp_provider: Box<dyn config::TimestampProvider + Send + Sync + 'static>,
         writer: writer::WriterType,
     ) -> Self {

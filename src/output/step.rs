@@ -30,6 +30,8 @@ pub struct TestStep {
 }
 
 impl TestStep {
+    // note: this object is crate public but users should only construct
+    // instances through the `StartedTestRun.add_step` api
     pub(crate) fn new(id: &str, name: &str, run_emitter: Arc<emitter::JsonEmitter>) -> Self {
         TestStep {
             name: name.to_owned(),
