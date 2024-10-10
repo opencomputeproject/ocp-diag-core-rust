@@ -9,18 +9,14 @@ use anyhow::Result;
 
 use futures::FutureExt;
 use ocptv::output as tv;
-use tv::{
-    DutHardwareInfo, DutInfo, HardwareInfo, Measurement, MeasurementSeriesInfo, PlatformInfo,
-    SoftwareInfo, StartedTestStep, SubcomponentType, TestResult, TestRun, TestRunOutcome,
-    TestStatus,
-};
+use tv::{SubcomponentType, TestResult, TestStatus};
 
 async fn run_measure_step(
-    step: &StartedTestStep,
-    ram0: DutHardwareInfo,
+    step: &tv::StartedTestStep,
+    ram0: tv::DutHardwareInfo,
 ) -> Result<TestStatus, tv::OcptvError> {
     step.add_measurement_with_details(
-        &Measurement::builder("temp0", 100.5.into())
+        &tv::Measurement::builder("temp0", 100.5.into())
             .unit("F")
             .hardware_info(&ram0)
             .subcomponent(&tv::Subcomponent::builder("chip0").build())
@@ -29,7 +25,7 @@ async fn run_measure_step(
     .await?;
 
     let chip1_temp = step.add_measurement_series_with_details(
-        MeasurementSeriesInfo::builder("temp1")
+        tv::MeasurementSeriesInfo::builder("temp1")
             .unit("C")
             .hardware_info(&ram0)
             .subcomponent(
@@ -61,13 +57,13 @@ async fn run_measure_step(
 /// components specified. The measurements reference the hardware items.
 #[tokio::main]
 async fn main() -> Result<()> {
-    let mut dut = DutInfo::builder("dut0")
+    let mut dut = tv::DutInfo::builder("dut0")
         .name("host0.example.com")
-        .add_platform_info(&PlatformInfo::new("memory-optimized"))
+        .add_platform_info(&tv::PlatformInfo::new("memory-optimized"))
         .build();
 
     dut.add_software_info(
-        SoftwareInfo::builder("bmc0")
+        tv::SoftwareInfo::builder("bmc0")
             .software_type(tv::SoftwareType::Firmware)
             .version("10")
             .revision("11")
@@ -76,7 +72,7 @@ async fn main() -> Result<()> {
     );
 
     let ram0 = dut.add_hardware_info(
-        HardwareInfo::builder("ram0")
+        tv::HardwareInfo::builder("ram0")
             .version("1")
             .revision("2")
             .location("MB/DIMM_A1")
@@ -90,8 +86,7 @@ async fn main() -> Result<()> {
             .build(),
     );
 
-    #[cfg(feature = "boxed-scopes")]
-    TestRun::builder("simple measurement", "1.0")
+    tv::TestRun::builder("simple measurement", "1.0")
         .build()
         .scope(dut, |r| {
             async move {
@@ -99,7 +94,7 @@ async fn main() -> Result<()> {
                     .scope(|s| run_measure_step(s, ram0).boxed())
                     .await?;
 
-                Ok(TestRunOutcome {
+                Ok(tv::TestRunOutcome {
                     status: TestStatus::Complete,
                     result: TestResult::Pass,
                 })

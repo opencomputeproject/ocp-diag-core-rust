@@ -8,17 +8,14 @@
 use anyhow::Result;
 use futures::FutureExt;
 
-use ocptv::output::{self as tv, MeasurementSeriesInfo};
-use tv::{
-    DutInfo, Measurement, StartedTestStep, TestResult, TestRun, TestRunOutcome, TestStatus,
-    Validator, ValidatorType,
-};
+use ocptv::output as tv;
+use tv::{TestResult, TestStatus, ValidatorType};
 
-async fn run_measure_step(step: &StartedTestStep) -> Result<TestStatus, tv::OcptvError> {
+async fn run_measure_step(step: &tv::StartedTestStep) -> Result<TestStatus, tv::OcptvError> {
     step.add_measurement_with_details(
-        &Measurement::builder("temp", 40.into())
+        &tv::Measurement::builder("temp", 40.into())
             .add_validator(
-                &Validator::builder(ValidatorType::GreaterThan, 30.into())
+                &tv::Validator::builder(ValidatorType::GreaterThan, 30.into())
                     .name("gt_30")
                     .build(),
             )
@@ -27,9 +24,11 @@ async fn run_measure_step(step: &StartedTestStep) -> Result<TestStatus, tv::Ocpt
     .await?;
 
     step.add_measurement_series_with_details(
-        MeasurementSeriesInfo::builder("fan_speed")
+        tv::MeasurementSeriesInfo::builder("fan_speed")
             .unit("rpm")
-            .add_validator(&Validator::builder(ValidatorType::LessThanOrEqual, 3000.into()).build())
+            .add_validator(
+                &tv::Validator::builder(ValidatorType::LessThanOrEqual, 3000.into()).build(),
+            )
             .build(),
     )
     .scope(|s| {
@@ -43,7 +42,7 @@ async fn run_measure_step(step: &StartedTestStep) -> Result<TestStatus, tv::Ocpt
     .await?;
 
     step.add_measurement_with_details(
-        &Measurement::builder("fan_speed", 1200.into())
+        &tv::Measurement::builder("fan_speed", 1200.into())
             .unit("rpm")
             .build(),
     )
@@ -56,10 +55,9 @@ async fn run_measure_step(step: &StartedTestStep) -> Result<TestStatus, tv::Ocpt
 /// what the diagnostic package actually validated.
 #[tokio::main]
 async fn main() -> Result<()> {
-    let dut = DutInfo::builder("dut0").build();
+    let dut = tv::DutInfo::builder("dut0").build();
 
-    #[cfg(feature = "boxed-scopes")]
-    TestRun::builder("simple measurement", "1.0")
+    tv::TestRun::builder("simple measurement", "1.0")
         .build()
         .scope(dut, |r| {
             async move {
@@ -67,7 +65,7 @@ async fn main() -> Result<()> {
                     .scope(|s| run_measure_step(s).boxed())
                     .await?;
 
-                Ok(TestRunOutcome {
+                Ok(tv::TestRunOutcome {
                     status: TestStatus::Complete,
                     result: TestResult::Pass,
                 })

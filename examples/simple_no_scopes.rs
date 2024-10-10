@@ -8,7 +8,7 @@ use anyhow::Result;
 
 use ocptv::ocptv_log_debug;
 use ocptv::output as tv;
-use tv::{DutInfo, TestResult, TestRun, TestStatus};
+use tv::{TestResult, TestStatus};
 
 /// Show that a run/step can be manually started and ended.
 ///
@@ -16,8 +16,8 @@ use tv::{DutInfo, TestResult, TestRun, TestStatus};
 /// artifacts in case of unhandled exceptions or code misuse.
 #[tokio::main]
 async fn main() -> Result<()> {
-    let dut = DutInfo::builder("dut0").build();
-    let run = TestRun::builder("no scopes", "1.0")
+    let dut = tv::DutInfo::builder("dut0").build();
+    let run = tv::TestRun::builder("no scopes", "1.0")
         .build()
         .start(dut)
         .await?;

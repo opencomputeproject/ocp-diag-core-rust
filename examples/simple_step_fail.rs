@@ -3,23 +3,21 @@
 // Use of this source code is governed by an MIT-style
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
-#![allow(warnings)]
 
 use anyhow::Result;
 use futures::FutureExt;
 
 use ocptv::ocptv_log_info;
 use ocptv::output as tv;
-use tv::{DutInfo, TestResult, TestRun, TestRunOutcome, TestStatus};
+use tv::{TestResult, TestStatus};
 
 /// Show a scoped run with scoped steps, everything starts at "with" time and
 /// ends automatically when the block ends (regardless of unhandled exceptions).
 #[tokio::main]
 async fn main() -> Result<()> {
-    let dut = DutInfo::builder("dut0").build();
+    let dut = tv::DutInfo::builder("dut0").build();
 
-    #[cfg(feature = "boxed-scopes")]
-    TestRun::builder("step fail", "1.0")
+    tv::TestRun::builder("step fail", "1.0")
         .build()
         .scope(dut, |r| {
             async move {
@@ -37,7 +35,7 @@ async fn main() -> Result<()> {
                     .scope(|_s| async move { Ok(TestStatus::Error) }.boxed())
                     .await?;
 
-                Ok(TestRunOutcome {
+                Ok(tv::TestRunOutcome {
                     status: TestStatus::Complete,
                     result: TestResult::Fail,
                 })

@@ -3,18 +3,17 @@
 // Use of this source code is governed by an MIT-style
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
-#![allow(warnings)]
 
 use anyhow::Result;
-
 use futures::FutureExt;
-use ocptv::output as tv;
-use tv::{DutInfo, Measurement, StartedTestStep, TestResult, TestRun, TestRunOutcome, TestStatus};
 
-async fn run_measure_step(step: &StartedTestStep) -> Result<TestStatus, tv::OcptvError> {
+use ocptv::output as tv;
+use tv::{TestResult, TestStatus};
+
+async fn run_measure_step(step: &tv::StartedTestStep) -> Result<TestStatus, tv::OcptvError> {
     step.add_measurement("temperature", 42.5.into()).await?;
     step.add_measurement_with_details(
-        &Measurement::builder("fan_speed", 1200.into())
+        &tv::Measurement::builder("fan_speed", 1200.into())
             .unit("rpm")
             .build(),
     )
@@ -26,10 +25,9 @@ async fn run_measure_step(step: &StartedTestStep) -> Result<TestStatus, tv::Ocpt
 /// Simple demo with some measurements taken but not referencing DUT hardware.
 #[tokio::main]
 async fn main() -> Result<()> {
-    let dut = DutInfo::builder("dut0").build();
+    let dut = tv::DutInfo::builder("dut0").build();
 
-    #[cfg(feature = "boxed-scopes")]
-    TestRun::builder("simple measurement", "1.0")
+    tv::TestRun::builder("simple measurement", "1.0")
         .build()
         .scope(dut, |r| {
             async move {
@@ -37,7 +35,7 @@ async fn main() -> Result<()> {
                     .scope(|s| run_measure_step(s).boxed())
                     .await?;
 
-                Ok(TestRunOutcome {
+                Ok(tv::TestRunOutcome {
                     status: TestStatus::Complete,
                     result: TestResult::Pass,
                 })

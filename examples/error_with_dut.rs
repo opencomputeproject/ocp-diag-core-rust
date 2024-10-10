@@ -3,28 +3,26 @@
 // Use of this source code is governed by an MIT-style
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
-#![allow(warnings)]
 
 use anyhow::Result;
 use futures::FutureExt;
 
 use ocptv::output as tv;
-use tv::{DutInfo, TestResult, TestRun, TestStatus};
-use tv::{SoftwareInfo, SoftwareType, TestRunOutcome};
+use tv::{SoftwareType, TestResult, TestStatus};
 
 /// Show outputting an error message, triggered by a specific software component of the DUT.
 #[tokio::main]
 async fn main() -> Result<()> {
-    let mut dut = DutInfo::builder("dut0").name("dut0.server.net").build();
+    let mut dut = tv::DutInfo::builder("dut0").name("dut0.server.net").build();
     let sw_info = dut.add_software_info(
-        SoftwareInfo::builder("bmc")
+        tv::SoftwareInfo::builder("bmc")
             .software_type(SoftwareType::Firmware)
             .version("2.5")
             .build(),
     );
 
     #[cfg(feature = "boxed-scopes")]
-    TestRun::builder("run error with dut", "1.0")
+    tv::TestRun::builder("run error with dut", "1.0")
         .build()
         .scope(dut, |r| {
             async move {
@@ -35,7 +33,7 @@ async fn main() -> Result<()> {
                 )
                 .await?;
 
-                Ok(TestRunOutcome {
+                Ok(tv::TestRunOutcome {
                     status: TestStatus::Complete,
                     result: TestResult::Fail,
                 })
