@@ -598,7 +598,7 @@ impl StartedTestStep {
     ) -> Result<(), tv::OcptvError> {
         self.step
             .emitter
-            .emit(&&spec::TestStepArtifactImpl::Diagnosis(
+            .emit(&spec::TestStepArtifactImpl::Diagnosis(
                 diagnosis.to_artifact(),
             ))
             .await?;
