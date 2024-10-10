@@ -9,14 +9,26 @@ use std::collections::BTreeMap;
 
 use crate::output as tv;
 use crate::spec;
+use tv::trait_ext::VecExt;
 
+// TODO: docs
+#[derive(Clone, Debug, PartialEq, Default)]
+pub enum Ident {
+    #[default]
+    Auto,
+    Exact(String),
+}
+
+/// TODO: docs
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct DutInfo {
     id: String,
     name: Option<String>,
-    platform_infos: Option<Vec<PlatformInfo>>,
-    software_infos: Option<Vec<SoftwareInfo>>,
-    hardware_infos: Option<Vec<HardwareInfo>>,
+
+    platform_infos: Vec<PlatformInfo>,
+    software_infos: Vec<DutSoftwareInfo>,
+    hardware_infos: Vec<DutHardwareInfo>,
+
     metadata: Option<BTreeMap<String, tv::Value>>,
 }
 
@@ -29,33 +41,53 @@ impl DutInfo {
         DutInfoBuilder::new(id).build()
     }
 
+    pub fn add_software_info(&mut self, info: SoftwareInfo) -> DutSoftwareInfo {
+        let id = match &info.id {
+            Ident::Auto => format!("{}_sw_{}", self.id, self.software_infos.len()),
+            Ident::Exact(v) => v.to_owned(),
+        };
+
+        let info = DutSoftwareInfo { id, source: info };
+        self.software_infos.push(info.clone());
+        info
+    }
+
+    pub fn add_hardware_info(&mut self, info: HardwareInfo) -> DutHardwareInfo {
+        let id = match &info.id {
+            Ident::Auto => format!("{}_hw_{}", self.id, self.hardware_infos.len()),
+            Ident::Exact(v) => v.to_owned(),
+        };
+
+        let info = DutHardwareInfo { id, source: info };
+        self.hardware_infos.push(info.clone());
+        info
+    }
+
+    pub fn software_info(&self, id: &str) -> Option<&DutSoftwareInfo> {
+        self.software_infos.iter().find(|si| si.id == id)
+    }
+
+    pub fn hardware_info(&self, id: &str) -> Option<&DutHardwareInfo> {
+        self.hardware_infos.iter().find(|si| si.id == id)
+    }
+
     pub(crate) fn to_spec(&self) -> spec::DutInfo {
         spec::DutInfo {
             id: self.id.clone(),
             name: self.name.clone(),
-            platform_infos: self
-                .platform_infos
-                .clone()
-                .map(|infos| infos.iter().map(|info| info.to_spec()).collect()),
-            software_infos: self
-                .software_infos
-                .clone()
-                .map(|infos| infos.iter().map(|info| info.to_spec()).collect()),
-            hardware_infos: self
-                .hardware_infos
-                .clone()
-                .map(|infos| infos.iter().map(|info| info.to_spec()).collect()),
+            platform_infos: self.platform_infos.map_option(PlatformInfo::to_spec),
+            software_infos: self.software_infos.map_option(DutSoftwareInfo::to_spec),
+            hardware_infos: self.hardware_infos.map_option(DutHardwareInfo::to_spec),
             metadata: self.metadata.clone(),
         }
     }
 }
 
+#[derive(Default)]
 pub struct DutInfoBuilder {
     id: String,
     name: Option<String>,
-    platform_infos: Option<Vec<PlatformInfo>>,
-    software_infos: Option<Vec<SoftwareInfo>>,
-    hardware_infos: Option<Vec<HardwareInfo>>,
+    platform_infos: Vec<PlatformInfo>,
     metadata: Option<BTreeMap<String, tv::Value>>,
 }
 
@@ -63,48 +95,17 @@ impl DutInfoBuilder {
     pub fn new(id: &str) -> DutInfoBuilder {
         DutInfoBuilder {
             id: id.to_string(),
-            name: None,
-            platform_infos: None,
-            software_infos: None,
-            hardware_infos: None,
-            metadata: None,
+            ..Default::default()
         }
     }
+
     pub fn name(mut self, value: &str) -> DutInfoBuilder {
         self.name = Some(value.to_string());
         self
     }
 
     pub fn add_platform_info(mut self, platform_info: &PlatformInfo) -> DutInfoBuilder {
-        self.platform_infos = match self.platform_infos {
-            Some(mut platform_infos) => {
-                platform_infos.push(platform_info.clone());
-                Some(platform_infos)
-            }
-            None => Some(vec![platform_info.clone()]),
-        };
-        self
-    }
-
-    pub fn add_software_info(mut self, software_info: &SoftwareInfo) -> DutInfoBuilder {
-        self.software_infos = match self.software_infos {
-            Some(mut software_infos) => {
-                software_infos.push(software_info.clone());
-                Some(software_infos)
-            }
-            None => Some(vec![software_info.clone()]),
-        };
-        self
-    }
-
-    pub fn add_hardware_info(mut self, hardware_info: &HardwareInfo) -> DutInfoBuilder {
-        self.hardware_infos = match self.hardware_infos {
-            Some(mut hardware_infos) => {
-                hardware_infos.push(hardware_info.clone());
-                Some(hardware_infos)
-            }
-            None => Some(vec![hardware_info.clone()]),
-        };
+        self.platform_infos.push(platform_info.clone());
         self
     }
 
@@ -126,144 +127,8 @@ impl DutInfoBuilder {
             id: self.id,
             name: self.name,
             platform_infos: self.platform_infos,
-            software_infos: self.software_infos,
-            hardware_infos: self.hardware_infos,
             metadata: self.metadata,
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct HardwareInfo {
-    id: String,
-    name: String,
-    version: Option<String>,
-    revision: Option<String>,
-    location: Option<String>,
-    serial_no: Option<String>,
-    part_no: Option<String>,
-    manufacturer: Option<String>,
-    manufacturer_part_no: Option<String>,
-    odata_id: Option<String>,
-    computer_system: Option<String>,
-    manager: Option<String>,
-}
-
-impl HardwareInfo {
-    pub fn builder(id: &str, name: &str) -> HardwareInfoBuilder {
-        HardwareInfoBuilder::new(id, name)
-    }
-
-    pub fn to_spec(&self) -> spec::HardwareInfo {
-        spec::HardwareInfo {
-            id: self.id.clone(),
-            name: self.name.clone(),
-            version: self.version.clone(),
-            revision: self.revision.clone(),
-            location: self.location.clone(),
-            serial_no: self.serial_no.clone(),
-            part_no: self.part_no.clone(),
-            manufacturer: self.manufacturer.clone(),
-            manufacturer_part_no: self.manufacturer_part_no.clone(),
-            odata_id: self.odata_id.clone(),
-            computer_system: self.computer_system.clone(),
-            manager: self.manager.clone(),
-        }
-    }
-
-    pub fn id(&self) -> &str {
-        &self.id
-    }
-}
-
-#[derive(Debug)]
-pub struct HardwareInfoBuilder {
-    id: String,
-    name: String,
-    version: Option<String>,
-    revision: Option<String>,
-    location: Option<String>,
-    serial_no: Option<String>,
-    part_no: Option<String>,
-    manufacturer: Option<String>,
-    manufacturer_part_no: Option<String>,
-    odata_id: Option<String>,
-    computer_system: Option<String>,
-    manager: Option<String>,
-}
-
-impl HardwareInfoBuilder {
-    fn new(id: &str, name: &str) -> Self {
-        HardwareInfoBuilder {
-            id: id.to_string(),
-            name: name.to_string(),
-            version: None,
-            revision: None,
-            location: None,
-            serial_no: None,
-            part_no: None,
-            manufacturer: None,
-            manufacturer_part_no: None,
-            odata_id: None,
-            computer_system: None,
-            manager: None,
-        }
-    }
-    pub fn version(mut self, value: &str) -> HardwareInfoBuilder {
-        self.version = Some(value.to_string());
-        self
-    }
-    pub fn revision(mut self, value: &str) -> HardwareInfoBuilder {
-        self.revision = Some(value.to_string());
-        self
-    }
-    pub fn location(mut self, value: &str) -> HardwareInfoBuilder {
-        self.location = Some(value.to_string());
-        self
-    }
-    pub fn serial_no(mut self, value: &str) -> HardwareInfoBuilder {
-        self.serial_no = Some(value.to_string());
-        self
-    }
-    pub fn part_no(mut self, value: &str) -> HardwareInfoBuilder {
-        self.part_no = Some(value.to_string());
-        self
-    }
-    pub fn manufacturer(mut self, value: &str) -> HardwareInfoBuilder {
-        self.manufacturer = Some(value.to_string());
-        self
-    }
-    pub fn manufacturer_part_no(mut self, value: &str) -> HardwareInfoBuilder {
-        self.manufacturer_part_no = Some(value.to_string());
-        self
-    }
-    pub fn odata_id(mut self, value: &str) -> HardwareInfoBuilder {
-        self.odata_id = Some(value.to_string());
-        self
-    }
-    pub fn computer_system(mut self, value: &str) -> HardwareInfoBuilder {
-        self.computer_system = Some(value.to_string());
-        self
-    }
-    pub fn manager(mut self, value: &str) -> HardwareInfoBuilder {
-        self.manager = Some(value.to_string());
-        self
-    }
-
-    pub fn build(self) -> HardwareInfo {
-        HardwareInfo {
-            id: self.id,
-            name: self.name,
-            version: self.version,
-            revision: self.revision,
-            location: self.location,
-            serial_no: self.serial_no,
-            part_no: self.part_no,
-            manufacturer: self.manufacturer,
-            manufacturer_part_no: self.manufacturer_part_no,
-            odata_id: self.odata_id,
-            computer_system: self.computer_system,
-            manager: self.manager,
+            ..Default::default()
         }
     }
 }
@@ -345,6 +210,12 @@ pub struct PlatformInfo {
 }
 
 impl PlatformInfo {
+    pub fn new(info: &str) -> Self {
+        Self {
+            info: info.to_owned(),
+        }
+    }
+
     pub fn builder(info: &str) -> PlatformInfoBuilder {
         PlatformInfoBuilder::new(info)
     }
@@ -373,9 +244,9 @@ impl PlatformInfoBuilder {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct SoftwareInfo {
-    id: String,
+    id: tv::Ident,
     name: String,
     version: Option<String>,
     revision: Option<String>,
@@ -384,25 +255,41 @@ pub struct SoftwareInfo {
 }
 
 impl SoftwareInfo {
-    pub fn builder(id: &str, name: &str) -> SoftwareInfoBuilder {
-        SoftwareInfoBuilder::new(id, name)
+    pub fn builder(name: &str) -> SoftwareInfoBuilder {
+        SoftwareInfoBuilder::new(name)
     }
+}
 
-    pub fn to_spec(&self) -> spec::SoftwareInfo {
+#[derive(Debug, Clone)]
+pub struct DutSoftwareInfo {
+    id: String,
+    source: SoftwareInfo,
+}
+
+impl DutSoftwareInfo {
+    pub(crate) fn to_spec(&self) -> spec::SoftwareInfo {
+        let src = &self.source;
+
         spec::SoftwareInfo {
-            id: self.id.clone(),
-            name: self.name.clone(),
-            version: self.version.clone(),
-            revision: self.revision.clone(),
-            software_type: self.software_type.clone(),
-            computer_system: self.computer_system.clone(),
+            id: self.id.to_owned(),
+            name: src.name.clone(),
+            version: src.version.clone(),
+            revision: src.revision.clone(),
+            software_type: src.software_type.clone(),
+            computer_system: src.computer_system.clone(),
         }
     }
 }
 
-#[derive(Debug)]
+impl PartialEq for DutSoftwareInfo {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
+}
+
+#[derive(Debug, Default)]
 pub struct SoftwareInfoBuilder {
-    id: String,
+    id: tv::Ident,
     name: String,
     version: Option<String>,
     revision: Option<String>,
@@ -411,28 +298,34 @@ pub struct SoftwareInfoBuilder {
 }
 
 impl SoftwareInfoBuilder {
-    fn new(id: &str, name: &str) -> Self {
+    fn new(name: &str) -> Self {
         SoftwareInfoBuilder {
-            id: id.to_string(),
+            id: Ident::Auto,
             name: name.to_string(),
-            version: None,
-            revision: None,
-            software_type: None,
-            computer_system: None,
+            ..Default::default()
         }
     }
+
+    pub fn id(mut self, value: tv::Ident) -> SoftwareInfoBuilder {
+        self.id = value;
+        self
+    }
+
     pub fn version(mut self, value: &str) -> SoftwareInfoBuilder {
         self.version = Some(value.to_string());
         self
     }
+
     pub fn revision(mut self, value: &str) -> SoftwareInfoBuilder {
         self.revision = Some(value.to_string());
         self
     }
+
     pub fn software_type(mut self, value: spec::SoftwareType) -> SoftwareInfoBuilder {
         self.software_type = Some(value);
         self
     }
+
     pub fn computer_system(mut self, value: &str) -> SoftwareInfoBuilder {
         self.computer_system = Some(value.to_string());
         self
@@ -446,6 +339,162 @@ impl SoftwareInfoBuilder {
             revision: self.revision,
             software_type: self.software_type,
             computer_system: self.computer_system,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct HardwareInfo {
+    id: Ident,
+    name: String,
+
+    version: Option<String>,
+    revision: Option<String>,
+    location: Option<String>,
+    serial_no: Option<String>,
+    part_no: Option<String>,
+    // TODO: missing part_type
+    manufacturer: Option<String>,
+    manufacturer_part_no: Option<String>,
+    odata_id: Option<String>,
+    computer_system: Option<String>,
+    manager: Option<String>,
+}
+
+impl HardwareInfo {
+    pub fn builder(name: &str) -> HardwareInfoBuilder {
+        HardwareInfoBuilder::new(name)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct DutHardwareInfo {
+    id: String,
+    source: HardwareInfo,
+}
+
+impl DutHardwareInfo {
+    pub(crate) fn to_spec(&self) -> spec::HardwareInfo {
+        let src = &self.source;
+
+        spec::HardwareInfo {
+            id: self.id.clone(),
+            name: src.name.clone(),
+            version: src.version.clone(),
+            revision: src.revision.clone(),
+            location: src.location.clone(),
+            serial_no: src.serial_no.clone(),
+            part_no: src.part_no.clone(),
+            manufacturer: src.manufacturer.clone(),
+            manufacturer_part_no: src.manufacturer_part_no.clone(),
+            odata_id: src.odata_id.clone(),
+            computer_system: src.computer_system.clone(),
+            manager: src.manager.clone(),
+        }
+    }
+}
+
+impl PartialEq for DutHardwareInfo {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct HardwareInfoBuilder {
+    id: tv::Ident,
+    name: String,
+
+    version: Option<String>,
+    revision: Option<String>,
+    location: Option<String>,
+    serial_no: Option<String>,
+    part_no: Option<String>,
+    manufacturer: Option<String>,
+    manufacturer_part_no: Option<String>,
+    odata_id: Option<String>,
+    computer_system: Option<String>,
+    manager: Option<String>,
+}
+
+impl HardwareInfoBuilder {
+    fn new(name: &str) -> Self {
+        HardwareInfoBuilder {
+            id: Ident::Auto,
+            name: name.to_string(),
+            ..Default::default()
+        }
+    }
+
+    pub fn id(mut self, value: tv::Ident) -> HardwareInfoBuilder {
+        self.id = value;
+        self
+    }
+
+    pub fn version(mut self, value: &str) -> HardwareInfoBuilder {
+        self.version = Some(value.to_string());
+        self
+    }
+
+    pub fn revision(mut self, value: &str) -> HardwareInfoBuilder {
+        self.revision = Some(value.to_string());
+        self
+    }
+
+    pub fn location(mut self, value: &str) -> HardwareInfoBuilder {
+        self.location = Some(value.to_string());
+        self
+    }
+
+    pub fn serial_no(mut self, value: &str) -> HardwareInfoBuilder {
+        self.serial_no = Some(value.to_string());
+        self
+    }
+
+    pub fn part_no(mut self, value: &str) -> HardwareInfoBuilder {
+        self.part_no = Some(value.to_string());
+        self
+    }
+
+    pub fn manufacturer(mut self, value: &str) -> HardwareInfoBuilder {
+        self.manufacturer = Some(value.to_string());
+        self
+    }
+
+    pub fn manufacturer_part_no(mut self, value: &str) -> HardwareInfoBuilder {
+        self.manufacturer_part_no = Some(value.to_string());
+        self
+    }
+
+    pub fn odata_id(mut self, value: &str) -> HardwareInfoBuilder {
+        self.odata_id = Some(value.to_string());
+        self
+    }
+
+    pub fn computer_system(mut self, value: &str) -> HardwareInfoBuilder {
+        self.computer_system = Some(value.to_string());
+        self
+    }
+
+    pub fn manager(mut self, value: &str) -> HardwareInfoBuilder {
+        self.manager = Some(value.to_string());
+        self
+    }
+
+    pub fn build(self) -> HardwareInfo {
+        HardwareInfo {
+            id: self.id,
+            name: self.name,
+            version: self.version,
+            revision: self.revision,
+            location: self.location,
+            serial_no: self.serial_no,
+            part_no: self.part_no,
+            manufacturer: self.manufacturer,
+            manufacturer_part_no: self.manufacturer_part_no,
+            odata_id: self.odata_id,
+            computer_system: self.computer_system,
+            manager: self.manager,
         }
     }
 }
@@ -465,42 +514,38 @@ mod tests {
 
     #[test]
     fn test_dut_builder() -> Result<()> {
-        let platform = PlatformInfo::builder("platform_info").build();
-        let software = SoftwareInfo::builder("software_id", "name").build();
-        let hardware = HardwareInfo::builder("hardware_id", "name").build();
-        let dut = DutInfo::builder("1234")
-            .name("DUT")
+        let mut dut = DutInfo::builder("1234")
+            .name("dut")
             .add_metadata("key", "value".into())
             .add_metadata("key2", "value2".into())
-            .add_hardware_info(&hardware)
-            .add_hardware_info(&hardware)
-            .add_platform_info(&platform)
-            .add_platform_info(&platform)
-            .add_software_info(&software)
-            .add_software_info(&software)
+            .add_platform_info(&PlatformInfo::builder("platform_info").build())
             .build();
+
+        dut.add_software_info(
+            SoftwareInfo::builder("name")
+                .id(Ident::Exact("software_id".to_owned()))
+                .build(),
+        );
+
+        dut.add_hardware_info(
+            HardwareInfo::builder("name")
+                .id(Ident::Exact("hardware_id".to_owned()))
+                .build(),
+        );
 
         let spec_dut = dut.to_spec();
 
         assert_eq!(spec_dut.id, "1234");
-        assert_eq!(spec_dut.name, Some("DUT".to_owned()));
+        assert_eq!(spec_dut.name, Some("dut".to_owned()));
 
-        match spec_dut.metadata {
-            Some(m) => {
-                assert_eq!(m["key"], "value");
-                assert_eq!(m["key2"], "value2");
-            }
-            _ => bail!("metadata is empty"),
-        }
-
-        match spec_dut.hardware_infos {
+        match spec_dut.platform_infos {
             Some(infos) => match infos.first() {
                 Some(info) => {
-                    assert_eq!(info.id, "hardware_id");
+                    assert_eq!(info.info, "platform_info");
                 }
-                _ => bail!("hardware_infos is empty"),
+                _ => bail!("platform_infos is empty"),
             },
-            _ => bail!("hardware_infos is missing"),
+            _ => bail!("platform_infos is missing"),
         }
 
         match spec_dut.software_infos {
@@ -513,14 +558,22 @@ mod tests {
             _ => bail!("software_infos is missing"),
         }
 
-        match spec_dut.platform_infos {
+        match spec_dut.hardware_infos {
             Some(infos) => match infos.first() {
                 Some(info) => {
-                    assert_eq!(info.info, "platform_info");
+                    assert_eq!(info.id, "hardware_id");
                 }
-                _ => bail!("platform_infos is empty"),
+                _ => bail!("hardware_infos is empty"),
             },
-            _ => bail!("platform_infos is missing"),
+            _ => bail!("hardware_infos is missing"),
+        }
+
+        match spec_dut.metadata {
+            Some(m) => {
+                assert_eq!(m["key"], "value");
+                assert_eq!(m["key2"], "value2");
+            }
+            _ => bail!("metadata is empty"),
         }
 
         Ok(())
@@ -528,18 +581,22 @@ mod tests {
 
     #[test]
     fn test_hardware_info() -> Result<()> {
-        let info = HardwareInfo::builder("hardware_id", "hardware_name")
-            .version("version")
-            .revision("revision")
-            .location("location")
-            .serial_no("serial_no")
-            .part_no("part_no")
-            .manufacturer("manufacturer")
-            .manufacturer_part_no("manufacturer_part_no")
-            .odata_id("odata_id")
-            .computer_system("computer_system")
-            .manager("manager")
-            .build();
+        let mut dut = DutInfo::new("dut0");
+        let info = dut.add_hardware_info(
+            HardwareInfo::builder("hardware_name")
+                .id(Ident::Exact("hardware_id".to_owned()))
+                .version("version")
+                .revision("revision")
+                .location("location")
+                .serial_no("serial_no")
+                .part_no("part_no")
+                .manufacturer("manufacturer")
+                .manufacturer_part_no("manufacturer_part_no")
+                .odata_id("odata_id")
+                .computer_system("computer_system")
+                .manager("manager")
+                .build(),
+        );
 
         let spec_hwinfo = info.to_spec();
 
@@ -567,12 +624,16 @@ mod tests {
 
     #[test]
     fn test_software_info() -> Result<()> {
-        let info = SoftwareInfo::builder("software_id", "name")
-            .version("version")
-            .revision("revision")
-            .software_type(spec::SoftwareType::Application)
-            .computer_system("system")
-            .build();
+        let mut dut = DutInfo::new("dut0");
+        let info = dut.add_software_info(
+            SoftwareInfo::builder("name")
+                .id(Ident::Exact("software_id".to_owned()))
+                .version("version")
+                .revision("revision")
+                .software_type(spec::SoftwareType::Application)
+                .computer_system("system")
+                .build(),
+        );
 
         let spec_swinfo = info.to_spec();
 
@@ -590,9 +651,15 @@ mod tests {
     }
 
     #[test]
-    fn test_platform_info() -> Result<()> {
-        let info = PlatformInfo::builder("info").build();
+    fn test_platform_info_new() -> Result<()> {
+        let info = PlatformInfo::new("info");
+        assert_eq!(info.to_spec().info, "info");
+        Ok(())
+    }
 
+    #[test]
+    fn test_platform_info_builder() -> Result<()> {
+        let info = PlatformInfo::builder("info").build();
         assert_eq!(info.to_spec().info, "info");
         Ok(())
     }
@@ -616,6 +683,24 @@ mod tests {
             spec_subcomponent.subcomponent_type,
             Some(spec::SubcomponentType::Asic)
         );
+
+        Ok(())
+    }
+
+    /// 100% coverage test, since there's no way to exclude code
+    #[test]
+    fn test_infos_eq() -> Result<()> {
+        let sw = DutSoftwareInfo {
+            id: "sw0".to_owned(),
+            source: SoftwareInfo::builder("sw").build(),
+        };
+        assert_eq!(sw, sw);
+
+        let hw = DutHardwareInfo {
+            id: "hw0".to_owned(),
+            source: HardwareInfo::builder("hw").build(),
+        };
+        assert_eq!(hw, hw);
 
         Ok(())
     }

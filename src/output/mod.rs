@@ -15,22 +15,26 @@ mod macros;
 mod measure;
 mod run;
 mod step;
+mod trait_ext;
 mod writer;
 
 pub use crate::spec::{
-    DiagnosisType, LogSeverity, SourceLocation, TestResult, TestStatus, ValidatorType, SPEC_VERSION,
+    DiagnosisType, LogSeverity, SoftwareType, SubcomponentType, TestResult, TestStatus,
+    ValidatorType, SPEC_VERSION,
 };
 pub use config::{Config, ConfigBuilder, TimestampProvider};
 pub use diagnosis::{Diagnosis, DiagnosisBuilder};
 pub use dut::{
-    DutInfo, DutInfoBuilder, HardwareInfo, HardwareInfoBuilder, PlatformInfo, PlatformInfoBuilder,
-    SoftwareInfo, SoftwareInfoBuilder, Subcomponent, SubcomponentBuilder,
+    DutHardwareInfo, DutInfo, DutInfoBuilder, DutSoftwareInfo, HardwareInfo, HardwareInfoBuilder,
+    Ident, PlatformInfo, PlatformInfoBuilder, SoftwareInfo, SoftwareInfoBuilder, Subcomponent,
+    SubcomponentBuilder,
 };
 pub use error::{Error, ErrorBuilder};
 pub use log::{Log, LogBuilder};
 pub use measure::{
-    Measurement, MeasurementBuilder, MeasurementSeries, MeasurementSeriesStart,
-    MeasurementSeriesStartBuilder, StartedMeasurementSeries, Validator, ValidatorBuilder,
+    Measurement, MeasurementBuilder, MeasurementSeries, MeasurementSeriesElemDetails,
+    MeasurementSeriesInfo, MeasurementSeriesInfoBuilder, StartedMeasurementSeries, Validator,
+    ValidatorBuilder,
 };
 pub use run::{StartedTestRun, TestRun, TestRunBuilder, TestRunOutcome};
 pub use step::{StartedTestStep, TestStep};

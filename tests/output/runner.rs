@@ -12,16 +12,18 @@ use assert_json_diff::{assert_json_eq, assert_json_include};
 use futures::future::BoxFuture;
 use futures::future::Future;
 use futures::FutureExt;
-use ocptv::output::Diagnosis;
 use serde_json::json;
 use tokio::sync::Mutex;
 
 use ocptv::output as tv;
 use ocptv::output::OcptvError;
+#[cfg(feature = "boxed-scopes")]
+use tv::TestRunOutcome;
 use tv::{
-    Config, DutInfo, Error, HardwareInfo, Log, LogSeverity, Measurement, MeasurementSeriesStart,
-    SoftwareInfo, StartedTestRun, StartedTestStep, Subcomponent, TestResult, TestRun,
-    TestRunBuilder, TestRunOutcome, TestStatus, TimestampProvider, Validator, ValidatorType,
+    Config, Diagnosis, DutInfo, Error, HardwareInfo, Ident, Log, LogSeverity, Measurement,
+    MeasurementSeriesElemDetails, MeasurementSeriesInfo, SoftwareInfo, SoftwareType,
+    StartedTestRun, StartedTestStep, Subcomponent, TestResult, TestRun, TestRunBuilder, TestStatus,
+    TimestampProvider, Validator, ValidatorType,
 };
 
 const DATETIME: chrono::DateTime<chrono::offset::Utc> = chrono::DateTime::from_timestamp_nanos(0);
@@ -53,7 +55,18 @@ fn json_run_default_start() -> serde_json::Value {
         "testRunArtifact": {
             "testRunStart": {
                 "dutInfo": {
-                    "dutInfoId": "dut_id"
+                    "dutInfoId": "dut_id",
+                    "softwareInfos": [{
+                        "softwareInfoId": "sw0",
+                        "name": "ubuntu",
+                        "version": "22",
+                        "softwareType": "SYSTEM",
+                    }],
+                    "hardwareInfos": [{
+                        "hardwareInfoId": "hw0",
+                        "name": "fan",
+                        "location": "board0/fan"
+                    }]
                 },
                 "name": "run_name",
                 "parameters": {},
@@ -83,7 +96,7 @@ fn json_step_default_start() -> serde_json::Value {
     // seqno for the default test run start is always 2
     json!({
         "testStepArtifact": {
-            "testStepId": "step_0",
+            "testStepId": "step0",
             "testStepStart": {
                 "name": "first step"
             }
@@ -96,7 +109,7 @@ fn json_step_default_start() -> serde_json::Value {
 fn json_step_complete(seqno: i32) -> serde_json::Value {
     json!({
         "testStepArtifact": {
-            "testStepId": "step_0",
+            "testStepId": "step0",
             "testStepEnd": {
                 "status": "COMPLETE"
             }
@@ -109,11 +122,25 @@ fn json_step_complete(seqno: i32) -> serde_json::Value {
 async fn check_output<F, R>(expected: &[serde_json::Value], test_fn: F) -> Result<()>
 where
     R: Future<Output = Result<()>>,
-    F: FnOnce(TestRunBuilder) -> R,
+    F: FnOnce(TestRunBuilder, DutInfo) -> R,
 {
     let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
-    let dut = DutInfo::builder("dut_id").build();
-    let run_builder = TestRun::builder("run_name", &dut, "1.0").config(
+    let mut dut = DutInfo::builder("dut_id").build();
+    dut.add_software_info(
+        SoftwareInfo::builder("ubuntu")
+            .id(Ident::Exact("sw0".to_owned())) // name is important as fixture
+            .version("22")
+            .software_type(SoftwareType::System)
+            .build(),
+    );
+    dut.add_hardware_info(
+        HardwareInfo::builder("fan")
+            .id(Ident::Exact("hw0".to_owned()))
+            .location("board0/fan")
+            .build(),
+    );
+
+    let run_builder = TestRun::builder("run_name", "1.0").config(
         Config::builder()
             .with_buffer_output(Arc::clone(&buffer))
             .with_timestamp_provider(Box::new(FixedTsProvider {}))
@@ -121,7 +148,7 @@ where
     );
 
     // run the main test closure
-    test_fn(run_builder).await?;
+    test_fn(run_builder, dut).await?;
 
     for (i, entry) in buffer.lock().await.iter().enumerate() {
         let value = serde_json::from_str::<serde_json::Value>(entry)?;
@@ -133,13 +160,13 @@ where
 
 async fn check_output_run<F>(expected: &[serde_json::Value], test_fn: F) -> Result<()>
 where
-    F: for<'a> FnOnce(&'a StartedTestRun) -> BoxFuture<'a, Result<(), tv::OcptvError>> + Send,
+    F: for<'a> FnOnce(&'a StartedTestRun, DutInfo) -> BoxFuture<'a, Result<(), tv::OcptvError>>,
 {
-    check_output(expected, |run_builder| async {
+    check_output(expected, |run_builder, dut| async move {
         let run = run_builder.build();
 
-        let run = run.start().await?;
-        test_fn(&run).await?;
+        let run = run.start(dut.clone()).await?;
+        test_fn(&run, dut).await?;
         run.end(TestStatus::Complete, TestResult::Pass).await?;
 
         Ok(())
@@ -149,13 +176,13 @@ where
 
 async fn check_output_step<F>(expected: &[serde_json::Value], test_fn: F) -> Result<()>
 where
-    F: for<'a> FnOnce(&'a StartedTestStep) -> BoxFuture<'a, Result<(), tv::OcptvError>>,
+    F: for<'a> FnOnce(&'a StartedTestStep, DutInfo) -> BoxFuture<'a, Result<(), tv::OcptvError>>,
 {
-    check_output(expected, |run_builder| async {
-        let run = run_builder.build().start().await?;
+    check_output(expected, |run_builder, dut| async move {
+        let run = run_builder.build().start(dut.clone()).await?;
 
         let step = run.add_step("first step").start().await?;
-        test_fn(&step).await?;
+        test_fn(&step, dut).await?;
         step.end(TestStatus::Complete).await?;
 
         run.end(TestStatus::Complete, TestResult::Pass).await?;
@@ -173,7 +200,7 @@ async fn test_testrun_start_and_end() -> Result<()> {
         json_run_pass(2),
     ];
 
-    check_output_run(&expected, |_| async { Ok(()) }.boxed()).await
+    check_output_run(&expected, |_, _| async { Ok(()) }.boxed()).await
 }
 
 #[tokio::test]
@@ -194,9 +221,9 @@ async fn test_testrun_with_log() -> Result<()> {
         json_run_pass(3),
     ];
 
-    check_output_run(&expected, |run| {
+    check_output_run(&expected, |r, _| {
         async {
-            run.add_log(
+            r.add_log(
                 LogSeverity::Info,
                 "This is a log message with INFO severity",
             )
@@ -229,9 +256,9 @@ async fn test_testrun_with_log_with_details() -> Result<()> {
         json_run_pass(3),
     ];
 
-    check_output_run(&expected, |run| {
+    check_output_run(&expected, |r, _| {
         async {
-            run.add_log_with_details(
+            r.add_log_with_details(
                 &Log::builder("This is a log message with INFO severity")
                     .severity(LogSeverity::Info)
                     .source("file", 1)
@@ -261,8 +288,8 @@ async fn test_testrun_with_error() -> Result<()> {
         json_run_pass(3),
     ];
 
-    check_output_run(&expected, |run| {
-        async { run.add_error("symptom").await }.boxed()
+    check_output_run(&expected, |r, _| {
+        async { r.add_error("symptom").await }.boxed()
     })
     .await
 }
@@ -285,8 +312,8 @@ async fn test_testrun_with_error_with_message() -> Result<()> {
         json_run_pass(3),
     ];
 
-    check_output_run(&expected, |run| {
-        async { run.add_error_with_msg("symptom", "Error message").await }.boxed()
+    check_output_run(&expected, |r, _| {
+        async { r.add_error_with_msg("symptom", "Error message").await }.boxed()
     })
     .await
 }
@@ -300,10 +327,9 @@ async fn test_testrun_with_error_with_details() -> Result<()> {
             "testRunArtifact": {
                 "error": {
                     "message": "Error message",
-                    "softwareInfoIds": [{
-                        "name": "name",
-                        "softwareInfoId": "id"
-                    }],
+                    "softwareInfoIds": [
+                        "sw0"
+                    ],
                     "sourceLocation": {
                         "file": "file",
                         "line": 1
@@ -317,16 +343,110 @@ async fn test_testrun_with_error_with_details() -> Result<()> {
         json_run_pass(3),
     ];
 
-    check_output_run(&expected, |run| {
-        async {
-            run.add_error_with_details(
+    check_output_run(&expected, |r, dut| {
+        async move {
+            r.add_error_with_details(
                 &Error::builder("symptom")
                     .message("Error message")
                     .source("file", 1)
-                    .add_software_info(&SoftwareInfo::builder("id", "name").build())
+                    .add_software_info(dut.software_info("sw0").unwrap()) // must exist
                     .build(),
             )
             .await
+        }
+        .boxed()
+    })
+    .await
+}
+
+#[tokio::test]
+async fn test_testrun_with_error_before_start() -> Result<()> {
+    let expected = [
+        json_schema_version(),
+        json!({
+            "testRunArtifact": {
+                "error": {
+                    "symptom": "no-dut",
+                }
+            },
+            "sequenceNumber": 1,
+            "timestamp": DATETIME_FORMATTED
+        }),
+    ];
+
+    check_output(&expected, |run_builder, _| {
+        async move {
+            let run = run_builder.build();
+            run.add_error("no-dut").await?;
+
+            Ok(())
+        }
+        .boxed()
+    })
+    .await
+}
+
+#[tokio::test]
+async fn test_testrun_with_error_with_message_before_start() -> Result<()> {
+    let expected = [
+        json_schema_version(),
+        json!({
+            "testRunArtifact": {
+                "error": {
+                    "symptom": "no-dut",
+                    "message": "failed to find dut",
+                }
+            },
+            "sequenceNumber": 1,
+            "timestamp": DATETIME_FORMATTED
+        }),
+    ];
+
+    check_output(&expected, |run_builder, _| {
+        async move {
+            let run = run_builder.build();
+            run.add_error_with_msg("no-dut", "failed to find dut")
+                .await?;
+
+            Ok(())
+        }
+        .boxed()
+    })
+    .await
+}
+
+#[tokio::test]
+async fn test_testrun_with_error_with_details_before_start() -> Result<()> {
+    let expected = [
+        json_schema_version(),
+        json!({
+            "testRunArtifact": {
+                "error": {
+                    "message": "failed to find dut",
+                    "sourceLocation": {
+                        "file": "file",
+                        "line": 1
+                    },
+                    "symptom": "no-dut"
+                }
+            },
+            "sequenceNumber": 1,
+            "timestamp": DATETIME_FORMATTED
+        }),
+    ];
+
+    check_output(&expected, |run_builder, _| {
+        async move {
+            let run = run_builder.build();
+            run.add_error_with_details(
+                &Error::builder("no-dut")
+                    .message("failed to find dut")
+                    .source("file", 1)
+                    .build(),
+            )
+            .await?;
+
+            Ok(())
         }
         .boxed()
     })
@@ -352,10 +472,10 @@ async fn test_testrun_with_scope() -> Result<()> {
         json_run_pass(3),
     ];
 
-    check_output(&expected, |run_builder| async {
+    check_output(&expected, |run_builder, dut| async {
         let run = run_builder.build();
 
-        run.scope(|r| {
+        run.scope(dut, |r| {
             async move {
                 r.add_log(LogSeverity::Info, "First message").await?;
 
@@ -383,7 +503,7 @@ async fn test_testrun_with_step() -> Result<()> {
         json_run_pass(4),
     ];
 
-    check_output_step(&expected, |_| async { Ok(()) }.boxed()).await
+    check_output_step(&expected, |_, _| async { Ok(()) }.boxed()).await
 }
 
 #[tokio::test]
@@ -394,7 +514,7 @@ async fn test_testrun_step_log() -> Result<()> {
         json_step_default_start(),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "log": {
                     "message": "This is a log message with INFO severity",
                     "severity": "INFO"
@@ -407,9 +527,9 @@ async fn test_testrun_step_log() -> Result<()> {
         json_run_pass(5),
     ];
 
-    check_output_step(&expected, |step| {
+    check_output_step(&expected, |s, _| {
         async {
-            step.add_log(
+            s.add_log(
                 LogSeverity::Info,
                 "This is a log message with INFO severity",
             )
@@ -430,7 +550,7 @@ async fn test_testrun_step_log_with_details() -> Result<()> {
         json_step_default_start(),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "log": {
                     "message": "This is a log message with INFO severity",
                     "severity": "INFO",
@@ -447,9 +567,9 @@ async fn test_testrun_step_log_with_details() -> Result<()> {
         json_run_pass(5),
     ];
 
-    check_output_step(&expected, |step| {
+    check_output_step(&expected, |s, _| {
         async {
-            step.add_log_with_details(
+            s.add_log_with_details(
                 &Log::builder("This is a log message with INFO severity")
                     .severity(LogSeverity::Info)
                     .source("file", 1)
@@ -472,7 +592,7 @@ async fn test_testrun_step_error() -> Result<()> {
         json_step_default_start(),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "error": {
                     "symptom": "symptom"
                 }
@@ -484,9 +604,9 @@ async fn test_testrun_step_error() -> Result<()> {
         json_run_pass(5),
     ];
 
-    check_output_step(&expected, |step| {
+    check_output_step(&expected, |s, _| {
         async {
-            step.add_error("symptom").await?;
+            s.add_error("symptom").await?;
 
             Ok(())
         }
@@ -503,7 +623,7 @@ async fn test_testrun_step_error_with_message() -> Result<()> {
         json_step_default_start(),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "error": {
                     "message": "Error message",
                     "symptom": "symptom"
@@ -516,9 +636,9 @@ async fn test_testrun_step_error_with_message() -> Result<()> {
         json_run_pass(5),
     ];
 
-    check_output_step(&expected, |step| {
+    check_output_step(&expected, |s, _| {
         async {
-            step.add_error_with_msg("symptom", "Error message").await?;
+            s.add_error_with_msg("symptom", "Error message").await?;
 
             Ok(())
         }
@@ -535,13 +655,12 @@ async fn test_testrun_step_error_with_details() -> Result<()> {
         json_step_default_start(),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "error": {
                     "message": "Error message",
-                    "softwareInfoIds": [{
-                        "name": "name",
-                        "softwareInfoId": "id"
-                    }],
+                    "softwareInfoIds": [
+                        "sw0"
+                    ],
                     "sourceLocation": {
                         "file": "file",
                         "line": 1
@@ -556,13 +675,13 @@ async fn test_testrun_step_error_with_details() -> Result<()> {
         json_run_pass(5),
     ];
 
-    check_output_step(&expected, |step| {
-        async {
-            step.add_error_with_details(
+    check_output_step(&expected, |s, dut| {
+        async move {
+            s.add_error_with_details(
                 &Error::builder("symptom")
                     .message("Error message")
                     .source("file", 1)
-                    .add_software_info(&SoftwareInfo::builder("id", "name").build())
+                    .add_software_info(dut.software_info("sw0").unwrap())
                     .build(),
             )
             .await?;
@@ -583,7 +702,7 @@ async fn test_testrun_step_scope_log() -> Result<()> {
         json_step_default_start(),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "log": {
                     "message": "This is a log message with INFO severity",
                     "severity": "INFO"
@@ -596,9 +715,9 @@ async fn test_testrun_step_scope_log() -> Result<()> {
         json_run_pass(5),
     ];
 
-    check_output_run(&expected, |run| {
+    check_output_run(&expected, |r, _| {
         async {
-            run.add_step("first step")
+            r.add_step("first step")
                 .scope(|s| {
                     async move {
                         s.add_log(
@@ -626,7 +745,7 @@ async fn test_step_with_measurement() -> Result<()> {
         json_step_default_start(),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurement": {
                     "name": "name",
                     "value": 50
@@ -639,9 +758,9 @@ async fn test_step_with_measurement() -> Result<()> {
         json_run_pass(5),
     ];
 
-    check_output_step(&expected, |step| {
+    check_output_step(&expected, |s, _| {
         async {
-            step.add_measurement("name", 50.into()).await?;
+            s.add_measurement("name", 50.into()).await?;
 
             Ok(())
         }
@@ -658,21 +777,22 @@ async fn test_step_with_measurement_builder() -> Result<()> {
         json_step_default_start(),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurement": {
-                    "hardwareInfoId": "id",
-                    "metadata": {
-                        "key": "value"
-                    },
                     "name": "name",
-                    "subcomponent": {
-                        "name": "name"
-                    },
+                    "value": 50,
                     "validators": [{
                         "type": "EQUAL",
                         "value": 30
                     }],
-                    "value": 50
+                    "hardwareInfoId": "hw0",
+                    "subcomponent": {
+                        "name": "name"
+                    },
+                    "metadata": {
+                        "key": "value",
+                        "key2": "value2"
+                    }
                 }
             },
             "sequenceNumber": 3,
@@ -682,15 +802,18 @@ async fn test_step_with_measurement_builder() -> Result<()> {
         json_run_pass(5),
     ];
 
-    check_output_step(&expected, |step| {
-        async {
+    check_output_step(&expected, |s, dut| {
+        async move {
+            let hw_info = dut.hardware_info("hw0").unwrap(); // must exist
+
             let measurement = Measurement::builder("name", 50.into())
-                .hardware_info(&HardwareInfo::builder("id", "name").build())
                 .add_validator(&Validator::builder(ValidatorType::Equal, 30.into()).build())
                 .add_metadata("key", "value".into())
+                .add_metadata("key2", "value2".into())
+                .hardware_info(hw_info)
                 .subcomponent(&Subcomponent::builder("name").build())
                 .build();
-            step.add_measurement_with_details(&measurement).await?;
+            s.add_measurement_with_details(&measurement).await?;
 
             Ok(())
         }
@@ -707,9 +830,9 @@ async fn test_step_with_measurement_series() -> Result<()> {
         json_step_default_start(),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesStart": {
-                    "measurementSeriesId": "series_0",
+                    "measurementSeriesId": "step0_series0",
                     "name": "name"
                 }
             },
@@ -718,9 +841,9 @@ async fn test_step_with_measurement_series() -> Result<()> {
         }),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesEnd": {
-                    "measurementSeriesId": "series_0",
+                    "measurementSeriesId": "step0_series0",
                     "totalCount": 0
                 }
             },
@@ -731,9 +854,9 @@ async fn test_step_with_measurement_series() -> Result<()> {
         json_run_pass(6),
     ];
 
-    check_output_step(&expected, |step| {
+    check_output_step(&expected, |s, _| {
         async {
-            let series = step.add_measurement_series("name").start().await?;
+            let series = s.add_measurement_series("name").start().await?;
             series.end().await?;
 
             Ok(())
@@ -751,9 +874,9 @@ async fn test_step_with_multiple_measurement_series() -> Result<()> {
         json_step_default_start(),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesStart": {
-                    "measurementSeriesId": "series_0",
+                    "measurementSeriesId": "step0_series0",
                     "name": "name"
                 }
             },
@@ -762,9 +885,9 @@ async fn test_step_with_multiple_measurement_series() -> Result<()> {
         }),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesEnd": {
-                    "measurementSeriesId": "series_0",
+                    "measurementSeriesId": "step0_series0",
                     "totalCount": 0
                 }
             },
@@ -773,9 +896,9 @@ async fn test_step_with_multiple_measurement_series() -> Result<()> {
         }),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesStart": {
-                    "measurementSeriesId": "series_1",
+                    "measurementSeriesId": "step0_series1",
                     "name": "name"
                 }
             },
@@ -784,9 +907,9 @@ async fn test_step_with_multiple_measurement_series() -> Result<()> {
         }),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesEnd": {
-                    "measurementSeriesId": "series_1",
+                    "measurementSeriesId": "step0_series1",
                     "totalCount": 0
                 }
             },
@@ -797,12 +920,12 @@ async fn test_step_with_multiple_measurement_series() -> Result<()> {
         json_run_pass(8),
     ];
 
-    check_output_step(&expected, |step| {
+    check_output_step(&expected, |s, _| {
         async {
-            let series = step.add_measurement_series("name").start().await?;
+            let series = s.add_measurement_series("name").start().await?;
             series.end().await?;
 
-            let series_2 = step.add_measurement_series("name").start().await?;
+            let series_2 = s.add_measurement_series("name").start().await?;
             series_2.end().await?;
 
             Ok(())
@@ -820,73 +943,23 @@ async fn test_step_with_measurement_series_with_details() -> Result<()> {
         json_step_default_start(),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesStart": {
                     "measurementSeriesId": "series_id",
-                    "name": "name"
-                }
-            },
-            "sequenceNumber": 3,
-            "timestamp": DATETIME_FORMATTED
-        }),
-        json!({
-            "testStepArtifact": {
-                "testStepId": "step_0",
-                "measurementSeriesEnd": {
-                    "measurementSeriesId": "series_id", "totalCount": 0
-                }
-            },
-            "sequenceNumber": 4,
-            "timestamp": DATETIME_FORMATTED
-        }),
-        json_step_complete(5),
-        json_run_pass(6),
-    ];
-
-    check_output_step(&expected, |step| {
-        async {
-            let series = step
-                .add_measurement_series_with_details(MeasurementSeriesStart::new(
-                    "name",
-                    "series_id",
-                ))
-                .start()
-                .await?;
-            series.end().await?;
-
-            Ok(())
-        }
-        .boxed()
-    })
-    .await
-}
-
-#[tokio::test]
-async fn test_step_with_measurement_series_with_details_and_start_builder() -> Result<()> {
-    let expected = [
-        json_schema_version(),
-        json_run_default_start(),
-        json_step_default_start(),
-        json!({
-            "testStepArtifact": {
-                "testStepId": "step_0",
-                "measurementSeriesStart": {
-                    "hardwareInfoId": {
-                        "hardwareInfoId": "id",
-                        "name": "name"
-                    },
-                    "measurementSeriesId": "series_id",
-                    "metadata": {
-                        "key": "value"
-                    },
                     "name": "name",
-                    "subcomponent": {
-                        "name": "name"
-                    },
+                    "unit": "unit",
                     "validators": [{
                         "type": "EQUAL",
                         "value": 30
-                    }]
+                    }],
+                    "hardwareInfoId": "hw0",
+                    "subcomponent": {
+                        "name": "name"
+                    },
+                    "metadata": {
+                        "key": "value",
+                        "key2": "value2"
+                    }
                 }
             },
             "sequenceNumber": 3,
@@ -894,7 +967,7 @@ async fn test_step_with_measurement_series_with_details_and_start_builder() -> R
         }),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesEnd": {
                     "measurementSeriesId": "series_id",
                     "totalCount": 0
@@ -907,14 +980,19 @@ async fn test_step_with_measurement_series_with_details_and_start_builder() -> R
         json_run_pass(6),
     ];
 
-    check_output_step(&expected, |step| {
-        async {
-            let series = step
+    check_output_step(&expected, |s, dut| {
+        async move {
+            let hw_info = dut.hardware_info("hw0").unwrap(); // must exist
+
+            let series = s
                 .add_measurement_series_with_details(
-                    MeasurementSeriesStart::builder("name", "series_id")
+                    MeasurementSeriesInfo::builder("name")
+                        .id(Ident::Exact("series_id".to_owned()))
+                        .unit("unit")
                         .add_metadata("key", "value".into())
+                        .add_metadata("key2", "value2".into())
                         .add_validator(&Validator::builder(ValidatorType::Equal, 30.into()).build())
-                        .hardware_info(&HardwareInfo::builder("id", "name").build())
+                        .hardware_info(hw_info)
                         .subcomponent(&Subcomponent::builder("name").build())
                         .build(),
                 )
@@ -937,9 +1015,9 @@ async fn test_step_with_measurement_series_element() -> Result<()> {
         json_step_default_start(),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesStart": {
-                    "measurementSeriesId": "series_0",
+                    "measurementSeriesId": "step0_series0",
                     "name": "name"
                 }
             },
@@ -948,10 +1026,10 @@ async fn test_step_with_measurement_series_element() -> Result<()> {
         }),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesElement": {
                     "index": 0,
-                    "measurementSeriesId": "series_0",
+                    "measurementSeriesId": "step0_series0",
                     "value": 60,
                     "timestamp": DATETIME_FORMATTED
                 }
@@ -961,9 +1039,9 @@ async fn test_step_with_measurement_series_element() -> Result<()> {
         }),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesEnd": {
-                    "measurementSeriesId": "series_0",
+                    "measurementSeriesId": "step0_series0",
                     "totalCount": 1
                 }
             },
@@ -974,9 +1052,9 @@ async fn test_step_with_measurement_series_element() -> Result<()> {
         json_run_pass(7),
     ];
 
-    check_output_step(&expected, |step| {
+    check_output_step(&expected, |s, _| {
         async {
-            let series = step.add_measurement_series("name").start().await?;
+            let series = s.add_measurement_series("name").start().await?;
             series.add_measurement(60.into()).await?;
             series.end().await?;
 
@@ -995,9 +1073,9 @@ async fn test_step_with_measurement_series_element_index_no() -> Result<()> {
         json_step_default_start(),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesStart": {
-                    "measurementSeriesId": "series_0",
+                    "measurementSeriesId": "step0_series0",
                     "name": "name"
                 }
             },
@@ -1006,10 +1084,10 @@ async fn test_step_with_measurement_series_element_index_no() -> Result<()> {
         }),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesElement": {
                     "index": 0,
-                    "measurementSeriesId": "series_0",
+                    "measurementSeriesId": "step0_series0",
                     "value": 60,
                     "timestamp": DATETIME_FORMATTED
                 }
@@ -1019,10 +1097,10 @@ async fn test_step_with_measurement_series_element_index_no() -> Result<()> {
         }),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesElement": {
                     "index": 1,
-                    "measurementSeriesId": "series_0",
+                    "measurementSeriesId": "step0_series0",
                     "value": 70,
                     "timestamp": DATETIME_FORMATTED
                 }
@@ -1032,10 +1110,10 @@ async fn test_step_with_measurement_series_element_index_no() -> Result<()> {
         }),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesElement": {
                     "index": 2,
-                    "measurementSeriesId": "series_0",
+                    "measurementSeriesId": "step0_series0",
                     "value": 80,
                     "timestamp": DATETIME_FORMATTED
                 }
@@ -1045,9 +1123,9 @@ async fn test_step_with_measurement_series_element_index_no() -> Result<()> {
         }),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesEnd": {
-                    "measurementSeriesId": "series_0",
+                    "measurementSeriesId": "step0_series0",
                     "totalCount": 3
                 }
             },
@@ -1058,9 +1136,9 @@ async fn test_step_with_measurement_series_element_index_no() -> Result<()> {
         json_run_pass(9),
     ];
 
-    check_output_step(&expected, |step| {
+    check_output_step(&expected, |s, _| {
         async {
-            let series = step.add_measurement_series("name").start().await?;
+            let series = s.add_measurement_series("name").start().await?;
             // add more than one element to check the index increments correctly
             series.add_measurement(60.into()).await?;
             series.add_measurement(70.into()).await?;
@@ -1075,16 +1153,16 @@ async fn test_step_with_measurement_series_element_index_no() -> Result<()> {
 }
 
 #[tokio::test]
-async fn test_step_with_measurement_series_element_with_metadata() -> Result<()> {
+async fn test_step_with_measurement_series_element_with_details() -> Result<()> {
     let expected = [
         json_schema_version(),
         json_run_default_start(),
         json_step_default_start(),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesStart": {
-                    "measurementSeriesId": "series_0",
+                    "measurementSeriesId": "step0_series0",
                     "name": "name"
                 }
             },
@@ -1093,12 +1171,13 @@ async fn test_step_with_measurement_series_element_with_metadata() -> Result<()>
         }),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesElement": {
                     "index": 0,
-                    "measurementSeriesId": "series_0",
+                    "measurementSeriesId": "step0_series0",
                     "metadata": {
-                        "key": "value"
+                        "key": "value",
+                        "key2": "value2"
                     },
                     "value": 60,
                     "timestamp": DATETIME_FORMATTED,
@@ -1109,9 +1188,9 @@ async fn test_step_with_measurement_series_element_with_metadata() -> Result<()>
         }),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesEnd": {
-                    "measurementSeriesId": "series_0",
+                    "measurementSeriesId": "step0_series0",
                     "totalCount": 1
                 }
             },
@@ -1122,11 +1201,17 @@ async fn test_step_with_measurement_series_element_with_metadata() -> Result<()>
         json_run_pass(7),
     ];
 
-    check_output_step(&expected, |step| {
+    check_output_step(&expected, |s, _| {
         async {
-            let series = step.add_measurement_series("name").start().await?;
+            let series = s.add_measurement_series("name").start().await?;
             series
-                .add_measurement_with_metadata(60.into(), vec![("key", "value".into())])
+                .add_measurement_with_details(
+                    MeasurementSeriesElemDetails::builder(60.into())
+                        .timestamp(DATETIME.with_timezone(&chrono_tz::UTC))
+                        .add_metadata("key", "value".into())
+                        .add_metadata("key2", "value2".into())
+                        .build(),
+                )
                 .await?;
             series.end().await?;
 
@@ -1145,9 +1230,9 @@ async fn test_step_with_measurement_series_element_with_metadata_index_no() -> R
         json_step_default_start(),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesStart": {
-                    "measurementSeriesId": "series_0",
+                    "measurementSeriesId": "step0_series0",
                     "name": "name"
                 }
             },
@@ -1156,10 +1241,10 @@ async fn test_step_with_measurement_series_element_with_metadata_index_no() -> R
         }),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesElement": {
                     "index": 0,
-                    "measurementSeriesId": "series_0",
+                    "measurementSeriesId": "step0_series0",
                     "metadata": {"key": "value"},
                     "value": 60,
                     "timestamp": DATETIME_FORMATTED,
@@ -1170,10 +1255,10 @@ async fn test_step_with_measurement_series_element_with_metadata_index_no() -> R
         }),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesElement": {
                     "index": 1,
-                    "measurementSeriesId": "series_0",
+                    "measurementSeriesId": "step0_series0",
                     "metadata": {"key2": "value2"},
                     "value": 70,
                     "timestamp": DATETIME_FORMATTED,
@@ -1184,10 +1269,10 @@ async fn test_step_with_measurement_series_element_with_metadata_index_no() -> R
         }),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesElement": {
                     "index": 2,
-                    "measurementSeriesId": "series_0",
+                    "measurementSeriesId": "step0_series0",
                     "metadata": {"key3": "value3"},
                     "value": 80,
                     "timestamp": DATETIME_FORMATTED,
@@ -1198,9 +1283,9 @@ async fn test_step_with_measurement_series_element_with_metadata_index_no() -> R
         }),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesEnd": {
-                    "measurementSeriesId": "series_0",
+                    "measurementSeriesId": "step0_series0",
                     "totalCount": 3
                 }
             },
@@ -1211,18 +1296,30 @@ async fn test_step_with_measurement_series_element_with_metadata_index_no() -> R
         json_run_pass(9),
     ];
 
-    check_output_step(&expected, |step| {
+    check_output_step(&expected, |s, _| {
         async {
-            let series = step.add_measurement_series("name").start().await?;
+            let series = s.add_measurement_series("name").start().await?;
             // add more than one element to check the index increments correctly
             series
-                .add_measurement_with_metadata(60.into(), vec![("key", "value".into())])
+                .add_measurement_with_details(
+                    MeasurementSeriesElemDetails::builder(60.into())
+                        .add_metadata("key", "value".into())
+                        .build(),
+                )
                 .await?;
             series
-                .add_measurement_with_metadata(70.into(), vec![("key2", "value2".into())])
+                .add_measurement_with_details(
+                    MeasurementSeriesElemDetails::builder(70.into())
+                        .add_metadata("key2", "value2".into())
+                        .build(),
+                )
                 .await?;
             series
-                .add_measurement_with_metadata(80.into(), vec![("key3", "value3".into())])
+                .add_measurement_with_details(
+                    MeasurementSeriesElemDetails::builder(80.into())
+                        .add_metadata("key3", "value3".into())
+                        .build(),
+                )
                 .await?;
             series.end().await?;
 
@@ -1241,7 +1338,7 @@ async fn test_step_with_diagnosis() -> Result<()> {
         json_step_default_start(),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "diagnosis": {
                     "verdict": "verdict",
                     "type": "PASS"
@@ -1254,9 +1351,9 @@ async fn test_step_with_diagnosis() -> Result<()> {
         json_run_pass(5),
     ];
 
-    check_output_step(&expected, |step| {
+    check_output_step(&expected, |s, _| {
         async {
-            step.diagnosis("verdict", tv::DiagnosisType::Pass).await?;
+            s.diagnosis("verdict", tv::DiagnosisType::Pass).await?;
 
             Ok(())
         }
@@ -1273,15 +1370,15 @@ async fn test_step_with_diagnosis_builder() -> Result<()> {
         json_step_default_start(),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "diagnosis": {
-                    "hardwareInfoId": "id",
                     "verdict": "verdict",
                     "type": "PASS",
+                    "message": "message",
+                    "hardwareInfoId": "hw0",
                     "subcomponent": {
                         "name": "name"
                     },
-                    "message": "message"
                 }
             },
             "sequenceNumber": 3,
@@ -1291,14 +1388,14 @@ async fn test_step_with_diagnosis_builder() -> Result<()> {
         json_run_pass(5),
     ];
 
-    check_output_step(&expected, |step| {
-        async {
+    check_output_step(&expected, |s, dut| {
+        async move {
             let diagnosis = Diagnosis::builder("verdict", tv::DiagnosisType::Pass)
-                .hardware_info(&HardwareInfo::builder("id", "name").build())
+                .hardware_info(dut.hardware_info("hw0").unwrap()) // must exist
                 .subcomponent(&Subcomponent::builder("name").build())
                 .message("message")
                 .build();
-            step.diagnosis_with_details(&diagnosis).await?;
+            s.diagnosis_with_details(&diagnosis).await?;
 
             Ok(())
         }
@@ -1316,9 +1413,9 @@ async fn test_step_with_measurement_series_scope() -> Result<()> {
         json_step_default_start(),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesStart": {
-                    "measurementSeriesId": "series_0",
+                    "measurementSeriesId": "step0_series0",
                     "name": "name"
                 }
             },
@@ -1327,10 +1424,10 @@ async fn test_step_with_measurement_series_scope() -> Result<()> {
         }),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesElement": {
                     "index": 0,
-                    "measurementSeriesId": "series_0",
+                    "measurementSeriesId": "step0_series0",
                     "value": 60,
                     "timestamp": DATETIME_FORMATTED
                 }
@@ -1340,10 +1437,10 @@ async fn test_step_with_measurement_series_scope() -> Result<()> {
         }),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesElement": {
                     "index": 1,
-                    "measurementSeriesId": "series_0",
+                    "measurementSeriesId": "step0_series0",
                     "value": 70,
                     "timestamp": DATETIME_FORMATTED
                 }
@@ -1353,10 +1450,10 @@ async fn test_step_with_measurement_series_scope() -> Result<()> {
         }),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesElement": {
                     "index": 2,
-                    "measurementSeriesId": "series_0",
+                    "measurementSeriesId": "step0_series0",
                     "value": 80,
                     "timestamp": DATETIME_FORMATTED
                 }
@@ -1366,9 +1463,9 @@ async fn test_step_with_measurement_series_scope() -> Result<()> {
         }),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesEnd": {
-                    "measurementSeriesId": "series_0",
+                    "measurementSeriesId": "step0_series0",
                     "totalCount": 3
                 }
             },
@@ -1379,9 +1476,9 @@ async fn test_step_with_measurement_series_scope() -> Result<()> {
         json_run_pass(9),
     ];
 
-    check_output_step(&expected, |step| {
+    check_output_step(&expected, |s, _| {
         async {
-            let series = step.add_measurement_series("name");
+            let series = s.add_measurement_series("name");
             series
                 .scope(|s| {
                     async move {
@@ -1414,7 +1511,21 @@ async fn test_config_builder_with_file() -> Result<()> {
 
     let expected = [
         json_schema_version(),
-        json_run_default_start(),
+        json!({
+            "testRunArtifact": {
+                "testRunStart": {
+                    "dutInfo": {
+                        "dutInfoId": "dut_id"
+                    },
+                    "name": "run_name",
+                    "parameters": {},
+                    "version": "1.0",
+                    "commandLine": ""
+                }
+            },
+            "sequenceNumber": 1,
+            "timestamp": DATETIME_FORMATTED
+        }),
         json!({
             "testRunArtifact": {
                 "error": {
@@ -1433,7 +1544,7 @@ async fn test_config_builder_with_file() -> Result<()> {
 
     let dut = DutInfo::builder("dut_id").build();
 
-    let run = TestRun::builder("run_name", &dut, "1.0")
+    let run = TestRun::builder("run_name", "1.0")
         .config(
             Config::builder()
                 .timezone(chrono_tz::Europe::Rome)
@@ -1443,7 +1554,7 @@ async fn test_config_builder_with_file() -> Result<()> {
                 .build(),
         )
         .build()
-        .start()
+        .start(dut)
         .await?;
 
     run.add_error_with_msg("symptom", "Error message").await?;
@@ -1469,7 +1580,7 @@ async fn test_step_with_extension() -> Result<()> {
         json_step_default_start(),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "extension": {
                     "name": "extension",
                     "content": {
@@ -1496,9 +1607,9 @@ async fn test_step_with_extension() -> Result<()> {
         number_field: u32,
     }
 
-    check_output_step(&expected, |step| {
+    check_output_step(&expected, |s, _| {
         async {
-            step.extension(
+            s.add_extension(
                 "extension",
                 Ext {
                     r#type: "TestExtension".to_owned(),
@@ -1538,7 +1649,7 @@ async fn test_step_with_extension_which_fails() -> Result<()> {
 
     let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
     let dut = DutInfo::builder("dut_id").build();
-    let run = TestRun::builder("run_name", &dut, "1.0")
+    let run = TestRun::builder("run_name", "1.0")
         .config(
             Config::builder()
                 .with_buffer_output(Arc::clone(&buffer))
@@ -1546,11 +1657,11 @@ async fn test_step_with_extension_which_fails() -> Result<()> {
                 .build(),
         )
         .build()
-        .start()
+        .start(dut)
         .await?;
     let step = run.add_step("first step").start().await?;
 
-    let result = step.extension("extension", Ext { i: 0 }).await;
+    let result = step.add_extension("extension", Ext { i: 0 }).await;
 
     match result {
         Err(OcptvError::Format(e)) => {
@@ -1573,7 +1684,8 @@ async fn test_testrun_instantiation_with_new() -> Result<()> {
     ];
     let buffer: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
 
-    let run = TestRun::new("run_name", "dut_id", "1.0").start().await?;
+    let dut = DutInfo::builder("dut_id").build();
+    let run = TestRun::new("run_name", "1.0").start(dut).await?;
     run.end(TestStatus::Complete, TestResult::Pass).await?;
 
     for (idx, entry) in buffer.lock().await.iter().enumerate() {
@@ -1592,7 +1704,18 @@ async fn test_testrun_metadata() -> Result<()> {
             "testRunArtifact": {
                 "testRunStart": {
                     "dutInfo": {
-                        "dutInfoId": "dut_id"
+                        "dutInfoId": "dut_id",
+                        "softwareInfos": [{
+                            "softwareInfoId": "sw0",
+                            "name": "ubuntu",
+                            "version": "22",
+                            "softwareType": "SYSTEM",
+                        }],
+                        "hardwareInfos": [{
+                            "hardwareInfoId": "hw0",
+                            "name": "fan",
+                            "location": "board0/fan"
+                        }]
                     },
                     "metadata": {"key": "value"},
                     "name": "run_name",
@@ -1608,11 +1731,11 @@ async fn test_testrun_metadata() -> Result<()> {
         json_run_pass(2),
     ];
 
-    check_output(&expected, |run_builder| async {
+    check_output(&expected, |run_builder, dut| async {
         let run = run_builder
             .add_metadata("key", "value".into())
             .build()
-            .start()
+            .start(dut)
             .await?;
 
         run.end(TestStatus::Complete, TestResult::Pass).await?;
@@ -1630,7 +1753,18 @@ async fn test_testrun_builder() -> Result<()> {
                 "testRunStart": {
                     "commandLine": "cmd_line",
                     "dutInfo": {
-                        "dutInfoId": "dut_id"
+                        "dutInfoId": "dut_id",
+                        "softwareInfos": [{
+                            "softwareInfoId": "sw0",
+                            "name": "ubuntu",
+                            "version": "22",
+                            "softwareType": "SYSTEM",
+                        }],
+                        "hardwareInfos": [{
+                            "hardwareInfoId": "hw0",
+                            "name": "fan",
+                            "location": "board0/fan"
+                        }]
                     },
                     "metadata": {
                         "key": "value",
@@ -1649,14 +1783,14 @@ async fn test_testrun_builder() -> Result<()> {
         json_run_pass(2),
     ];
 
-    check_output(&expected, |run_builder| async {
+    check_output(&expected, |run_builder, dut| async {
         let run = run_builder
             .add_metadata("key", "value".into())
             .add_metadata("key2", "value2".into())
             .add_parameter("key", "value".into())
             .command_line("cmd_line")
             .build()
-            .start()
+            .start(dut)
             .await?;
 
         run.end(TestStatus::Complete, TestResult::Pass).await?;

@@ -29,9 +29,12 @@ use tv::dut;
 /// ```
 /// # use ocptv::output::*;
 ///
+/// let mut dut = DutInfo::new("dut0");
+/// let hw_info = dut.add_hardware_info(HardwareInfo::builder("name").build());
+///
 /// let diagnosis = Diagnosis::builder("verdict", DiagnosisType::Pass)
-///     .hardware_info(&HardwareInfo::builder("id", "name").build())
 ///     .message("message")
+///     .hardware_info(&hw_info)
 ///     .subcomponent(&Subcomponent::builder("name").build())
 ///     .source("file.rs", 1)
 ///     .build();
@@ -41,7 +44,7 @@ pub struct Diagnosis {
     verdict: String,
     diagnosis_type: spec::DiagnosisType,
     message: Option<String>,
-    hardware_info: Option<tv::HardwareInfo>,
+    hardware_info: Option<tv::DutHardwareInfo>,
     subcomponent: Option<tv::Subcomponent>,
     source_location: Option<spec::SourceLocation>,
 }
@@ -71,9 +74,12 @@ impl Diagnosis {
     /// ```
     /// # use ocptv::output::*;
     ///
-    /// let Diagnosis = Diagnosis::builder("verdict", DiagnosisType::Pass)
-    ///     .hardware_info(&HardwareInfo::builder("id", "name").build())
+    /// let mut dut = DutInfo::new("dut0");
+    /// let hw_info = dut.add_hardware_info(HardwareInfo::builder("name").build());
+    ///
+    /// let diagnosis = Diagnosis::builder("verdict", DiagnosisType::Pass)
     ///     .message("message")
+    ///     .hardware_info(&hw_info)
     ///     .subcomponent(&Subcomponent::builder("name").build())
     ///     .source("file.rs", 1)
     ///     .build();
@@ -97,10 +103,10 @@ impl Diagnosis {
             verdict: self.verdict.clone(),
             diagnosis_type: self.diagnosis_type.clone(),
             message: self.message.clone(),
-            hardware_info_id: self
+            hardware_info: self
                 .hardware_info
                 .as_ref()
-                .map(|hardware_info| hardware_info.id().to_owned()),
+                .map(dut::DutHardwareInfo::to_spec),
             subcomponent: self
                 .subcomponent
                 .as_ref()
@@ -117,9 +123,12 @@ impl Diagnosis {
 /// ```
 /// # use ocptv::output::*;
 ///
+/// let mut dut = DutInfo::new("dut0");
+/// let hw_info = dut.add_hardware_info(HardwareInfo::builder("name").build());
+///
 /// let builder = Diagnosis::builder("verdict", DiagnosisType::Pass)
-///     .hardware_info(&HardwareInfo::builder("id", "name").build())
 ///     .message("message")
+///     .hardware_info(&hw_info)
 ///     .subcomponent(&Subcomponent::builder("name").build())
 ///     .source("file.rs", 1);
 /// let diagnosis = builder.build();
@@ -129,8 +138,10 @@ pub struct DiagnosisBuilder {
     verdict: String,
     diagnosis_type: spec::DiagnosisType,
     message: Option<String>,
-    hardware_info: Option<tv::HardwareInfo>,
+
+    hardware_info: Option<tv::DutHardwareInfo>,
     subcomponent: Option<tv::Subcomponent>,
+
     source_location: Option<spec::SourceLocation>,
 }
 
@@ -174,10 +185,13 @@ impl DiagnosisBuilder {
     /// ```
     /// # use ocptv::output::*;
     ///
+    /// let mut dut = DutInfo::new("dut0");
+    /// let hw_info = dut.add_hardware_info(HardwareInfo::builder("name").build());
+    ///
     /// let builder = DiagnosisBuilder::new("verdict", DiagnosisType::Pass)
-    ///     .hardware_info(&HardwareInfo::builder("id", "name").build());
+    ///     .hardware_info(&hw_info);
     /// ```
-    pub fn hardware_info(mut self, hardware_info: &dut::HardwareInfo) -> DiagnosisBuilder {
+    pub fn hardware_info(mut self, hardware_info: &dut::DutHardwareInfo) -> DiagnosisBuilder {
         self.hardware_info = Some(hardware_info.clone());
         self
     }
@@ -259,7 +273,7 @@ mod tests {
                 verdict: verdict.to_owned(),
                 diagnosis_type,
                 message: None,
-                hardware_info_id: None,
+                hardware_info: None,
                 subcomponent: None,
                 source_location: None,
             }
@@ -270,9 +284,11 @@ mod tests {
 
     #[test]
     fn test_diagnosis_builder_as_test_step_descendant_to_artifact() -> Result<()> {
+        let mut dut = DutInfo::new("dut0");
+
         let verdict = "verdict".to_owned();
         let diagnosis_type = spec::DiagnosisType::Pass;
-        let hardware_info = HardwareInfo::builder("id", "name").build();
+        let hardware_info = dut.add_hardware_info(HardwareInfo::builder("name").build());
         let subcomponent = Subcomponent::builder("name").build();
         let file = "file.rs".to_owned();
         let line = 1;
@@ -291,7 +307,7 @@ mod tests {
             spec::Diagnosis {
                 verdict,
                 diagnosis_type,
-                hardware_info_id: Some(hardware_info.to_spec().id.clone()),
+                hardware_info: Some(hardware_info.to_spec()),
                 subcomponent: Some(subcomponent.to_spec()),
                 message: Some(message),
                 source_location: Some(spec::SourceLocation { file, line })

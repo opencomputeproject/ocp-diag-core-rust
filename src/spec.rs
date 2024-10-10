@@ -9,6 +9,7 @@ use std::collections::BTreeMap;
 use chrono::DateTime;
 use serde::Deserialize;
 use serde::Serialize;
+use serde_with::serde_as;
 
 use crate::output as tv;
 
@@ -18,13 +19,10 @@ mod rfc3339_format {
     use chrono::DateTime;
     use chrono::SecondsFormat;
     use serde::Deserialize;
-    use serde::Deserializer;
-    use serde::Serializer;
-    use serde::{self};
 
     pub fn serialize<S>(date: &DateTime<chrono_tz::Tz>, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: Serializer,
+        S: serde::Serializer,
     {
         let s = date.to_rfc3339_opts(SecondsFormat::Millis, true);
         serializer.serialize_str(&s)
@@ -32,11 +30,31 @@ mod rfc3339_format {
 
     pub fn deserialize<'de, D>(deserializer: D) -> Result<DateTime<chrono_tz::Tz>, D::Error>
     where
-        D: Deserializer<'de>,
+        D: serde::Deserializer<'de>,
     {
         let s = String::deserialize(deserializer)?;
         let dt = DateTime::parse_from_rfc3339(&s).map_err(serde::de::Error::custom)?;
         Ok(dt.with_timezone(&chrono_tz::Tz::UTC))
+    }
+}
+
+mod serialize_ids {
+    pub trait IdGetter {
+        fn id(&self) -> &str;
+    }
+
+    pub struct IdFromGetter;
+
+    impl<T> serde_with::SerializeAs<T> for IdFromGetter
+    where
+        T: IdGetter,
+    {
+        fn serialize_as<S>(source: &T, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: serde::Serializer,
+        {
+            serializer.serialize_str(source.id())
+        }
     }
 }
 
@@ -50,11 +68,11 @@ pub enum ValidatorType {
     #[serde(rename = "LESS_THAN")]
     LessThan,
     #[serde(rename = "LESS_THAN_OR_EQUAL")]
-    LessThenOrEqual,
+    LessThanOrEqual,
     #[serde(rename = "GREATER_THAN")]
-    GreaterThen,
+    GreaterThan,
     #[serde(rename = "GREATER_THAN_OR_EQUAL")]
-    GreaterThenOrEqual,
+    GreaterThanOrEqual,
     #[serde(rename = "REGEX_MATCH")]
     RegexMatch,
     #[serde(rename = "REGEX_NO_MATCH")]
@@ -66,6 +84,7 @@ pub enum ValidatorType {
 }
 
 #[derive(Debug, Serialize, Clone, PartialEq)]
+#[non_exhaustive]
 pub enum SubcomponentType {
     #[serde(rename = "UNSPECIFIED")]
     Unspecified,
@@ -153,6 +172,7 @@ pub enum LogSeverity {
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/dutInfo/$defs/softwareInfo/properties/softwareType
 #[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename = "softwareType")]
+#[non_exhaustive]
 pub enum SoftwareType {
     #[serde(rename = "UNSPECIFIED")]
     Unspecified,
@@ -343,6 +363,12 @@ pub struct SoftwareInfo {
     pub computer_system: Option<String>,
 }
 
+impl serialize_ids::IdGetter for SoftwareInfo {
+    fn id(&self) -> &str {
+        &self.id
+    }
+}
+
 /// Low-level model for the `hardwareInfo` spec object.
 /// Represents information of an enumerated or exercised hardware component of the DUT.
 /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#hardwareinfo
@@ -398,6 +424,12 @@ pub struct HardwareInfo {
     pub manager: Option<String>,
 }
 
+impl serialize_ids::IdGetter for HardwareInfo {
+    fn id(&self) -> &str {
+        &self.id
+    }
+}
+
 /// Low-level model for the `testRunEnd` spec object.
 /// End marker signaling the finality of a diagnostic test.
 /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#testrunend
@@ -419,6 +451,7 @@ pub struct TestRunEnd {
 /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#error
 /// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/error.json
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/error
+#[serde_as]
 #[derive(Debug, Serialize, Default, Clone, PartialEq)]
 #[serde(rename = "error")]
 pub struct Error {
@@ -429,9 +462,9 @@ pub struct Error {
     #[serde(rename = "message")]
     pub message: Option<String>,
 
-    // TODO: support this field during serialization to print only the id of SoftwareInfo struct
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "softwareInfoIds")]
+    #[serde_as(as = "Option<Vec<serialize_ids::IdFromGetter>>")]
     pub software_infos: Option<Vec<SoftwareInfo>>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -553,6 +586,7 @@ pub struct TestStepEnd {
 /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#measurement
 /// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/measurement.json
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/measurement
+#[serde_as]
 #[derive(Debug, Serialize, PartialEq, Clone)]
 #[serde(rename = "measurement")]
 pub struct Measurement {
@@ -572,7 +606,8 @@ pub struct Measurement {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "hardwareInfoId")]
-    pub hardware_info_id: Option<String>,
+    #[serde_as(as = "Option<serialize_ids::IdFromGetter>")]
+    pub hardware_info: Option<HardwareInfo>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "subcomponent")]
@@ -639,6 +674,7 @@ pub struct Subcomponent {
 /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#measurementseriesstart
 /// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/measurement_series_start.json
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/measurementSeriesStart
+#[serde_as]
 #[derive(Debug, Serialize, PartialEq, Clone)]
 #[serde(rename = "measurementSeriesStart")]
 pub struct MeasurementSeriesStart {
@@ -658,6 +694,7 @@ pub struct MeasurementSeriesStart {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "hardwareInfoId")]
+    #[serde_as(as = "Option<serialize_ids::IdFromGetter>")]
     pub hardware_info: Option<HardwareInfo>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -714,6 +751,7 @@ pub struct MeasurementSeriesElement {
 /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#diagnosis
 /// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/diagnosis.json
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/diagnosis
+#[serde_as]
 #[derive(Debug, Serialize, PartialEq, Clone)]
 #[serde(rename = "diagnosis")]
 pub struct Diagnosis {
@@ -729,7 +767,8 @@ pub struct Diagnosis {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "hardwareInfoId")]
-    pub hardware_info_id: Option<String>,
+    #[serde_as(as = "Option<serialize_ids::IdFromGetter>")]
+    pub hardware_info: Option<HardwareInfo>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "subcomponent")]

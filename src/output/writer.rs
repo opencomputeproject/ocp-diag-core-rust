@@ -102,13 +102,13 @@ mod tests {
     #[tokio::test]
     async fn test_ocptv_error_has_public_source() -> Result<()> {
         let dut = DutInfo::builder("dut_id").build();
-        let run_builder = TestRun::builder("run_name", &dut, "1.0").config(
+        let run_builder = TestRun::builder("run_name", "1.0").config(
             Config::builder()
                 .with_custom_output(Box::new(ErrorWriter {}))
                 .build(),
         );
 
-        let actual = run_builder.build().start().await;
+        let actual = run_builder.build().start(dut).await;
         assert!(actual.is_err());
 
         match &actual {

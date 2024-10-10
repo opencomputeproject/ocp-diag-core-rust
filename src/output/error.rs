@@ -6,12 +6,12 @@
 
 use crate::output as tv;
 use crate::spec;
-use tv::dut;
+use tv::{dut, trait_ext::VecExt, DutSoftwareInfo};
 
 pub struct Error {
     symptom: String,
     message: Option<String>,
-    software_infos: Option<Vec<spec::SoftwareInfo>>,
+    software_infos: Vec<dut::DutSoftwareInfo>,
     source_location: Option<spec::SourceLocation>,
 }
 
@@ -24,17 +24,17 @@ impl Error {
         spec::Error {
             symptom: self.symptom.clone(),
             message: self.message.clone(),
-            software_infos: self.software_infos.clone(),
+            software_infos: self.software_infos.map_option(DutSoftwareInfo::to_spec),
             source_location: self.source_location.clone(),
         }
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct ErrorBuilder {
     symptom: String,
     message: Option<String>,
-    software_infos: Option<Vec<spec::SoftwareInfo>>,
+    software_infos: Vec<dut::DutSoftwareInfo>,
     source_location: Option<spec::SourceLocation>,
 }
 
@@ -42,15 +42,15 @@ impl ErrorBuilder {
     fn new(symptom: &str) -> Self {
         ErrorBuilder {
             symptom: symptom.to_string(),
-            message: None,
-            source_location: None,
-            software_infos: None,
+            ..Default::default()
         }
     }
+
     pub fn message(mut self, value: &str) -> ErrorBuilder {
         self.message = Some(value.to_string());
         self
     }
+
     pub fn source(mut self, file: &str, line: i32) -> ErrorBuilder {
         self.source_location = Some(spec::SourceLocation {
             file: file.to_string(),
@@ -58,14 +58,9 @@ impl ErrorBuilder {
         });
         self
     }
-    pub fn add_software_info(mut self, software_info: &dut::SoftwareInfo) -> ErrorBuilder {
-        self.software_infos = match self.software_infos {
-            Some(mut software_infos) => {
-                software_infos.push(software_info.to_spec());
-                Some(software_infos)
-            }
-            None => Some(vec![software_info.to_spec()]),
-        };
+
+    pub fn add_software_info(mut self, software_info: &dut::DutSoftwareInfo) -> ErrorBuilder {
+        self.software_infos.push(software_info.clone());
         self
     }
 
@@ -89,12 +84,16 @@ mod tests {
     use crate::output as tv;
     use crate::spec;
     use tv::dut;
+    use tv::Ident;
 
     #[test]
     fn test_error_output_as_test_run_descendant_to_artifact() -> Result<()> {
+        let mut dut = dut::DutInfo::new("dut0");
+        let sw_info = dut.add_software_info(dut::SoftwareInfo::builder("name").build());
+
         let error = Error::builder("symptom")
             .message("")
-            .add_software_info(&dut::SoftwareInfo::builder("id", "name").build())
+            .add_software_info(&sw_info)
             .source("", 1)
             .build();
 
@@ -104,7 +103,7 @@ mod tests {
             spec::Error {
                 symptom: error.symptom.clone(),
                 message: error.message.clone(),
-                software_infos: error.software_infos.clone(),
+                software_infos: Some(vec![sw_info.to_spec()]),
                 source_location: error.source_location.clone(),
             }
         );
@@ -114,9 +113,12 @@ mod tests {
 
     #[test]
     fn test_error_output_as_test_step_descendant_to_artifact() -> Result<()> {
+        let mut dut = dut::DutInfo::new("dut0");
+        let sw_info = dut.add_software_info(dut::SoftwareInfo::builder("name").build());
+
         let error = Error::builder("symptom")
             .message("")
-            .add_software_info(&dut::SoftwareInfo::builder("id", "name").build())
+            .add_software_info(&sw_info)
             .source("", 1)
             .build();
 
@@ -126,7 +128,7 @@ mod tests {
             spec::Error {
                 symptom: error.symptom.clone(),
                 message: error.message.clone(),
-                software_infos: error.software_infos.clone(),
+                software_infos: Some(vec![sw_info.to_spec()]),
                 source_location: error.source_location.clone(),
             }
         );
@@ -135,18 +137,12 @@ mod tests {
     }
 
     #[test]
-    fn test_error() -> Result<()> {
+    fn test_error_with_multiple_software() -> Result<()> {
         let expected_run = json!({
             "message": "message",
             "softwareInfoIds": [
-                {
-                    "name": "name",
-                    "softwareInfoId": "software_id",
-                },
-                {
-                    "name": "name",
-                    "softwareInfoId": "software_id",
-                }
+                "software_id",
+                "software_id"
             ],
             "sourceLocation": {
                 "file": "file.rs",
@@ -157,25 +153,25 @@ mod tests {
         let expected_step = json!({
             "message": "message",
             "softwareInfoIds": [
-                {
-                    "name": "name",
-                    "softwareInfoId": "software_id",
-                },
-                {
-                    "name": "name",
-                    "softwareInfoId": "software_id",
-                }
+                "software_id",
+                "software_id"
             ],
             "sourceLocation": {"file":"file.rs","line":1},
             "symptom":"symptom"
         });
 
-        let software = dut::SoftwareInfo::builder("software_id", "name").build();
+        let mut dut = dut::DutInfo::new("dut0");
+        let sw_info = dut.add_software_info(
+            dut::SoftwareInfo::builder("name")
+                .id(Ident::Exact("software_id".to_owned()))
+                .build(),
+        );
+
         let error = ErrorBuilder::new("symptom")
             .message("message")
             .source("file.rs", 1)
-            .add_software_info(&software)
-            .add_software_info(&software)
+            .add_software_info(&sw_info)
+            .add_software_info(&sw_info)
             .build();
 
         let spec_error = error.to_artifact();
