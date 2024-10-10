@@ -520,7 +520,7 @@ impl StartedTestRun {
     /// Create a new step for this test run.
     /// TODO: docs + example
     pub fn add_step(&self, name: &str) -> TestStep {
-        let step_id = format!("step_{}", self.step_seqno.fetch_add(1, Ordering::AcqRel));
+        let step_id = format!("step{}", self.step_seqno.fetch_add(1, Ordering::AcqRel));
         TestStep::new(&step_id, name, Arc::clone(&self.run.emitter))
     }
 }

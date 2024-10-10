@@ -3,6 +3,7 @@
 // Use of this source code is governed by an MIT-style
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
+#![allow(warnings)]
 
 use anyhow::Result;
 use futures::FutureExt;
@@ -22,6 +23,7 @@ async fn main() -> Result<()> {
             .build(),
     );
 
+    #[cfg(feature = "boxed-scopes")]
     TestRun::builder("run error with dut", "1.0")
         .build()
         .scope(dut, |r| {

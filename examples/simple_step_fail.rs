@@ -3,6 +3,7 @@
 // Use of this source code is governed by an MIT-style
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
+#![allow(warnings)]
 
 use anyhow::Result;
 use futures::FutureExt;
@@ -16,6 +17,8 @@ use tv::{DutInfo, TestResult, TestRun, TestRunOutcome, TestStatus};
 #[tokio::main]
 async fn main() -> Result<()> {
     let dut = DutInfo::builder("dut0").build();
+
+    #[cfg(feature = "boxed-scopes")]
     TestRun::builder("step fail", "1.0")
         .build()
         .scope(dut, |r| {

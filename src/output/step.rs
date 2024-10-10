@@ -13,10 +13,12 @@ use futures::future::BoxFuture;
 
 use crate::output as tv;
 use crate::spec::{self, TestStepArtifactImpl, TestStepStart};
-use tv::measure::MeasurementSeries;
-use tv::{config, emitter, error, log, measure};
-
-use super::OcptvError;
+use tv::OcptvError;
+use tv::{
+    config, emitter, error, log,
+    measure::{self, MeasurementSeries, MeasurementSeriesInfo},
+    Ident,
+};
 
 /// A single test step in the scope of a [`TestRun`].
 ///
@@ -64,7 +66,7 @@ impl TestStep {
 
         Ok(StartedTestStep {
             step: self,
-            measurement_id_seqno: Arc::new(atomic::AtomicU64::new(0)),
+            measurement_seqno: Arc::new(atomic::AtomicU64::new(0)),
         })
     }
 
@@ -114,7 +116,7 @@ impl TestStep {
 
 pub struct StartedTestStep {
     step: TestStep,
-    measurement_id_seqno: Arc<atomic::AtomicU64>,
+    measurement_seqno: Arc<atomic::AtomicU64>,
 }
 
 impl StartedTestStep {
@@ -514,12 +516,7 @@ impl StartedTestStep {
     /// # });
     /// ```
     pub fn add_measurement_series(&self, name: &str) -> MeasurementSeries {
-        let series_id: String = format!(
-            "series_{}",
-            self.measurement_id_seqno.fetch_add(1, Ordering::AcqRel)
-        );
-
-        MeasurementSeries::new(&series_id, name, Arc::clone(&self.step.emitter))
+        self.add_measurement_series_with_details(MeasurementSeriesInfo::new(name))
     }
 
     /// Create a Measurement Series (a time-series list of measurements).
@@ -537,16 +534,28 @@ impl StartedTestStep {
     /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
     /// let step = run.add_step("step_name").start().await?;
     /// let series =
-    ///     step.add_measurement_series_with_details(MeasurementSeriesStart::new("name", "series_id"));
+    ///     step.add_measurement_series_with_details(MeasurementSeriesInfo::new("name"));
     ///
     /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
     pub fn add_measurement_series_with_details(
         &self,
-        start: measure::MeasurementSeriesStart,
+        info: measure::MeasurementSeriesInfo,
     ) -> MeasurementSeries {
-        MeasurementSeries::new_with_details(start, Arc::clone(&self.step.emitter))
+        // spec says this identifier is unique in the scope of the test run, so create it from
+        // the step identifier and a counter
+        // ref: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/README.md#measurementseriesstart
+        let series_id = match &info.id {
+            Ident::Auto => format!(
+                "{}_series{}",
+                self.step.emitter.step_id,
+                self.measurement_seqno.fetch_add(1, Ordering::AcqRel)
+            ),
+            Ident::Exact(value) => value.to_owned(),
+        };
+
+        MeasurementSeries::new(&series_id, info, Arc::clone(&self.step.emitter))
     }
 }
 

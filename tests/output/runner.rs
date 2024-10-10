@@ -12,6 +12,7 @@ use assert_json_diff::{assert_json_eq, assert_json_include};
 use futures::future::BoxFuture;
 use futures::future::Future;
 use futures::FutureExt;
+use ocptv::output::MeasurementSeriesElemDetails;
 use serde_json::json;
 use tokio::sync::Mutex;
 
@@ -21,7 +22,7 @@ use ocptv::output::OcptvError;
 use tv::TestRunOutcome;
 use tv::{
     Config, DutInfo, Error, HardwareInfo, Ident, Log, LogSeverity, Measurement,
-    MeasurementSeriesStart, SoftwareInfo, SoftwareType, StartedTestRun, StartedTestStep,
+    MeasurementSeriesInfo, SoftwareInfo, SoftwareType, StartedTestRun, StartedTestStep,
     Subcomponent, TestResult, TestRun, TestRunBuilder, TestStatus, TimestampProvider, Validator,
     ValidatorType,
 };
@@ -96,7 +97,7 @@ fn json_step_default_start() -> serde_json::Value {
     // seqno for the default test run start is always 2
     json!({
         "testStepArtifact": {
-            "testStepId": "step_0",
+            "testStepId": "step0",
             "testStepStart": {
                 "name": "first step"
             }
@@ -109,7 +110,7 @@ fn json_step_default_start() -> serde_json::Value {
 fn json_step_complete(seqno: i32) -> serde_json::Value {
     json!({
         "testStepArtifact": {
-            "testStepId": "step_0",
+            "testStepId": "step0",
             "testStepEnd": {
                 "status": "COMPLETE"
             }
@@ -514,7 +515,7 @@ async fn test_testrun_step_log() -> Result<()> {
         json_step_default_start(),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "log": {
                     "message": "This is a log message with INFO severity",
                     "severity": "INFO"
@@ -550,7 +551,7 @@ async fn test_testrun_step_log_with_details() -> Result<()> {
         json_step_default_start(),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "log": {
                     "message": "This is a log message with INFO severity",
                     "severity": "INFO",
@@ -592,7 +593,7 @@ async fn test_testrun_step_error() -> Result<()> {
         json_step_default_start(),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "error": {
                     "symptom": "symptom"
                 }
@@ -623,7 +624,7 @@ async fn test_testrun_step_error_with_message() -> Result<()> {
         json_step_default_start(),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "error": {
                     "message": "Error message",
                     "symptom": "symptom"
@@ -655,7 +656,7 @@ async fn test_testrun_step_error_with_details() -> Result<()> {
         json_step_default_start(),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "error": {
                     "message": "Error message",
                     "softwareInfoIds": [
@@ -702,7 +703,7 @@ async fn test_testrun_step_scope_log() -> Result<()> {
         json_step_default_start(),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "log": {
                     "message": "This is a log message with INFO severity",
                     "severity": "INFO"
@@ -745,7 +746,7 @@ async fn test_step_with_measurement() -> Result<()> {
         json_step_default_start(),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurement": {
                     "name": "name",
                     "value": 50
@@ -777,7 +778,7 @@ async fn test_step_with_measurement_builder() -> Result<()> {
         json_step_default_start(),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurement": {
                     "name": "name",
                     "value": 50,
@@ -790,7 +791,8 @@ async fn test_step_with_measurement_builder() -> Result<()> {
                         "name": "name"
                     },
                     "metadata": {
-                        "key": "value"
+                        "key": "value",
+                        "key2": "value2"
                     }
                 }
             },
@@ -808,6 +810,7 @@ async fn test_step_with_measurement_builder() -> Result<()> {
             let measurement = Measurement::builder("name", 50.into())
                 .add_validator(&Validator::builder(ValidatorType::Equal, 30.into()).build())
                 .add_metadata("key", "value".into())
+                .add_metadata("key2", "value2".into())
                 .hardware_info(hw_info)
                 .subcomponent(&Subcomponent::builder("name").build())
                 .build();
@@ -828,9 +831,9 @@ async fn test_step_with_measurement_series() -> Result<()> {
         json_step_default_start(),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesStart": {
-                    "measurementSeriesId": "series_0",
+                    "measurementSeriesId": "step0_series0",
                     "name": "name"
                 }
             },
@@ -839,9 +842,9 @@ async fn test_step_with_measurement_series() -> Result<()> {
         }),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesEnd": {
-                    "measurementSeriesId": "series_0",
+                    "measurementSeriesId": "step0_series0",
                     "totalCount": 0
                 }
             },
@@ -872,9 +875,9 @@ async fn test_step_with_multiple_measurement_series() -> Result<()> {
         json_step_default_start(),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesStart": {
-                    "measurementSeriesId": "series_0",
+                    "measurementSeriesId": "step0_series0",
                     "name": "name"
                 }
             },
@@ -883,9 +886,9 @@ async fn test_step_with_multiple_measurement_series() -> Result<()> {
         }),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesEnd": {
-                    "measurementSeriesId": "series_0",
+                    "measurementSeriesId": "step0_series0",
                     "totalCount": 0
                 }
             },
@@ -894,9 +897,9 @@ async fn test_step_with_multiple_measurement_series() -> Result<()> {
         }),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesStart": {
-                    "measurementSeriesId": "series_1",
+                    "measurementSeriesId": "step0_series1",
                     "name": "name"
                 }
             },
@@ -905,9 +908,9 @@ async fn test_step_with_multiple_measurement_series() -> Result<()> {
         }),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesEnd": {
-                    "measurementSeriesId": "series_1",
+                    "measurementSeriesId": "step0_series1",
                     "totalCount": 0
                 }
             },
@@ -941,59 +944,11 @@ async fn test_step_with_measurement_series_with_details() -> Result<()> {
         json_step_default_start(),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
-                "measurementSeriesStart": {
-                    "measurementSeriesId": "series_id",
-                    "name": "name"
-                }
-            },
-            "sequenceNumber": 3,
-            "timestamp": DATETIME_FORMATTED
-        }),
-        json!({
-            "testStepArtifact": {
-                "testStepId": "step_0",
-                "measurementSeriesEnd": {
-                    "measurementSeriesId": "series_id", "totalCount": 0
-                }
-            },
-            "sequenceNumber": 4,
-            "timestamp": DATETIME_FORMATTED
-        }),
-        json_step_complete(5),
-        json_run_pass(6),
-    ];
-
-    check_output_step(&expected, |s, _| {
-        async {
-            let series = s
-                .add_measurement_series_with_details(MeasurementSeriesStart::new(
-                    "name",
-                    "series_id",
-                ))
-                .start()
-                .await?;
-            series.end().await?;
-
-            Ok(())
-        }
-        .boxed()
-    })
-    .await
-}
-
-#[tokio::test]
-async fn test_step_with_measurement_series_with_details_and_start_builder() -> Result<()> {
-    let expected = [
-        json_schema_version(),
-        json_run_default_start(),
-        json_step_default_start(),
-        json!({
-            "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesStart": {
                     "measurementSeriesId": "series_id",
                     "name": "name",
+                    "unit": "unit",
                     "validators": [{
                         "type": "EQUAL",
                         "value": 30
@@ -1003,7 +958,8 @@ async fn test_step_with_measurement_series_with_details_and_start_builder() -> R
                         "name": "name"
                     },
                     "metadata": {
-                        "key": "value"
+                        "key": "value",
+                        "key2": "value2"
                     }
                 }
             },
@@ -1012,7 +968,7 @@ async fn test_step_with_measurement_series_with_details_and_start_builder() -> R
         }),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesEnd": {
                     "measurementSeriesId": "series_id",
                     "totalCount": 0
@@ -1031,8 +987,11 @@ async fn test_step_with_measurement_series_with_details_and_start_builder() -> R
 
             let series = s
                 .add_measurement_series_with_details(
-                    MeasurementSeriesStart::builder("name", "series_id")
+                    MeasurementSeriesInfo::builder("name")
+                        .id(Ident::Exact("series_id".to_owned()))
+                        .unit("unit")
                         .add_metadata("key", "value".into())
+                        .add_metadata("key2", "value2".into())
                         .add_validator(&Validator::builder(ValidatorType::Equal, 30.into()).build())
                         .hardware_info(hw_info)
                         .subcomponent(&Subcomponent::builder("name").build())
@@ -1057,9 +1016,9 @@ async fn test_step_with_measurement_series_element() -> Result<()> {
         json_step_default_start(),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesStart": {
-                    "measurementSeriesId": "series_0",
+                    "measurementSeriesId": "step0_series0",
                     "name": "name"
                 }
             },
@@ -1068,10 +1027,10 @@ async fn test_step_with_measurement_series_element() -> Result<()> {
         }),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesElement": {
                     "index": 0,
-                    "measurementSeriesId": "series_0",
+                    "measurementSeriesId": "step0_series0",
                     "value": 60,
                     "timestamp": DATETIME_FORMATTED
                 }
@@ -1081,9 +1040,9 @@ async fn test_step_with_measurement_series_element() -> Result<()> {
         }),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesEnd": {
-                    "measurementSeriesId": "series_0",
+                    "measurementSeriesId": "step0_series0",
                     "totalCount": 1
                 }
             },
@@ -1115,9 +1074,9 @@ async fn test_step_with_measurement_series_element_index_no() -> Result<()> {
         json_step_default_start(),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesStart": {
-                    "measurementSeriesId": "series_0",
+                    "measurementSeriesId": "step0_series0",
                     "name": "name"
                 }
             },
@@ -1126,10 +1085,10 @@ async fn test_step_with_measurement_series_element_index_no() -> Result<()> {
         }),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesElement": {
                     "index": 0,
-                    "measurementSeriesId": "series_0",
+                    "measurementSeriesId": "step0_series0",
                     "value": 60,
                     "timestamp": DATETIME_FORMATTED
                 }
@@ -1139,10 +1098,10 @@ async fn test_step_with_measurement_series_element_index_no() -> Result<()> {
         }),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesElement": {
                     "index": 1,
-                    "measurementSeriesId": "series_0",
+                    "measurementSeriesId": "step0_series0",
                     "value": 70,
                     "timestamp": DATETIME_FORMATTED
                 }
@@ -1152,10 +1111,10 @@ async fn test_step_with_measurement_series_element_index_no() -> Result<()> {
         }),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesElement": {
                     "index": 2,
-                    "measurementSeriesId": "series_0",
+                    "measurementSeriesId": "step0_series0",
                     "value": 80,
                     "timestamp": DATETIME_FORMATTED
                 }
@@ -1165,9 +1124,9 @@ async fn test_step_with_measurement_series_element_index_no() -> Result<()> {
         }),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesEnd": {
-                    "measurementSeriesId": "series_0",
+                    "measurementSeriesId": "step0_series0",
                     "totalCount": 3
                 }
             },
@@ -1195,16 +1154,16 @@ async fn test_step_with_measurement_series_element_index_no() -> Result<()> {
 }
 
 #[tokio::test]
-async fn test_step_with_measurement_series_element_with_metadata() -> Result<()> {
+async fn test_step_with_measurement_series_element_with_details() -> Result<()> {
     let expected = [
         json_schema_version(),
         json_run_default_start(),
         json_step_default_start(),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesStart": {
-                    "measurementSeriesId": "series_0",
+                    "measurementSeriesId": "step0_series0",
                     "name": "name"
                 }
             },
@@ -1213,12 +1172,13 @@ async fn test_step_with_measurement_series_element_with_metadata() -> Result<()>
         }),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesElement": {
                     "index": 0,
-                    "measurementSeriesId": "series_0",
+                    "measurementSeriesId": "step0_series0",
                     "metadata": {
-                        "key": "value"
+                        "key": "value",
+                        "key2": "value2"
                     },
                     "value": 60,
                     "timestamp": DATETIME_FORMATTED,
@@ -1229,9 +1189,9 @@ async fn test_step_with_measurement_series_element_with_metadata() -> Result<()>
         }),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesEnd": {
-                    "measurementSeriesId": "series_0",
+                    "measurementSeriesId": "step0_series0",
                     "totalCount": 1
                 }
             },
@@ -1246,7 +1206,13 @@ async fn test_step_with_measurement_series_element_with_metadata() -> Result<()>
         async {
             let series = s.add_measurement_series("name").start().await?;
             series
-                .add_measurement_with_metadata(60.into(), vec![("key", "value".into())])
+                .add_measurement_with_details(
+                    MeasurementSeriesElemDetails::builder(60.into())
+                        .timestamp(DATETIME.with_timezone(&chrono_tz::UTC))
+                        .add_metadata("key", "value".into())
+                        .add_metadata("key2", "value2".into())
+                        .build(),
+                )
                 .await?;
             series.end().await?;
 
@@ -1265,9 +1231,9 @@ async fn test_step_with_measurement_series_element_with_metadata_index_no() -> R
         json_step_default_start(),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesStart": {
-                    "measurementSeriesId": "series_0",
+                    "measurementSeriesId": "step0_series0",
                     "name": "name"
                 }
             },
@@ -1276,10 +1242,10 @@ async fn test_step_with_measurement_series_element_with_metadata_index_no() -> R
         }),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesElement": {
                     "index": 0,
-                    "measurementSeriesId": "series_0",
+                    "measurementSeriesId": "step0_series0",
                     "metadata": {"key": "value"},
                     "value": 60,
                     "timestamp": DATETIME_FORMATTED,
@@ -1290,10 +1256,10 @@ async fn test_step_with_measurement_series_element_with_metadata_index_no() -> R
         }),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesElement": {
                     "index": 1,
-                    "measurementSeriesId": "series_0",
+                    "measurementSeriesId": "step0_series0",
                     "metadata": {"key2": "value2"},
                     "value": 70,
                     "timestamp": DATETIME_FORMATTED,
@@ -1304,10 +1270,10 @@ async fn test_step_with_measurement_series_element_with_metadata_index_no() -> R
         }),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesElement": {
                     "index": 2,
-                    "measurementSeriesId": "series_0",
+                    "measurementSeriesId": "step0_series0",
                     "metadata": {"key3": "value3"},
                     "value": 80,
                     "timestamp": DATETIME_FORMATTED,
@@ -1318,9 +1284,9 @@ async fn test_step_with_measurement_series_element_with_metadata_index_no() -> R
         }),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesEnd": {
-                    "measurementSeriesId": "series_0",
+                    "measurementSeriesId": "step0_series0",
                     "totalCount": 3
                 }
             },
@@ -1336,13 +1302,25 @@ async fn test_step_with_measurement_series_element_with_metadata_index_no() -> R
             let series = s.add_measurement_series("name").start().await?;
             // add more than one element to check the index increments correctly
             series
-                .add_measurement_with_metadata(60.into(), vec![("key", "value".into())])
+                .add_measurement_with_details(
+                    MeasurementSeriesElemDetails::builder(60.into())
+                        .add_metadata("key", "value".into())
+                        .build(),
+                )
                 .await?;
             series
-                .add_measurement_with_metadata(70.into(), vec![("key2", "value2".into())])
+                .add_measurement_with_details(
+                    MeasurementSeriesElemDetails::builder(70.into())
+                        .add_metadata("key2", "value2".into())
+                        .build(),
+                )
                 .await?;
             series
-                .add_measurement_with_metadata(80.into(), vec![("key3", "value3".into())])
+                .add_measurement_with_details(
+                    MeasurementSeriesElemDetails::builder(80.into())
+                        .add_metadata("key3", "value3".into())
+                        .build(),
+                )
                 .await?;
             series.end().await?;
 
@@ -1362,9 +1340,9 @@ async fn test_step_with_measurement_series_scope() -> Result<()> {
         json_step_default_start(),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesStart": {
-                    "measurementSeriesId": "series_0",
+                    "measurementSeriesId": "step0_series0",
                     "name": "name"
                 }
             },
@@ -1373,10 +1351,10 @@ async fn test_step_with_measurement_series_scope() -> Result<()> {
         }),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesElement": {
                     "index": 0,
-                    "measurementSeriesId": "series_0",
+                    "measurementSeriesId": "step0_series0",
                     "value": 60,
                     "timestamp": DATETIME_FORMATTED
                 }
@@ -1386,10 +1364,10 @@ async fn test_step_with_measurement_series_scope() -> Result<()> {
         }),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesElement": {
                     "index": 1,
-                    "measurementSeriesId": "series_0",
+                    "measurementSeriesId": "step0_series0",
                     "value": 70,
                     "timestamp": DATETIME_FORMATTED
                 }
@@ -1399,10 +1377,10 @@ async fn test_step_with_measurement_series_scope() -> Result<()> {
         }),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesElement": {
                     "index": 2,
-                    "measurementSeriesId": "series_0",
+                    "measurementSeriesId": "step0_series0",
                     "value": 80,
                     "timestamp": DATETIME_FORMATTED
                 }
@@ -1412,9 +1390,9 @@ async fn test_step_with_measurement_series_scope() -> Result<()> {
         }),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "measurementSeriesEnd": {
-                    "measurementSeriesId": "series_0",
+                    "measurementSeriesId": "step0_series0",
                     "totalCount": 3
                 }
             },
@@ -1529,7 +1507,7 @@ async fn test_step_with_extension() -> Result<()> {
         json_step_default_start(),
         json!({
             "testStepArtifact": {
-                "testStepId": "step_0",
+                "testStepId": "step0",
                 "extension": {
                     "name": "extension",
                     "content": {

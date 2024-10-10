@@ -29,8 +29,9 @@ pub use dut::{
 pub use error::{Error, ErrorBuilder};
 pub use log::{Log, LogBuilder};
 pub use measure::{
-    Measurement, MeasurementBuilder, MeasurementSeries, MeasurementSeriesStart,
-    MeasurementSeriesStartBuilder, StartedMeasurementSeries, Validator, ValidatorBuilder,
+    Measurement, MeasurementBuilder, MeasurementSeries, MeasurementSeriesElemDetails,
+    MeasurementSeriesInfo, MeasurementSeriesInfoBuilder, StartedMeasurementSeries, Validator,
+    ValidatorBuilder,
 };
 pub use run::{StartedTestRun, TestRun, TestRunBuilder, TestRunOutcome};
 pub use step::{StartedTestStep, TestStep};

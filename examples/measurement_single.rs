@@ -3,6 +3,7 @@
 // Use of this source code is governed by an MIT-style
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
+#![allow(warnings)]
 
 use anyhow::Result;
 
@@ -26,6 +27,8 @@ async fn run_measure_step(step: &StartedTestStep) -> Result<TestStatus, tv::Ocpt
 #[tokio::main]
 async fn main() -> Result<()> {
     let dut = DutInfo::builder("dut0").build();
+
+    #[cfg(feature = "boxed-scopes")]
     TestRun::builder("simple measurement", "1.0")
         .build()
         .scope(dut, |r| {
