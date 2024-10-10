@@ -10,6 +10,9 @@ use std::sync::Arc;
 use anyhow::anyhow;
 use anyhow::Result;
 use assert_json_diff::assert_json_include;
+use ocptv::ocptv_diagnosis_fail;
+use ocptv::ocptv_diagnosis_pass;
+use ocptv::ocptv_diagnosis_unknown;
 use serde_json::json;
 use tokio::sync::Mutex;
 
@@ -84,7 +87,7 @@ where
         Ok(())
     })
     .await?;
-
+    println!("----------------------------{}", actual);
     let source = actual
         .get("testStepArtifact")
         .ok_or(anyhow!("testRunArtifact key does not exist"))?
@@ -360,6 +363,63 @@ async fn test_ocptv_log_fatal_in_step() -> Result<()> {
 
     check_output_step(&expected, "log", |step| async move {
         ocptv_log_fatal!(step, "log message").await?;
+        Ok(())
+    })
+    .await
+}
+
+#[tokio::test]
+async fn test_ocptv_diagnosis_pass_in_step() -> Result<()> {
+    let expected = json!({
+        "testStepArtifact": {
+            "diagnosis": {
+                    "verdict": "verdict",
+                    "type": "PASS",
+                }
+        },
+        "sequenceNumber": 3
+    });
+
+    check_output_step(&expected, "diagnosis", |step| async move {
+        ocptv_diagnosis_pass!(step, "verdict").await?;
+        Ok(())
+    })
+    .await
+}
+
+#[tokio::test]
+async fn test_ocptv_diagnosis_fail_in_step() -> Result<()> {
+    let expected = json!({
+        "testStepArtifact": {
+            "diagnosis": {
+                    "verdict": "verdict",
+                    "type": "FAIL",
+                }
+        },
+        "sequenceNumber": 3
+    });
+
+    check_output_step(&expected, "diagnosis", |step| async move {
+        ocptv_diagnosis_fail!(step, "verdict").await?;
+        Ok(())
+    })
+    .await
+}
+
+#[tokio::test]
+async fn test_ocptv_diagnosis_unknown_in_step() -> Result<()> {
+    let expected = json!({
+        "testStepArtifact": {
+            "diagnosis": {
+                    "verdict": "verdict",
+                    "type": "UNKNOWN",
+                }
+        },
+        "sequenceNumber": 3
+    });
+
+    check_output_step(&expected, "diagnosis", |step| async move {
+        ocptv_diagnosis_unknown!(step, "verdict").await?;
         Ok(())
     })
     .await

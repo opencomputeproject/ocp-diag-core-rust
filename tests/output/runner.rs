@@ -12,6 +12,7 @@ use assert_json_diff::{assert_json_eq, assert_json_include};
 use futures::future::BoxFuture;
 use futures::future::Future;
 use futures::FutureExt;
+use ocptv::output::Diagnosis;
 use serde_json::json;
 use tokio::sync::Mutex;
 
@@ -1224,6 +1225,80 @@ async fn test_step_with_measurement_series_element_with_metadata_index_no() -> R
                 .add_measurement_with_metadata(80.into(), vec![("key3", "value3".into())])
                 .await?;
             series.end().await?;
+
+            Ok(())
+        }
+        .boxed()
+    })
+    .await
+}
+
+#[tokio::test]
+async fn test_step_with_diagnosis() -> Result<()> {
+    let expected = [
+        json_schema_version(),
+        json_run_default_start(),
+        json_step_default_start(),
+        json!({
+            "testStepArtifact": {
+                "testStepId": "step_0",
+                "diagnosis": {
+                    "verdict": "verdict",
+                    "type": "PASS"
+                }
+            },
+            "sequenceNumber": 3,
+            "timestamp": DATETIME_FORMATTED
+        }),
+        json_step_complete(4),
+        json_run_pass(5),
+    ];
+
+    check_output_step(&expected, |step| {
+        async {
+            step.diagnosis("verdict", tv::DiagnosisType::Pass).await?;
+
+            Ok(())
+        }
+        .boxed()
+    })
+    .await
+}
+
+#[tokio::test]
+async fn test_step_with_diagnosis_builder() -> Result<()> {
+    let expected = [
+        json_schema_version(),
+        json_run_default_start(),
+        json_step_default_start(),
+        json!({
+            "testStepArtifact": {
+                "testStepId": "step_0",
+                "diagnosis": {
+                    "hardwareInfoId": "id",
+                    "verdict": "verdict",
+                    "type": "PASS",
+                    "subcomponent": {
+                        "name": "name"
+                    },
+                    "message": "message"
+                }
+            },
+            "sequenceNumber": 3,
+            "timestamp": DATETIME_FORMATTED
+        }),
+        json_step_complete(4),
+        json_run_pass(5),
+    ];
+
+    check_output_step(&expected, |step| {
+        async {
+            let diagnosis = Diagnosis::builder("verdict", tv::DiagnosisType::Pass)
+                .hardware_info(&HardwareInfo::builder("id", "name").build())
+                .subcomponent(&Subcomponent::builder("name").build())
+                .message("message")
+                .build();
+            step.diagnosis_with_details(&diagnosis).await?;
 
             Ok(())
         }

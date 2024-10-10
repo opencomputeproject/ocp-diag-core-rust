@@ -727,11 +727,11 @@ pub struct Diagnosis {
     pub message: Option<String>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(rename = "validators")]
-    pub hardware_info: Option<HardwareInfo>,
+    #[serde(rename = "hardwareInfoId")]
+    pub hardware_info_id: Option<String>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(rename = "subComponent")]
+    #[serde(rename = "subcomponent")]
     pub subcomponent: Option<Subcomponent>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
