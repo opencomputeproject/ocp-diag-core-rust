@@ -12,13 +12,9 @@ use std::sync::Arc;
 use futures::future::BoxFuture;
 
 use crate::output as tv;
-use crate::spec::{self, TestStepArtifactImpl, TestStepStart};
+use crate::spec::{self, TestStepArtifactImpl};
 use tv::OcptvError;
-use tv::{
-    config, emitter, error, log,
-    measure::{self, MeasurementSeries, MeasurementSeriesInfo},
-    Ident,
-};
+use tv::{config, diagnosis, emitter, error, log, measure, Ident};
 
 /// A single test step in the scope of a [`TestRun`].
 ///
@@ -61,7 +57,7 @@ impl TestStep {
     /// ```
     pub async fn start(self) -> Result<StartedTestStep, tv::OcptvError> {
         self.emitter
-            .emit(&TestStepArtifactImpl::TestStepStart(TestStepStart {
+            .emit(&TestStepArtifactImpl::TestStepStart(spec::TestStepStart {
                 name: self.name.clone(),
             }))
             .await?;
@@ -517,8 +513,8 @@ impl StartedTestStep {
     /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub fn add_measurement_series(&self, name: &str) -> MeasurementSeries {
-        self.add_measurement_series_with_details(MeasurementSeriesInfo::new(name))
+    pub fn add_measurement_series(&self, name: &str) -> tv::MeasurementSeries {
+        self.add_measurement_series_with_details(tv::MeasurementSeriesInfo::new(name))
     }
 
     /// Create a Measurement Series (a time-series list of measurements).
@@ -544,7 +540,7 @@ impl StartedTestStep {
     pub fn add_measurement_series_with_details(
         &self,
         info: measure::MeasurementSeriesInfo,
-    ) -> MeasurementSeries {
+    ) -> tv::MeasurementSeries {
         // spec says this identifier is unique in the scope of the test run, so create it from
         // the step identifier and a counter
         // ref: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/README.md#measurementseriesstart
@@ -557,7 +553,85 @@ impl StartedTestStep {
             Ident::Exact(value) => value.to_owned(),
         };
 
-        MeasurementSeries::new(&series_id, info, Arc::clone(&self.step.emitter))
+        tv::MeasurementSeries::new(&series_id, info, Arc::clone(&self.step.emitter))
+    }
+
+    /// Emits a Diagnosis message.
+    ///
+    /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#diagnosis
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # tokio_test::block_on(async {
+    /// # use ocptv::output::*;
+    ///
+    /// let dut = DutInfo::new("my dut");
+    /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
+    ///
+    /// let step = run.add_step("step_name").start().await?;
+    /// step.diagnosis("verdict", DiagnosisType::Pass).await?;
+    /// step.end(TestStatus::Complete).await?;
+    ///
+    /// # Ok::<(), OcptvError>(())
+    /// # });
+    /// ```
+    pub async fn diagnosis(
+        &self,
+        verdict: &str,
+        diagnosis_type: spec::DiagnosisType,
+    ) -> Result<(), tv::OcptvError> {
+        let diagnosis = diagnosis::Diagnosis::new(verdict, diagnosis_type);
+
+        self.step
+            .emitter
+            .emit(&TestStepArtifactImpl::Diagnosis(diagnosis.to_artifact()))
+            .await?;
+
+        Ok(())
+    }
+
+    /// Emits a Diagnosis message.
+    /// This method accepts a [`objects::Error`] object.
+    ///
+    /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#diagnosis
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # tokio_test::block_on(async {
+    /// # use ocptv::output::*;
+    ///
+    /// let mut dut = DutInfo::new("my_dut");
+    /// let hw_info = dut.add_hardware_info(HardwareInfo::builder("fan").build());
+    /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
+    /// let step = run.add_step("step_name").start().await?;
+    ///
+    /// let diagnosis = Diagnosis::builder("verdict", DiagnosisType::Pass)
+    ///     .hardware_info(&hw_info)
+    ///     .message("message")
+    ///     .subcomponent(&Subcomponent::builder("name").build())
+    ///     .source("file.rs", 1)
+    ///     .build();
+    /// step.diagnosis_with_details(&diagnosis).await?;
+    ///
+    /// step.end(TestStatus::Complete).await?;
+    ///
+    /// # Ok::<(), OcptvError>(())
+    /// # });
+    /// ```
+    pub async fn diagnosis_with_details(
+        &self,
+        diagnosis: &diagnosis::Diagnosis,
+    ) -> Result<(), tv::OcptvError> {
+        self.step
+            .emitter
+            .emit(&spec::TestStepArtifactImpl::Diagnosis(
+                diagnosis.to_artifact(),
+            ))
+            .await?;
+
+        Ok(())
     }
 }
 

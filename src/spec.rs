@@ -104,9 +104,10 @@ pub enum SubcomponentType {
 /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#diagnosistype
 /// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/diagnosis.json
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/diagnosis/$defs/type
-#[derive(Debug, Serialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, PartialEq, Clone, Default)]
 pub enum DiagnosisType {
     #[serde(rename = "PASS")]
+    #[default]
     Pass,
     #[serde(rename = "FAIL")]
     Fail,
@@ -750,6 +751,7 @@ pub struct MeasurementSeriesElement {
 /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#diagnosis
 /// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/diagnosis.json
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/diagnosis
+#[serde_as]
 #[derive(Debug, Serialize, PartialEq, Clone)]
 #[serde(rename = "diagnosis")]
 pub struct Diagnosis {
@@ -764,11 +766,12 @@ pub struct Diagnosis {
     pub message: Option<String>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(rename = "validators")]
+    #[serde(rename = "hardwareInfoId")]
+    #[serde_as(as = "Option<serialize_ids::IdFromGetter>")]
     pub hardware_info: Option<HardwareInfo>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(rename = "subComponent")]
+    #[serde(rename = "subcomponent")]
     pub subcomponent: Option<Subcomponent>,
 
     #[serde(skip_serializing_if = "Option::is_none")]

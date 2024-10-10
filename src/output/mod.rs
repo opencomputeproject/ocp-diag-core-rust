@@ -6,6 +6,7 @@
 #![deny(warnings)]
 
 mod config;
+mod diagnosis;
 mod dut;
 mod emitter;
 mod error;
@@ -18,10 +19,11 @@ mod trait_ext;
 mod writer;
 
 pub use crate::spec::{
-    LogSeverity, SoftwareType, SubcomponentType, TestResult, TestStatus, ValidatorType,
-    SPEC_VERSION,
+    DiagnosisType, LogSeverity, SoftwareType, SubcomponentType, TestResult, TestStatus,
+    ValidatorType, SPEC_VERSION,
 };
 pub use config::{Config, ConfigBuilder, TimestampProvider};
+pub use diagnosis::{Diagnosis, DiagnosisBuilder};
 pub use dut::{
     DutHardwareInfo, DutInfo, DutInfoBuilder, DutSoftwareInfo, HardwareInfo, HardwareInfoBuilder,
     Ident, PlatformInfo, PlatformInfoBuilder, SoftwareInfo, SoftwareInfoBuilder, Subcomponent,

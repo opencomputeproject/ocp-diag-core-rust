@@ -122,3 +122,58 @@ ocptv_log!(ocptv_log_info, Info);
 ocptv_log!(ocptv_log_warning, Warning);
 ocptv_log!(ocptv_log_error, Error);
 ocptv_log!(ocptv_log_fatal, Fatal);
+
+/// The following macros emit an artifact of type Diagnosis.
+/// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#diagnosis
+///
+/// Equivalent to the crate::output::StartedTestStep::diagnosis_with_details method.
+///
+/// They accept verdict as only parameter.
+/// Information about the source file and line number is automatically added.
+///
+/// There is one macro for each DiagnosisType variant: Pass, Fail, Unknown.
+///
+/// # Examples
+///
+/// ## DEBUG
+///
+/// ```rust
+/// # tokio_test::block_on(async {
+/// # use ocptv::output::*;
+///
+/// use ocptv::ocptv_diagnosis_pass;
+///
+/// let dut = DutInfo::new("my dut");
+/// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
+///
+/// let step = run.add_step("step_name").start().await?;
+/// ocptv_diagnosis_pass!(step, "verdict");
+/// step.end(TestStatus::Complete).await?;
+///
+/// run.end(TestStatus::Complete, TestResult::Pass).await?;
+///
+/// # Ok::<(), OcptvError>(())
+/// # });
+/// ```
+
+macro_rules! ocptv_diagnosis {
+    ($name:ident, $diagnosis_type:path) => {
+        #[macro_export]
+        macro_rules! $name {
+            ($artifact:expr, $verdict:expr) => {
+                $artifact.diagnosis_with_details(
+                    &$crate::output::Diagnosis::builder($verdict, $diagnosis_type)
+                        .source(file!(), line!() as i32)
+                        .build(),
+                )
+            };
+        }
+    };
+}
+
+ocptv_diagnosis!(ocptv_diagnosis_pass, ocptv::output::DiagnosisType::Pass);
+ocptv_diagnosis!(ocptv_diagnosis_fail, ocptv::output::DiagnosisType::Fail);
+ocptv_diagnosis!(
+    ocptv_diagnosis_unknown,
+    ocptv::output::DiagnosisType::Unknown
+);
