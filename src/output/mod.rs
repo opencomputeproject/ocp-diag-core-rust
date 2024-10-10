@@ -10,6 +10,7 @@ mod diagnosis;
 mod dut;
 mod emitter;
 mod error;
+mod file;
 mod log;
 mod macros;
 mod measure;
@@ -30,6 +31,7 @@ pub use dut::{
     SubcomponentBuilder,
 };
 pub use error::{Error, ErrorBuilder};
+pub use file::{File, FileBuilder};
 pub use log::{Log, LogBuilder};
 pub use measure::{
     Measurement, MeasurementBuilder, MeasurementSeries, MeasurementSeriesElemDetails,

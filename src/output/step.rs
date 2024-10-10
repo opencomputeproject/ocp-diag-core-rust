@@ -14,7 +14,7 @@ use futures::future::BoxFuture;
 use crate::output as tv;
 use crate::spec::{self, TestStepArtifactImpl};
 use tv::OcptvError;
-use tv::{config, diagnosis, emitter, error, log, measure, Ident};
+use tv::{config, diagnosis, emitter, error, file, log, measure, Ident};
 
 /// A single test step in the scope of a [`TestRun`].
 ///
@@ -629,6 +629,77 @@ impl StartedTestStep {
             .emit(&spec::TestStepArtifactImpl::Diagnosis(
                 diagnosis.to_artifact(),
             ))
+            .await?;
+
+        Ok(())
+    }
+
+    /// Emits a File message.
+    ///
+    /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#file
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # tokio_test::block_on(async {
+    /// # use ocptv::output::*;
+    ///
+    /// let dut = DutInfo::new("my_dut");
+    /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
+    ///
+    /// let step = run.add_step("step_name").start().await?;
+    /// step.file("name", "/path/to/file", false).await?;
+    /// step.end(TestStatus::Complete).await?;
+    ///
+    /// # Ok::<(), OcptvError>(())
+    /// # });
+    /// ```
+    pub async fn file(
+        &self,
+        name: &str,
+        uri: &str,
+        is_snapshot: bool,
+    ) -> Result<(), tv::OcptvError> {
+        let file = file::File::new(name, uri, is_snapshot);
+
+        self.step
+            .emitter
+            .emit(&TestStepArtifactImpl::File(file.to_artifact()))
+            .await?;
+
+        Ok(())
+    }
+
+    /// Emits a File message.
+    /// This method accepts a [`objects::Error`] object.
+    ///
+    /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#file
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # tokio_test::block_on(async {
+    /// # use ocptv::output::*;
+    ///
+    /// let dut = DutInfo::new("my_dut");
+    /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
+    /// let step = run.add_step("step_name").start().await?;
+    ///
+    /// let file = File::builder("name", "/path/to/file", false)
+    ///     .description("description")
+    ///     .content_type("text/plain")
+    ///     .add_metadata("key", "value".into())
+    ///     .build();
+    /// step.file_with_details(&file).await?;
+    /// step.end(TestStatus::Complete).await?;
+    ///
+    /// # Ok::<(), OcptvError>(())
+    /// # });
+    /// ```
+    pub async fn file_with_details(&self, file: &file::File) -> Result<(), tv::OcptvError> {
+        self.step
+            .emitter
+            .emit(&spec::TestStepArtifactImpl::File(file.to_artifact()))
             .await?;
 
         Ok(())
