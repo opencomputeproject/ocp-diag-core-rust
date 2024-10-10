@@ -19,8 +19,7 @@ use tv::dut;
 /// ## Create a Diagnosis object with the `new` method
 ///
 /// ```
-/// use ocptv::output::Diagnosis;
-/// use ocptv::output::DiagnosisType;
+/// # use ocptv::output::*;
 ///
 /// let diagnosis = Diagnosis::new("verdict", DiagnosisType::Pass);
 /// ```
@@ -28,10 +27,7 @@ use tv::dut;
 /// ## Create a Diagnosis object with the `builder` method
 ///
 /// ```
-/// use ocptv::output::HardwareInfo;
-/// use ocptv::output::Diagnosis;
-/// use ocptv::output::DiagnosisType;
-/// use ocptv::output::Subcomponent;
+/// # use ocptv::output::*;
 ///
 /// let diagnosis = Diagnosis::builder("verdict", DiagnosisType::Pass)
 ///     .hardware_info(&HardwareInfo::builder("id", "name").build())
@@ -40,6 +36,7 @@ use tv::dut;
 ///     .source("file.rs", 1)
 ///     .build();
 /// ```
+#[derive(Default)]
 pub struct Diagnosis {
     verdict: String,
     diagnosis_type: spec::DiagnosisType,
@@ -55,19 +52,15 @@ impl Diagnosis {
     /// # Examples
     ///
     /// ```
-    /// use ocptv::output::Diagnosis;
-    /// use ocptv::output::DiagnosisType;
+    /// # use ocptv::output::*;
     ///
     /// let diagnosis = Diagnosis::new("verdict", DiagnosisType::Pass);
     /// ```
     pub fn new(verdict: &str, diagnosis_type: spec::DiagnosisType) -> Self {
         Diagnosis {
-            verdict: verdict.to_string(),
+            verdict: verdict.to_owned(),
             diagnosis_type,
-            message: None,
-            hardware_info: None,
-            subcomponent: None,
-            source_location: None,
+            ..Default::default()
         }
     }
 
@@ -76,10 +69,7 @@ impl Diagnosis {
     /// # Examples
     ///
     /// ```
-    /// use ocptv::output::HardwareInfo;
-    /// use ocptv::output::Diagnosis;
-    /// use ocptv::output::DiagnosisType;
-    /// use ocptv::output::Subcomponent;
+    /// # use ocptv::output::*;
     ///
     /// let Diagnosis = Diagnosis::builder("verdict", DiagnosisType::Pass)
     ///     .hardware_info(&HardwareInfo::builder("id", "name").build())
@@ -97,8 +87,7 @@ impl Diagnosis {
     /// # Examples
     ///
     /// ```
-    /// use ocptv::output::Diagnosis;
-    /// use ocptv::output::DiagnosisType;
+    /// # use ocptv::output::*;
     ///
     /// let diagnosis = Diagnosis::new("verdict", DiagnosisType::Pass);
     /// let _ = diagnosis.to_artifact();
@@ -126,10 +115,7 @@ impl Diagnosis {
 /// # Examples
 ///
 /// ```
-/// use ocptv::output::HardwareInfo;
-/// use ocptv::output::Diagnosis;
-/// use ocptv::output::DiagnosisType;
-/// use ocptv::output::Subcomponent;
+/// # use ocptv::output::*;
 ///
 /// let builder = Diagnosis::builder("verdict", DiagnosisType::Pass)
 ///     .hardware_info(&HardwareInfo::builder("id", "name").build())
@@ -138,6 +124,7 @@ impl Diagnosis {
 ///     .source("file.rs", 1);
 /// let diagnosis = builder.build();
 /// ```
+#[derive(Default)]
 pub struct DiagnosisBuilder {
     verdict: String,
     diagnosis_type: spec::DiagnosisType,
@@ -153,19 +140,15 @@ impl DiagnosisBuilder {
     /// # Examples
     ///
     /// ```
-    /// use ocptv::output::DiagnosisBuilder;
-    /// use ocptv::output::DiagnosisType;
+    /// # use ocptv::output::*;
     ///
     /// let builder = DiagnosisBuilder::new("verdict", DiagnosisType::Pass);
     /// ```
     pub fn new(verdict: &str, diagnosis_type: spec::DiagnosisType) -> Self {
         DiagnosisBuilder {
-            verdict: verdict.to_string(),
+            verdict: verdict.to_owned(),
             diagnosis_type,
-            message: None,
-            hardware_info: None,
-            subcomponent: None,
-            source_location: None,
+            ..Default::default()
         }
     }
 
@@ -174,14 +157,13 @@ impl DiagnosisBuilder {
     /// # Examples
     ///
     /// ```
-    /// use ocptv::output::DiagnosisBuilder;
-    /// use ocptv::output::DiagnosisType;
+    /// # use ocptv::output::*;
     ///
     /// let builder = DiagnosisBuilder::new("verdict", DiagnosisType::Pass)
     ///     .message("message");
     /// ```
     pub fn message(mut self, message: &str) -> DiagnosisBuilder {
-        self.message = Some(message.to_string());
+        self.message = Some(message.to_owned());
         self
     }
 
@@ -190,9 +172,7 @@ impl DiagnosisBuilder {
     /// # Examples
     ///
     /// ```
-    /// use ocptv::output::HardwareInfo;
-    /// use ocptv::output::DiagnosisBuilder;
-    /// use ocptv::output::DiagnosisType;
+    /// # use ocptv::output::*;
     ///
     /// let builder = DiagnosisBuilder::new("verdict", DiagnosisType::Pass)
     ///     .hardware_info(&HardwareInfo::builder("id", "name").build());
@@ -207,9 +187,7 @@ impl DiagnosisBuilder {
     /// # Examples
     ///
     /// ```
-    /// use ocptv::output::Subcomponent;
-    /// use ocptv::output::DiagnosisBuilder;
-    /// use ocptv::output::DiagnosisType;
+    /// # use ocptv::output::*;
     ///
     /// let builder = DiagnosisBuilder::new("verdict", DiagnosisType::Pass)
     ///     .subcomponent(&Subcomponent::builder("name").build());
@@ -224,15 +202,14 @@ impl DiagnosisBuilder {
     /// # Examples
     ///
     /// ```
-    /// use ocptv::output::DiagnosisBuilder;
-    /// use ocptv::output::DiagnosisType;
+    /// # use ocptv::output::*;
     ///
     /// let builder = DiagnosisBuilder::new("verdict", DiagnosisType::Pass)
     ///     .source("file.rs", 1);
     /// ```
     pub fn source(mut self, file: &str, line: i32) -> DiagnosisBuilder {
         self.source_location = Some(spec::SourceLocation {
-            file: file.to_string(),
+            file: file.to_owned(),
             line,
         });
         self
@@ -243,8 +220,7 @@ impl DiagnosisBuilder {
     /// # Examples
     ///
     /// ```
-    /// use ocptv::output::DiagnosisBuilder;
-    /// use ocptv::output::DiagnosisType;
+    /// # use ocptv::output::*;
     ///
     /// let builder = DiagnosisBuilder::new("verdict", DiagnosisType::Pass);
     /// let diagnosis = builder.build();
@@ -280,7 +256,7 @@ mod tests {
         assert_eq!(
             artifact,
             spec::Diagnosis {
-                verdict: verdict.to_string(),
+                verdict: verdict.to_owned(),
                 diagnosis_type,
                 message: None,
                 hardware_info_id: None,

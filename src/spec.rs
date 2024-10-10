@@ -85,9 +85,10 @@ pub enum SubcomponentType {
 /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#diagnosistype
 /// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/diagnosis.json
 /// schema ref: https://github.com/opencomputeproject/ocp-diag-core/diagnosis/$defs/type
-#[derive(Debug, Serialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, PartialEq, Clone, Default)]
 pub enum DiagnosisType {
     #[serde(rename = "PASS")]
+    #[default]
     Pass,
     #[serde(rename = "FAIL")]
     Fail,

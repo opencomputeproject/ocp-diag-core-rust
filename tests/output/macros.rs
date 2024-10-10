@@ -10,15 +10,15 @@ use std::sync::Arc;
 use anyhow::anyhow;
 use anyhow::Result;
 use assert_json_diff::assert_json_include;
-use ocptv::ocptv_diagnosis_fail;
-use ocptv::ocptv_diagnosis_pass;
-use ocptv::ocptv_diagnosis_unknown;
 use serde_json::json;
 use tokio::sync::Mutex;
 
 use ocptv::ocptv_error;
 use ocptv::output as tv;
-use ocptv::{ocptv_log_debug, ocptv_log_error, ocptv_log_fatal, ocptv_log_info, ocptv_log_warning};
+use ocptv::{
+    ocptv_diagnosis_fail, ocptv_diagnosis_pass, ocptv_diagnosis_unknown, ocptv_log_debug,
+    ocptv_log_error, ocptv_log_fatal, ocptv_log_info, ocptv_log_warning,
+};
 use tv::{Config, DutInfo, StartedTestRun, StartedTestStep, TestRun};
 
 async fn check_output<F, R, const N: usize>(
@@ -87,7 +87,7 @@ where
         Ok(())
     })
     .await?;
-    println!("----------------------------{}", actual);
+
     let source = actual
         .get("testStepArtifact")
         .ok_or(anyhow!("testRunArtifact key does not exist"))?
