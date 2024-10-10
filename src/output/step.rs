@@ -396,12 +396,12 @@ impl StartedTestStep {
     /// #[derive(serde::Serialize)]
     /// struct Ext { i: u32 }
     ///
-    /// step.extension("ext_name", Ext { i: 42 }).await?;
+    /// step.add_extension("ext_name", Ext { i: 42 }).await?;
     ///
     /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn extension<S: serde::Serialize>(
+    pub async fn add_extension<S: serde::Serialize>(
         &self,
         name: &str,
         any: S,

@@ -1536,7 +1536,7 @@ async fn test_step_with_extension() -> Result<()> {
 
     check_output_step(&expected, |s, _| {
         async {
-            s.extension(
+            s.add_extension(
                 "extension",
                 Ext {
                     r#type: "TestExtension".to_owned(),
@@ -1588,7 +1588,7 @@ async fn test_step_with_extension_which_fails() -> Result<()> {
         .await?;
     let step = run.add_step("first step").start().await?;
 
-    let result = step.extension("extension", Ext { i: 0 }).await;
+    let result = step.add_extension("extension", Ext { i: 0 }).await;
 
     match result {
         Err(OcptvError::Format(e)) => {
