@@ -20,7 +20,7 @@ use ocptv::output::OcptvError;
 #[cfg(feature = "boxed-scopes")]
 use tv::TestRunOutcome;
 use tv::{
-    Config, Diagnosis, DutInfo, Error, HardwareInfo, Ident, Log, LogSeverity, Measurement,
+    Config, Diagnosis, DutInfo, Error, File, HardwareInfo, Ident, Log, LogSeverity, Measurement,
     MeasurementSeriesElemDetails, MeasurementSeriesInfo, SoftwareInfo, SoftwareType,
     StartedTestRun, StartedTestStep, Subcomponent, TestResult, TestRun, TestRunBuilder, TestStatus,
     TimestampProvider, Validator, ValidatorType,
@@ -1396,6 +1396,84 @@ async fn test_step_with_diagnosis_builder() -> Result<()> {
                 .message("message")
                 .build();
             s.diagnosis_with_details(&diagnosis).await?;
+
+            Ok(())
+        }
+        .boxed()
+    })
+    .await
+}
+
+#[tokio::test]
+async fn test_step_with_file() -> Result<()> {
+    let uri = tv::Uri::parse("file:///tmp/foo")?;
+    let expected = [
+        json_schema_version(),
+        json_run_default_start(),
+        json_step_default_start(),
+        json!({
+            "testStepArtifact": {
+                "testStepId": "step0",
+                "file": {
+                    "name": "name",
+                    "uri": uri.clone().as_str().to_owned(),
+                    "isSnapshot": false
+                }
+            },
+            "sequenceNumber": 3,
+            "timestamp": DATETIME_FORMATTED
+        }),
+        json_step_complete(4),
+        json_run_pass(5),
+    ];
+
+    check_output_step(&expected, |s, _| {
+        async {
+            s.file("name", uri).await?;
+
+            Ok(())
+        }
+        .boxed()
+    })
+    .await
+}
+
+#[tokio::test]
+async fn test_step_with_file_builder() -> Result<()> {
+    let uri = tv::Uri::parse("file:///tmp/foo")?;
+    let expected = [
+        json_schema_version(),
+        json_run_default_start(),
+        json_step_default_start(),
+        json!({
+            "testStepArtifact": {
+                "testStepId": "step0",
+                "file": {
+                    "name": "name",
+                    "uri": uri.clone().as_str().to_owned(),
+                    "isSnapshot": false,
+                    "contentType": "text/plain",
+                    "description": "description",
+                    "metadata": {
+                        "key": "value"
+                    },
+                }
+            },
+            "sequenceNumber": 3,
+            "timestamp": DATETIME_FORMATTED
+        }),
+        json_step_complete(4),
+        json_run_pass(5),
+    ];
+
+    check_output_step(&expected, |s, _| {
+        async {
+            let file = File::builder("name", uri)
+                .content_type(mime::TEXT_PLAIN)
+                .description("description")
+                .add_metadata("key", "value".into())
+                .build();
+            s.file_with_details(&file).await?;
 
             Ok(())
         }
