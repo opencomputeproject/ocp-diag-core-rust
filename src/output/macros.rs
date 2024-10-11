@@ -73,7 +73,7 @@ macro_rules! ocptv_error {
 }
 
 macro_rules! ocptv_log {
-    ($name:ident, $severity:ident) => {
+    ($name:ident, $severity:path) => {
         /// Emit an artifact of type Log.
         ///
         /// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#log>
@@ -107,7 +107,7 @@ macro_rules! ocptv_log {
             ($artifact:expr, $msg:expr) => {
                 $artifact.add_log_with_details(
                     &$crate::output::Log::builder($msg)
-                        .severity($crate::output::LogSeverity::$severity)
+                        .severity($severity)
                         .source(file!(), line!() as i32)
                         .build(),
                 )
@@ -116,11 +116,11 @@ macro_rules! ocptv_log {
     };
 }
 
-ocptv_log!(ocptv_log_debug, Debug);
-ocptv_log!(ocptv_log_info, Info);
-ocptv_log!(ocptv_log_warning, Warning);
-ocptv_log!(ocptv_log_error, Error);
-ocptv_log!(ocptv_log_fatal, Fatal);
+ocptv_log!(ocptv_log_debug, ocptv::output::LogSeverity::Debug);
+ocptv_log!(ocptv_log_info, ocptv::output::LogSeverity::Info);
+ocptv_log!(ocptv_log_warning, ocptv::output::LogSeverity::Warning);
+ocptv_log!(ocptv_log_error, ocptv::output::LogSeverity::Error);
+ocptv_log!(ocptv_log_fatal, ocptv::output::LogSeverity::Fatal);
 
 macro_rules! ocptv_diagnosis {
     ($name:ident, $diagnosis_type:path) => {
