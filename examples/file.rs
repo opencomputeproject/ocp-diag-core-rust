@@ -4,31 +4,22 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
+use std::str::FromStr;
+
 use anyhow::Result;
 use futures::FutureExt;
 
 use ocptv::output as tv;
-use rand::Rng;
 use tv::{TestResult, TestStatus};
 
-fn get_fan_speed() -> i32 {
-    let mut rng = rand::thread_rng();
-    rng.gen_range(1500..1700)
-}
-
-async fn run_diagnosis_step(step: &tv::StartedTestStep) -> Result<TestStatus, tv::OcptvError> {
-    let fan_speed = get_fan_speed();
-
-    if fan_speed >= 1600 {
-        step.diagnosis("fan_ok", tv::DiagnosisType::Pass).await?;
-    } else {
-        step.diagnosis("fan_low", tv::DiagnosisType::Fail).await?;
-    }
+async fn run_file_step(step: &tv::StartedTestStep) -> Result<TestStatus, tv::OcptvError> {
+    let uri = tv::Uri::from_str("file:///root/mem_cfg_log").unwrap();
+    step.file("mem_cfg_log", uri).await?;
 
     Ok(TestStatus::Complete)
 }
 
-/// Simple demo with diagnosis.
+/// Simple demo with file.
 #[tokio::main]
 async fn main() -> Result<()> {
     let dut = tv::DutInfo::builder("dut0").build();
@@ -38,7 +29,7 @@ async fn main() -> Result<()> {
         .scope(dut, |r| {
             async move {
                 r.add_step("step0")
-                    .scope(|s| { s.file("output") }.boxed())
+                    .scope(|s| run_file_step(s).boxed())
                     .await?;
 
                 Ok(tv::TestRunOutcome {
