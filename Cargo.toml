@@ -86,3 +86,7 @@ required-features = ["boxed-scopes"]
 [[example]]
 name = "diagnosis"
 required-features = ["boxed-scopes"]
+
+[[example]]
+name = "file"
+required-features = ["boxed-scopes"]
