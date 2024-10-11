@@ -17,6 +17,7 @@ chrono = "0.4.38"
 chrono-tz = "0.10.0"
 futures = "0.3.30"
 maplit = "1.0.2"
+mime = "0.3.17"
 serde = { version = "1.0.210", features = ["derive"] }
 serde_json = "1.0.128"
 serde_with = "3.11.0"
@@ -30,6 +31,7 @@ tokio = { version = "1.40.0", features = [
     "sync",
 ] }
 unwrap-infallible = "0.1.5"
+url = "2.5.2"
 
 [dev-dependencies]
 anyhow = "1.0.89"
@@ -38,6 +40,7 @@ assert_fs = "1.1.2"
 futures = "0.3.30"
 predicates = "3.1.2"
 tokio-test = "0.4.4"
+rand = "0.8.5"
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = [
@@ -78,4 +81,12 @@ required-features = ["boxed-scopes"]
 
 [[example]]
 name = "simple_step_fail"
+required-features = ["boxed-scopes"]
+
+[[example]]
+name = "diagnosis"
+required-features = ["boxed-scopes"]
+
+[[example]]
+name = "file"
 required-features = ["boxed-scopes"]

@@ -7,6 +7,7 @@
 mod config;
 mod diagnosis;
 mod error;
+mod file;
 mod fixture;
 mod log;
 mod macros;

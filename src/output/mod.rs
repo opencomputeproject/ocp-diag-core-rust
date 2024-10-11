@@ -10,6 +10,7 @@ mod diagnosis;
 mod dut;
 mod emitter;
 mod error;
+mod file;
 mod log;
 mod macros;
 mod measure;
@@ -30,6 +31,7 @@ pub use dut::{
     SubcomponentBuilder,
 };
 pub use error::{Error, ErrorBuilder};
+pub use file::{File, FileBuilder};
 pub use log::{Log, LogBuilder};
 pub use measure::{
     Measurement, MeasurementBuilder, MeasurementElementDetail, MeasurementElementDetailBuilder,
@@ -40,8 +42,9 @@ pub use run::{StartedTestRun, TestRun, TestRunBuilder, TestRunOutcome};
 pub use step::{StartedTestStep, TestStep};
 pub use writer::{BufferWriter, FileWriter, StdoutWriter, Writer};
 
-// re-export this as a public type we present
+// re-export these as a public types we present
 pub use serde_json::Value;
+pub use url::Url as Uri;
 
 // TODO: docs
 #[derive(Debug, thiserror::Error)]
