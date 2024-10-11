@@ -111,6 +111,7 @@ pub enum SubcomponentType {
 ///
 /// schema ref: <https://github.com/opencomputeproject/ocp-diag-core/diagnosis/$defs/type>
 #[derive(Debug, Serialize, PartialEq, Clone, Default)]
+#[non_exhaustive]
 pub enum DiagnosisType {
     #[serde(rename = "PASS")]
     #[default]
@@ -217,6 +218,7 @@ pub struct Root {
 }
 
 #[derive(Debug, Serialize, PartialEq, Clone)]
+#[non_exhaustive]
 pub enum RootImpl {
     #[serde(rename = "schemaVersion")]
     SchemaVersion(SchemaVersion),
@@ -270,6 +272,7 @@ pub struct TestRunArtifact {
 }
 
 #[derive(Debug, Serialize, PartialEq, Clone)]
+#[non_exhaustive]
 pub enum TestRunArtifactImpl {
     #[serde(rename = "testRunStart")]
     TestRunStart(TestRunStart),
@@ -576,6 +579,7 @@ pub struct TestStepArtifact {
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Serialize, PartialEq, Clone)]
+#[non_exhaustive]
 pub enum TestStepArtifactImpl {
     #[serde(rename = "testStepStart")]
     TestStepStart(TestStepStart),
