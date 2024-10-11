@@ -4,5 +4,12 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
+mod config;
+mod diagnosis;
+mod error;
+mod fixture;
+mod log;
 mod macros;
-mod runner;
+mod measure;
+mod run;
+mod step;
