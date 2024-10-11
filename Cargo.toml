@@ -40,6 +40,7 @@ assert_fs = "1.1.2"
 futures = "0.3.30"
 predicates = "3.1.2"
 tokio-test = "0.4.4"
+rand = "0.8.5"
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = [
@@ -80,4 +81,8 @@ required-features = ["boxed-scopes"]
 
 [[example]]
 name = "simple_step_fail"
+required-features = ["boxed-scopes"]
+
+[[example]]
+name = "diagnosis"
 required-features = ["boxed-scopes"]
