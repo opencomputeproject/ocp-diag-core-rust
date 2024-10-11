@@ -32,8 +32,8 @@ pub use dut::{
 pub use error::{Error, ErrorBuilder};
 pub use log::{Log, LogBuilder};
 pub use measure::{
-    Measurement, MeasurementBuilder, MeasurementSeries, MeasurementSeriesElemDetails,
-    MeasurementSeriesElemDetailsBuilder, MeasurementSeriesInfo, MeasurementSeriesInfoBuilder,
+    Measurement, MeasurementBuilder, MeasurementElementDetail, MeasurementElementDetailBuilder,
+    MeasurementSeries, MeasurementSeriesDetail, MeasurementSeriesDetailBuilder,
     StartedMeasurementSeries, Validator, ValidatorBuilder,
 };
 pub use run::{StartedTestRun, TestRun, TestRunBuilder, TestRunOutcome};

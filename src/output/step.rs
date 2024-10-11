@@ -212,7 +212,7 @@ impl StartedTestStep {
     /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
     ///
     /// let step = run.add_step("step_name").start().await?;
-    /// step.add_log_with_details(
+    /// step.add_log_detail(
     ///     Log::builder("This is a log message with INFO severity")
     ///         .severity(LogSeverity::Info)
     ///         .source("file", 1)
@@ -223,7 +223,7 @@ impl StartedTestStep {
     /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn add_log_with_details(&self, log: log::Log) -> Result<(), tv::OcptvError> {
+    pub async fn add_log_detail(&self, log: log::Log) -> Result<(), tv::OcptvError> {
         self.step
             .emitter
             .emit(&TestStepArtifactImpl::Log(log.to_artifact()))
@@ -296,7 +296,7 @@ impl StartedTestStep {
     /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
     ///
     /// let step = run.add_step("step_name").start().await?;
-    /// step.add_error_with_msg("symptom", "error message").await?;
+    /// step.add_error_msg("symptom", "error message").await?;
     /// step.end(TestStatus::Complete).await?;
     ///
     /// # Ok::<(), OcptvError>(())
@@ -320,7 +320,7 @@ impl StartedTestStep {
     /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn add_error_with_msg(&self, symptom: &str, msg: &str) -> Result<(), tv::OcptvError> {
+    pub async fn add_error_msg(&self, symptom: &str, msg: &str) -> Result<(), tv::OcptvError> {
         let error = error::Error::builder(symptom).message(msg).build();
 
         self.step
@@ -346,7 +346,7 @@ impl StartedTestStep {
     /// let run = TestRun::builder("diagnostic_name", "1.0").build().start(dut).await?;
     ///
     /// let step = run.add_step("step_name").start().await?;
-    /// step.add_error_with_details(
+    /// step.add_error_detail(
     ///     Error::builder("symptom")
     ///         .message("Error message")
     ///         .source("file", 1)
@@ -358,7 +358,7 @@ impl StartedTestStep {
     /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn add_error_with_details(&self, error: error::Error) -> Result<(), tv::OcptvError> {
+    pub async fn add_error_detail(&self, error: error::Error) -> Result<(), tv::OcptvError> {
         self.step
             .emitter
             .emit(&TestStepArtifactImpl::Error(error.to_artifact()))
@@ -459,21 +459,21 @@ impl StartedTestStep {
     ///     .hardware_info(&hw_info)
     ///     .subcomponent(Subcomponent::builder("name").build())
     ///     .build();
-    /// step.add_measurement_with_details(measurement).await?;
+    /// step.add_measurement_detail(measurement).await?;
     ///
     /// step.end(TestStatus::Complete).await?;
     ///
     /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn add_measurement_with_details(
+    pub async fn add_measurement_detail(
         &self,
-        measurement: measure::Measurement,
+        detail: measure::Measurement,
     ) -> Result<(), tv::OcptvError> {
         self.step
             .emitter
             .emit(&spec::TestStepArtifactImpl::Measurement(
-                measurement.to_artifact(),
+                detail.to_artifact(),
             ))
             .await?;
 
@@ -499,11 +499,11 @@ impl StartedTestStep {
     /// # });
     /// ```
     pub fn add_measurement_series(&self, name: &str) -> tv::MeasurementSeries {
-        self.add_measurement_series_with_details(tv::MeasurementSeriesInfo::new(name))
+        self.add_measurement_series_detail(tv::MeasurementSeriesDetail::new(name))
     }
 
     /// Create a Measurement Series (a time-series list of measurements).
-    /// This method accepts a [`tv::MeasurementSeriesInfo`] object.
+    /// This method accepts a [`tv::MeasurementSeriesDetail`] object.
     ///
     /// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#measurementseriesstart>
     ///
@@ -516,19 +516,19 @@ impl StartedTestStep {
     /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
     /// let step = run.add_step("step_name").start().await?;
     /// let series =
-    ///     step.add_measurement_series_with_details(MeasurementSeriesInfo::new("name"));
+    ///     step.add_measurement_series_detail(MeasurementSeriesDetail::new("name"));
     ///
     /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub fn add_measurement_series_with_details(
+    pub fn add_measurement_series_detail(
         &self,
-        info: measure::MeasurementSeriesInfo,
+        detail: measure::MeasurementSeriesDetail,
     ) -> tv::MeasurementSeries {
         // spec says this identifier is unique in the scope of the test run, so create it from
         // the step identifier and a counter
         // ref: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/README.md#measurementseriesstart
-        let series_id = match &info.id {
+        let series_id = match &detail.id {
             Ident::Auto => format!(
                 "{}_series{}",
                 self.step.emitter.step_id,
@@ -537,7 +537,7 @@ impl StartedTestStep {
             Ident::Exact(value) => value.to_owned(),
         };
 
-        tv::MeasurementSeries::new(&series_id, info, Arc::clone(&self.step.emitter))
+        tv::MeasurementSeries::new(&series_id, detail, Arc::clone(&self.step.emitter))
     }
 
     /// Emits a Diagnosis message.
@@ -553,13 +553,13 @@ impl StartedTestStep {
     /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
     ///
     /// let step = run.add_step("step_name").start().await?;
-    /// step.diagnosis("verdict", DiagnosisType::Pass).await?;
+    /// step.add_diagnosis("verdict", DiagnosisType::Pass).await?;
     /// step.end(TestStatus::Complete).await?;
     ///
     /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn diagnosis(
+    pub async fn add_diagnosis(
         &self,
         verdict: &str,
         diagnosis_type: spec::DiagnosisType,
@@ -595,14 +595,14 @@ impl StartedTestStep {
     ///     .subcomponent(&Subcomponent::builder("name").build())
     ///     .source("file.rs", 1)
     ///     .build();
-    /// step.diagnosis_with_details(diagnosis).await?;
+    /// step.add_diagnosis_detail(diagnosis).await?;
     ///
     /// step.end(TestStatus::Complete).await?;
     ///
     /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn diagnosis_with_details(
+    pub async fn add_diagnosis_detail(
         &self,
         diagnosis: diagnosis::Diagnosis,
     ) -> Result<(), tv::OcptvError> {

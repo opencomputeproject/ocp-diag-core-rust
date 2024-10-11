@@ -72,7 +72,7 @@ async fn test_config_builder_with_file() -> Result<()> {
         .start(dut)
         .await?;
 
-    run.add_error_with_msg("symptom", "Error message").await?;
+    run.add_error_msg("symptom", "Error message").await?;
 
     run.end(TestStatus::Complete, TestResult::Pass).await?;
 

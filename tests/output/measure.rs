@@ -9,8 +9,8 @@ use futures::FutureExt;
 use serde_json::json;
 
 use ocptv::output::{
-    Ident, Measurement, MeasurementSeriesElemDetails, MeasurementSeriesInfo, Subcomponent,
-    Validator, ValidatorType,
+    Ident, Measurement, MeasurementElementDetail, MeasurementSeriesDetail, Subcomponent, Validator,
+    ValidatorType,
 };
 
 use super::fixture::*;
@@ -91,7 +91,7 @@ async fn test_step_with_measurement_builder() -> Result<()> {
                 .hardware_info(hw_info)
                 .subcomponent(Subcomponent::builder("name").build())
                 .build();
-            s.add_measurement_with_details(measurement).await?;
+            s.add_measurement_detail(measurement).await?;
 
             Ok(())
         }
@@ -263,8 +263,8 @@ async fn test_step_with_measurement_series_with_details() -> Result<()> {
             let hw_info = dut.hardware_info("hw0").unwrap(); // must exist
 
             let series = s
-                .add_measurement_series_with_details(
-                    MeasurementSeriesInfo::builder("name")
+                .add_measurement_series_detail(
+                    MeasurementSeriesDetail::builder("name")
                         .id(Ident::Exact("series_id".to_owned()))
                         .unit("unit")
                         .add_metadata("key", "value".into())
@@ -483,8 +483,8 @@ async fn test_step_with_measurement_series_element_with_details() -> Result<()> 
         async {
             let series = s.add_measurement_series("name").start().await?;
             series
-                .add_measurement_with_details(
-                    MeasurementSeriesElemDetails::builder(60.into())
+                .add_measurement_detail(
+                    MeasurementElementDetail::builder(60.into())
                         .timestamp(DATETIME.with_timezone(&chrono_tz::UTC))
                         .add_metadata("key", "value".into())
                         .add_metadata("key2", "value2".into())
@@ -579,22 +579,22 @@ async fn test_step_with_measurement_series_element_with_metadata_index_no() -> R
             let series = s.add_measurement_series("name").start().await?;
             // add more than one element to check the index increments correctly
             series
-                .add_measurement_with_details(
-                    MeasurementSeriesElemDetails::builder(60.into())
+                .add_measurement_detail(
+                    MeasurementElementDetail::builder(60.into())
                         .add_metadata("key", "value".into())
                         .build(),
                 )
                 .await?;
             series
-                .add_measurement_with_details(
-                    MeasurementSeriesElemDetails::builder(70.into())
+                .add_measurement_detail(
+                    MeasurementElementDetail::builder(70.into())
                         .add_metadata("key2", "value2".into())
                         .build(),
                 )
                 .await?;
             series
-                .add_measurement_with_details(
-                    MeasurementSeriesElemDetails::builder(80.into())
+                .add_measurement_detail(
+                    MeasurementElementDetail::builder(80.into())
                         .add_metadata("key3", "value3".into())
                         .build(),
                 )

@@ -22,7 +22,7 @@ use tv::{dut, step, Ident};
 /// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#measurementseriesstart>
 pub struct MeasurementSeries {
     id: String,
-    info: MeasurementSeriesInfo,
+    detail: MeasurementSeriesDetail,
 
     emitter: Arc<step::StepEmitter>,
 }
@@ -32,12 +32,12 @@ impl MeasurementSeries {
     // instances through the `StartedTestStep.add_measurement_series_*` apis
     pub(crate) fn new(
         series_id: &str,
-        info: MeasurementSeriesInfo,
+        info: MeasurementSeriesDetail,
         emitter: Arc<step::StepEmitter>,
     ) -> Self {
         Self {
             id: series_id.to_owned(),
-            info,
+            detail: info,
             emitter,
         }
     }
@@ -62,7 +62,7 @@ impl MeasurementSeries {
     /// # });
     /// ```
     pub async fn start(self) -> Result<StartedMeasurementSeries, tv::OcptvError> {
-        let info = &self.info;
+        let info = &self.detail;
 
         let start = spec::MeasurementSeriesStart {
             name: info.name.clone(),
@@ -195,7 +195,7 @@ impl StartedMeasurementSeries {
     /// # });
     /// ```
     pub async fn add_measurement(&self, value: tv::Value) -> Result<(), tv::OcptvError> {
-        self.add_measurement_with_details(MeasurementSeriesElemDetails {
+        self.add_measurement_detail(MeasurementElementDetail {
             value,
             ..Default::default()
         })
@@ -217,24 +217,24 @@ impl StartedMeasurementSeries {
     /// let step = run.add_step("step_name").start().await?;
     ///
     /// let series = step.add_measurement_series("name").start().await?;
-    /// let elem = MeasurementSeriesElemDetails::builder(60.into()).add_metadata("key", "value".into()).build();
-    /// series.add_measurement_with_details(elem).await?;
+    /// let elem = MeasurementElementDetail::builder(60.into()).add_metadata("key", "value".into()).build();
+    /// series.add_measurement_detail(elem).await?;
     ///
     /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn add_measurement_with_details(
+    pub async fn add_measurement_detail(
         &self,
-        details: MeasurementSeriesElemDetails,
+        element: MeasurementElementDetail,
     ) -> Result<(), tv::OcptvError> {
         let element = spec::MeasurementSeriesElement {
             index: self.incr_seqno(),
-            value: details.value,
-            timestamp: details
+            value: element.value,
+            timestamp: element
                 .timestamp
                 .unwrap_or(self.parent.emitter.timestamp_provider().now()),
             series_id: self.parent.id.clone(),
-            metadata: details.metadata.option(),
+            metadata: element.metadata.option(),
         };
 
         self.parent
@@ -250,29 +250,29 @@ impl StartedMeasurementSeries {
 
 /// TODO: docs
 #[derive(Default)]
-pub struct MeasurementSeriesElemDetails {
+pub struct MeasurementElementDetail {
     value: tv::Value,
     timestamp: Option<chrono::DateTime<chrono_tz::Tz>>,
 
     metadata: BTreeMap<String, tv::Value>,
 }
 
-impl MeasurementSeriesElemDetails {
-    pub fn builder(value: tv::Value) -> MeasurementSeriesElemDetailsBuilder {
-        MeasurementSeriesElemDetailsBuilder::new(value)
+impl MeasurementElementDetail {
+    pub fn builder(value: tv::Value) -> MeasurementElementDetailBuilder {
+        MeasurementElementDetailBuilder::new(value)
     }
 }
 
 /// TODO: docs
 #[derive(Default)]
-pub struct MeasurementSeriesElemDetailsBuilder {
+pub struct MeasurementElementDetailBuilder {
     value: tv::Value,
     timestamp: Option<chrono::DateTime<chrono_tz::Tz>>,
 
     metadata: BTreeMap<String, tv::Value>,
 }
 
-impl MeasurementSeriesElemDetailsBuilder {
+impl MeasurementElementDetailBuilder {
     fn new(value: tv::Value) -> Self {
         Self {
             value,
@@ -290,8 +290,8 @@ impl MeasurementSeriesElemDetailsBuilder {
         self
     }
 
-    pub fn build(self) -> MeasurementSeriesElemDetails {
-        MeasurementSeriesElemDetails {
+    pub fn build(self) -> MeasurementElementDetail {
+        MeasurementElementDetail {
             value: self.value,
             timestamp: self.timestamp,
             metadata: self.metadata,
@@ -603,7 +603,7 @@ impl MeasurementBuilder {
 }
 
 /// TODO: docs
-pub struct MeasurementSeriesInfo {
+pub struct MeasurementSeriesDetail {
     // note: this object is crate public and we need access to this field
     // when making a new series in `StartedTestStep.add_measurement_series*`
     pub(crate) id: tv::Ident,
@@ -618,19 +618,19 @@ pub struct MeasurementSeriesInfo {
     metadata: BTreeMap<String, tv::Value>,
 }
 
-impl MeasurementSeriesInfo {
-    pub fn new(name: &str) -> MeasurementSeriesInfo {
-        MeasurementSeriesInfoBuilder::new(name).build()
+impl MeasurementSeriesDetail {
+    pub fn new(name: &str) -> MeasurementSeriesDetail {
+        MeasurementSeriesDetailBuilder::new(name).build()
     }
 
-    pub fn builder(name: &str) -> MeasurementSeriesInfoBuilder {
-        MeasurementSeriesInfoBuilder::new(name)
+    pub fn builder(name: &str) -> MeasurementSeriesDetailBuilder {
+        MeasurementSeriesDetailBuilder::new(name)
     }
 }
 
 /// TODO: docs
 #[derive(Default)]
-pub struct MeasurementSeriesInfoBuilder {
+pub struct MeasurementSeriesDetailBuilder {
     id: tv::Ident,
     name: String,
 
@@ -643,9 +643,9 @@ pub struct MeasurementSeriesInfoBuilder {
     metadata: BTreeMap<String, tv::Value>,
 }
 
-impl MeasurementSeriesInfoBuilder {
+impl MeasurementSeriesDetailBuilder {
     fn new(name: &str) -> Self {
-        MeasurementSeriesInfoBuilder {
+        MeasurementSeriesDetailBuilder {
             id: Ident::Auto,
             name: name.to_string(),
             ..Default::default()
@@ -682,8 +682,8 @@ impl MeasurementSeriesInfoBuilder {
         self
     }
 
-    pub fn build(self) -> MeasurementSeriesInfo {
-        MeasurementSeriesInfo {
+    pub fn build(self) -> MeasurementSeriesDetail {
+        MeasurementSeriesDetail {
             id: self.id,
             name: self.name,
             unit: self.unit,

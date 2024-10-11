@@ -55,7 +55,7 @@
 #[macro_export]
 macro_rules! ocptv_error {
     ($runner:expr, $symptom:expr, $msg:expr) => {
-        $runner.add_error_with_details(
+        $runner.add_error_detail(
             $crate::output::Error::builder($symptom)
                 .message($msg)
                 .source(file!(), line!() as i32)
@@ -64,7 +64,7 @@ macro_rules! ocptv_error {
     };
 
     ($runner:expr, $symptom:expr) => {
-        $runner.add_error_with_details(
+        $runner.add_error_detail(
             $crate::output::Error::builder($symptom)
                 .source(file!(), line!() as i32)
                 .build(),
@@ -105,7 +105,7 @@ macro_rules! ocptv_log {
         #[macro_export]
         macro_rules! $name {
             ($artifact:expr, $msg:expr) => {
-                $artifact.add_log_with_details(
+                $artifact.add_log_detail(
                     $crate::output::Log::builder($msg)
                         .severity($severity)
                         .source(file!(), line!() as i32)
@@ -159,7 +159,7 @@ macro_rules! ocptv_diagnosis {
         #[macro_export]
         macro_rules! $name {
             ($artifact:expr, $verdict:expr) => {
-                $artifact.diagnosis_with_details(
+                $artifact.add_diagnosis_detail(
                     $crate::output::Diagnosis::builder($verdict, $diagnosis_type)
                         .source(file!(), line!() as i32)
                         .build(),

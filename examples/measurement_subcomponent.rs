@@ -15,7 +15,7 @@ async fn run_measure_step(
     step: &tv::StartedTestStep,
     ram0: tv::DutHardwareInfo,
 ) -> Result<TestStatus, tv::OcptvError> {
-    step.add_measurement_with_details(
+    step.add_measurement_detail(
         tv::Measurement::builder("temp0", 100.5.into())
             .unit("F")
             .hardware_info(&ram0)
@@ -24,8 +24,8 @@ async fn run_measure_step(
     )
     .await?;
 
-    let chip1_temp = step.add_measurement_series_with_details(
-        tv::MeasurementSeriesInfo::builder("temp1")
+    let chip1_temp = step.add_measurement_series_detail(
+        tv::MeasurementSeriesDetail::builder("temp1")
             .unit("C")
             .hardware_info(&ram0)
             .subcomponent(

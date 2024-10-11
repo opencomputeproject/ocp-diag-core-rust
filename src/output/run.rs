@@ -149,7 +149,7 @@ impl TestRun {
     pub async fn add_error(&self, symptom: &str) -> Result<(), tv::OcptvError> {
         let error = error::Error::builder(symptom).build();
 
-        self.add_error_with_details(error).await?;
+        self.add_error_detail(error).await?;
         Ok(())
     }
 
@@ -158,11 +158,11 @@ impl TestRun {
     /// This operation is useful in such cases when there is an error before starting the test.
     /// (eg. failing to discover a DUT).
     ///
-    /// See: [`StartedTestRun::add_error_with_msg`] for details and examples.
-    pub async fn add_error_with_msg(&self, symptom: &str, msg: &str) -> Result<(), tv::OcptvError> {
+    /// See: [`StartedTestRun::add_error_msg`] for details and examples.
+    pub async fn add_error_msg(&self, symptom: &str, msg: &str) -> Result<(), tv::OcptvError> {
         let error = error::Error::builder(symptom).message(msg).build();
 
-        self.add_error_with_details(error).await?;
+        self.add_error_detail(error).await?;
         Ok(())
     }
 
@@ -171,8 +171,8 @@ impl TestRun {
     /// This operation is useful in such cases when there is an error before starting the test.
     /// (eg. failing to discover a DUT).
     ///
-    /// See: [`StartedTestRun::add_error_with_details`] for details and examples.
-    pub async fn add_error_with_details(&self, error: error::Error) -> Result<(), tv::OcptvError> {
+    /// See: [`StartedTestRun::add_error_detail`] for details and examples.
+    pub async fn add_error_detail(&self, error: error::Error) -> Result<(), tv::OcptvError> {
         let artifact = spec::TestRunArtifact {
             artifact: spec::TestRunArtifactImpl::Error(error.to_artifact()),
         };
@@ -383,7 +383,7 @@ impl StartedTestRun {
     /// # use ocptv::output::*;
     /// let dut = DutInfo::builder("my_dut").build();
     /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
-    /// run.add_log_with_details(
+    /// run.add_log_detail(
     ///     Log::builder("This is a log message with INFO severity")
     ///         .severity(LogSeverity::Info)
     ///         .source("file", 1)
@@ -394,7 +394,7 @@ impl StartedTestRun {
     /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn add_log_with_details(&self, log: log::Log) -> Result<(), tv::OcptvError> {
+    pub async fn add_log_detail(&self, log: log::Log) -> Result<(), tv::OcptvError> {
         let artifact = spec::TestRunArtifact {
             artifact: spec::TestRunArtifactImpl::Log(log.to_artifact()),
         };
@@ -427,7 +427,7 @@ impl StartedTestRun {
     pub async fn add_error(&self, symptom: &str) -> Result<(), tv::OcptvError> {
         let error = error::Error::builder(symptom).build();
 
-        self.add_error_with_details(error).await?;
+        self.add_error_detail(error).await?;
         Ok(())
     }
 
@@ -444,16 +444,16 @@ impl StartedTestRun {
     /// # use ocptv::output::*;
     /// let dut = DutInfo::builder("my_dut").build();
     /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
-    /// run.add_error_with_msg("symptom", "error messasge").await?;
+    /// run.add_error_msg("symptom", "error messasge").await?;
     /// run.end(TestStatus::Complete, TestResult::Pass).await?;
     ///
     /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn add_error_with_msg(&self, symptom: &str, msg: &str) -> Result<(), tv::OcptvError> {
+    pub async fn add_error_msg(&self, symptom: &str, msg: &str) -> Result<(), tv::OcptvError> {
         let error = error::Error::builder(symptom).message(msg).build();
 
-        self.add_error_with_details(error).await?;
+        self.add_error_detail(error).await?;
         Ok(())
     }
 
@@ -471,7 +471,7 @@ impl StartedTestRun {
     /// let sw_info = dut.add_software_info(SoftwareInfo::builder("name").build());
     /// let run = TestRun::builder("diagnostic_name", "1.0").build().start(dut).await?;
     ///
-    /// run.add_error_with_details(
+    /// run.add_error_detail(
     ///     Error::builder("symptom")
     ///         .message("Error message")
     ///         .source("file", 1)
@@ -484,7 +484,7 @@ impl StartedTestRun {
     /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn add_error_with_details(&self, error: error::Error) -> Result<(), tv::OcptvError> {
+    pub async fn add_error_detail(&self, error: error::Error) -> Result<(), tv::OcptvError> {
         let artifact = spec::TestRunArtifact {
             artifact: spec::TestRunArtifactImpl::Error(error.to_artifact()),
         };

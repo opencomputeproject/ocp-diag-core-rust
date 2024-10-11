@@ -54,7 +54,7 @@ async fn test_testrun_with_error_with_message() -> Result<()> {
     ];
 
     check_output_run(&expected, |r, _| {
-        async { r.add_error_with_msg("symptom", "Error message").await }.boxed()
+        async { r.add_error_msg("symptom", "Error message").await }.boxed()
     })
     .await
 }
@@ -86,7 +86,7 @@ async fn test_testrun_with_error_with_details() -> Result<()> {
 
     check_output_run(&expected, |r, dut| {
         async move {
-            r.add_error_with_details(
+            r.add_error_detail(
                 Error::builder("symptom")
                     .message("Error message")
                     .source("file", 1)
@@ -146,8 +146,7 @@ async fn test_testrun_with_error_with_message_before_start() -> Result<()> {
     check_output(&expected, |run_builder, _| {
         async move {
             let run = run_builder.build();
-            run.add_error_with_msg("no-dut", "failed to find dut")
-                .await?;
+            run.add_error_msg("no-dut", "failed to find dut").await?;
 
             Ok(())
         }
@@ -179,7 +178,7 @@ async fn test_testrun_with_error_with_details_before_start() -> Result<()> {
     check_output(&expected, |run_builder, _| {
         async move {
             let run = run_builder.build();
-            run.add_error_with_details(
+            run.add_error_detail(
                 Error::builder("no-dut")
                     .message("failed to find dut")
                     .source("file", 1)
@@ -248,7 +247,7 @@ async fn test_testrun_step_error_with_message() -> Result<()> {
 
     check_output_step(&expected, |s, _| {
         async {
-            s.add_error_with_msg("symptom", "Error message").await?;
+            s.add_error_msg("symptom", "Error message").await?;
 
             Ok(())
         }
@@ -287,7 +286,7 @@ async fn test_testrun_step_error_with_details() -> Result<()> {
 
     check_output_step(&expected, |s, dut| {
         async move {
-            s.add_error_with_details(
+            s.add_error_detail(
                 Error::builder("symptom")
                     .message("Error message")
                     .source("file", 1)

@@ -35,7 +35,7 @@ async fn test_step_with_diagnosis() -> Result<()> {
 
     check_output_step(&expected, |s, _| {
         async {
-            s.diagnosis("verdict", DiagnosisType::Pass).await?;
+            s.add_diagnosis("verdict", DiagnosisType::Pass).await?;
 
             Ok(())
         }
@@ -77,7 +77,7 @@ async fn test_step_with_diagnosis_builder() -> Result<()> {
                 .subcomponent(&Subcomponent::builder("name").build())
                 .message("message")
                 .build();
-            s.diagnosis_with_details(diagnosis).await?;
+            s.add_diagnosis_detail(diagnosis).await?;
 
             Ok(())
         }
