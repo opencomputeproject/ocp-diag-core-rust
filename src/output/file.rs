@@ -4,6 +4,7 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
+use mime;
 use std::collections::BTreeMap;
 
 use crate::output as tv;
@@ -34,7 +35,7 @@ use maplit::{btreemap, convert_args};
 /// let file = File::builder("name", uri)
 ///     .is_snapshot(true)
 ///     .description("description")
-///     .content_type(Mime::from_str("text/plain").unwrap())
+///     .content_type(mime::TEXT_PLAIN)
 ///     .add_metadata("key", "value".into())
 ///     .build();
 /// ```
@@ -43,7 +44,7 @@ pub struct File {
     uri: tv::Uri,
     is_snapshot: bool,
     description: Option<String>,
-    content_type: Option<tv::Mime>,
+    content_type: Option<mime::Mime>,
     metadata: Option<BTreeMap<String, tv::Value>>,
 }
 
@@ -80,7 +81,7 @@ impl File {
     /// let uri = Uri::parse("file:///tmp/foo").unwrap();
     /// let file = File::builder("name", uri)
     ///     .description("description")
-    ///     .content_type(Mime::from_str("text/plain").unwrap())
+    ///     .content_type(mime::TEXT_PLAIN)
     ///     .add_metadata("key", "value".into())
     ///     .build();
     /// ```
@@ -122,7 +123,7 @@ impl File {
 /// let uri = Uri::parse("file:///tmp/foo").unwrap();
 /// let builder = File::builder("name", uri)
 ///     .description("description")
-///     .content_type(Mime::from_str("text/plain").unwrap())
+///     .content_type(mime::TEXT_PLAIN)
 ///     .add_metadata("key", "value".into());
 /// let file = builder.build();
 /// ```
@@ -131,7 +132,7 @@ pub struct FileBuilder {
     uri: tv::Uri,
     is_snapshot: bool,
     description: Option<String>,
-    content_type: Option<tv::Mime>,
+    content_type: Option<mime::Mime>,
     metadata: Option<BTreeMap<String, tv::Value>>,
 }
 
@@ -199,9 +200,9 @@ impl FileBuilder {
     ///
     /// let uri = Uri::parse("file:///tmp/foo").unwrap();
     /// let builder = FileBuilder::new("name", uri)
-    ///     .content_type(Mime::from_str("text/plain").unwrap());
+    ///     .content_type(mime::TEXT_PLAIN);
     /// ```
-    pub fn content_type(mut self, content_type: tv::Mime) -> FileBuilder {
+    pub fn content_type(mut self, content_type: mime::Mime) -> FileBuilder {
         self.content_type = Some(content_type);
         self
     }
@@ -256,8 +257,6 @@ impl FileBuilder {
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
-
     use super::*;
     use crate::output as tv;
     use crate::spec;
@@ -293,7 +292,7 @@ mod tests {
         let uri = tv::Uri::parse("file:///tmp/foo")?;
         let is_snapshot = false;
         let description = "description".to_owned();
-        let content_type = tv::Mime::from_str("text/plain")?;
+        let content_type = mime::TEXT_PLAIN;
         let meta_key = "key";
         let meta_value = tv::Value::from("value");
         let metadata = convert_args!(btreemap!(

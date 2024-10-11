@@ -687,7 +687,7 @@ impl StartedTestStep {
     /// let uri = Uri::parse("file:///tmp/foo").unwrap();
     /// let file = File::builder("name", uri)
     ///     .description("description")
-    ///     .content_type(Mime::from_str("text/plain").unwrap())
+    ///     .content_type(mime::TEXT_PLAIN)
     ///     .add_metadata("key", "value".into())
     ///     .build();
     /// step.file_with_details(&file).await?;
