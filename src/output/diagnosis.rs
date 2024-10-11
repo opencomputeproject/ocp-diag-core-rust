@@ -142,15 +142,7 @@ pub struct DiagnosisBuilder {
 }
 
 impl DiagnosisBuilder {
-    /// Creates a new DiagnosisBuilder.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use ocptv::output::*;
-    /// let builder = DiagnosisBuilder::new("verdict", DiagnosisType::Pass);
-    /// ```
-    pub fn new(verdict: &str, diagnosis_type: spec::DiagnosisType) -> Self {
+    fn new(verdict: &str, diagnosis_type: spec::DiagnosisType) -> Self {
         DiagnosisBuilder {
             verdict: verdict.to_owned(),
             diagnosis_type,
@@ -164,10 +156,10 @@ impl DiagnosisBuilder {
     ///
     /// ```
     /// # use ocptv::output::*;
-    /// let builder = DiagnosisBuilder::new("verdict", DiagnosisType::Pass)
+    /// let builder = Diagnosis::builder("verdict", DiagnosisType::Pass)
     ///     .message("message");
     /// ```
-    pub fn message(mut self, message: &str) -> DiagnosisBuilder {
+    pub fn message(mut self, message: &str) -> Self {
         self.message = Some(message.to_owned());
         self
     }
@@ -181,10 +173,10 @@ impl DiagnosisBuilder {
     /// let mut dut = DutInfo::new("dut0");
     /// let hw_info = dut.add_hardware_info(HardwareInfo::builder("name").build());
     ///
-    /// let builder = DiagnosisBuilder::new("verdict", DiagnosisType::Pass)
+    /// let builder = Diagnosis::builder("verdict", DiagnosisType::Pass)
     ///     .hardware_info(&hw_info);
     /// ```
-    pub fn hardware_info(mut self, hardware_info: &dut::DutHardwareInfo) -> DiagnosisBuilder {
+    pub fn hardware_info(mut self, hardware_info: &dut::DutHardwareInfo) -> Self {
         self.hardware_info = Some(hardware_info.clone());
         self
     }
@@ -195,10 +187,10 @@ impl DiagnosisBuilder {
     ///
     /// ```
     /// # use ocptv::output::*;
-    /// let builder = DiagnosisBuilder::new("verdict", DiagnosisType::Pass)
+    /// let builder = Diagnosis::builder("verdict", DiagnosisType::Pass)
     ///     .subcomponent(&Subcomponent::builder("name").build());
     /// ```
-    pub fn subcomponent(mut self, subcomponent: &dut::Subcomponent) -> DiagnosisBuilder {
+    pub fn subcomponent(mut self, subcomponent: &dut::Subcomponent) -> Self {
         self.subcomponent = Some(subcomponent.clone());
         self
     }
@@ -209,10 +201,10 @@ impl DiagnosisBuilder {
     ///
     /// ```
     /// # use ocptv::output::*;
-    /// let builder = DiagnosisBuilder::new("verdict", DiagnosisType::Pass)
+    /// let builder = Diagnosis::builder("verdict", DiagnosisType::Pass)
     ///     .source("file.rs", 1);
     /// ```
-    pub fn source(mut self, file: &str, line: i32) -> DiagnosisBuilder {
+    pub fn source(mut self, file: &str, line: i32) -> Self {
         self.source_location = Some(spec::SourceLocation {
             file: file.to_owned(),
             line,
@@ -226,7 +218,7 @@ impl DiagnosisBuilder {
     ///
     /// ```
     /// # use ocptv::output::*;
-    /// let builder = DiagnosisBuilder::new("verdict", DiagnosisType::Pass);
+    /// let builder = Diagnosis::builder("verdict", DiagnosisType::Pass);
     /// let diagnosis = builder.build();
     /// ```
     pub fn build(self) -> Diagnosis {

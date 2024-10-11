@@ -33,8 +33,8 @@ pub use error::{Error, ErrorBuilder};
 pub use log::{Log, LogBuilder};
 pub use measure::{
     Measurement, MeasurementBuilder, MeasurementSeries, MeasurementSeriesElemDetails,
-    MeasurementSeriesInfo, MeasurementSeriesInfoBuilder, StartedMeasurementSeries, Validator,
-    ValidatorBuilder,
+    MeasurementSeriesElemDetailsBuilder, MeasurementSeriesInfo, MeasurementSeriesInfoBuilder,
+    StartedMeasurementSeries, Validator, ValidatorBuilder,
 };
 pub use run::{StartedTestRun, TestRun, TestRunBuilder, TestRunOutcome};
 pub use step::{StartedTestStep, TestStep};
@@ -43,7 +43,7 @@ pub use writer::{BufferWriter, FileWriter, StdoutWriter, Writer};
 // re-export this as a public type we present
 pub use serde_json::Value;
 
-/// TODO: docs
+// TODO: docs
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
 pub enum OcptvError {

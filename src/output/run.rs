@@ -197,7 +197,7 @@ pub struct TestRunBuilder {
 }
 
 impl TestRunBuilder {
-    pub fn new(name: &str, version: &str) -> Self {
+    fn new(name: &str, version: &str) -> Self {
         Self {
             name: name.to_string(),
             version: version.to_string(),
@@ -213,11 +213,11 @@ impl TestRunBuilder {
     ///
     /// ```rust
     /// # use ocptv::output::*;
-    /// let run = TestRunBuilder::new("run_name", "1.0")
+    /// let run = TestRun::builder("run_name", "1.0")
     ///     .add_parameter("param1", "value1".into())
     ///     .build();
     /// ```
-    pub fn add_parameter(mut self, key: &str, value: tv::Value) -> TestRunBuilder {
+    pub fn add_parameter(mut self, key: &str, value: tv::Value) -> Self {
         self.parameters.insert(key.to_string(), value);
         self
     }
@@ -229,11 +229,11 @@ impl TestRunBuilder {
     ///
     /// ```rust
     /// # use ocptv::output::*;
-    /// let run = TestRunBuilder::new("run_name", "1.0")
+    /// let run = TestRun::builder("run_name", "1.0")
     ///     .command_line("my_diag --arg value")
     ///     .build();
     /// ```
-    pub fn command_line(mut self, cmd: &str) -> TestRunBuilder {
+    pub fn command_line(mut self, cmd: &str) -> Self {
         self.command_line = cmd.to_string();
         self
     }
@@ -244,11 +244,11 @@ impl TestRunBuilder {
     ///
     /// ```rust
     /// # use ocptv::output::*;
-    /// let run = TestRunBuilder::new("run_name", "1.0")
+    /// let run = TestRun::builder("run_name", "1.0")
     ///     .config(Config::builder().build())
     ///     .build();
     /// ```
-    pub fn config(mut self, value: config::Config) -> TestRunBuilder {
+    pub fn config(mut self, value: config::Config) -> Self {
         self.config = Some(value);
         self
     }
@@ -260,11 +260,11 @@ impl TestRunBuilder {
     /// ```rust
     /// # use ocptv::output::*;
     ///
-    /// let run = TestRunBuilder::new("run_name", "1.0")
+    /// let run = TestRun::builder("run_name", "1.0")
     ///     .add_metadata("meta1", "value1".into())
     ///     .build();
     /// ```
-    pub fn add_metadata(mut self, key: &str, value: tv::Value) -> TestRunBuilder {
+    pub fn add_metadata(mut self, key: &str, value: tv::Value) -> Self {
         self.metadata.insert(key.to_string(), value);
         self
     }

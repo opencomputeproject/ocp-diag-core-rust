@@ -92,24 +92,24 @@ pub struct DutInfoBuilder {
 }
 
 impl DutInfoBuilder {
-    pub fn new(id: &str) -> DutInfoBuilder {
+    fn new(id: &str) -> Self {
         DutInfoBuilder {
             id: id.to_string(),
             ..Default::default()
         }
     }
 
-    pub fn name(mut self, value: &str) -> DutInfoBuilder {
+    pub fn name(mut self, value: &str) -> Self {
         self.name = Some(value.to_string());
         self
     }
 
-    pub fn add_platform_info(mut self, platform_info: PlatformInfo) -> DutInfoBuilder {
+    pub fn add_platform_info(mut self, platform_info: PlatformInfo) -> Self {
         self.platform_infos.push(platform_info);
         self
     }
 
-    pub fn add_metadata(mut self, key: &str, value: tv::Value) -> DutInfoBuilder {
+    pub fn add_metadata(mut self, key: &str, value: tv::Value) -> Self {
         self.metadata.insert(key.to_string(), value);
         self
     }
@@ -170,19 +170,19 @@ impl SubcomponentBuilder {
             revision: None,
         }
     }
-    pub fn subcomponent_type(mut self, value: spec::SubcomponentType) -> SubcomponentBuilder {
+    pub fn subcomponent_type(mut self, value: spec::SubcomponentType) -> Self {
         self.subcomponent_type = Some(value);
         self
     }
-    pub fn version(mut self, value: &str) -> SubcomponentBuilder {
+    pub fn version(mut self, value: &str) -> Self {
         self.version = Some(value.to_string());
         self
     }
-    pub fn location(mut self, value: &str) -> SubcomponentBuilder {
+    pub fn location(mut self, value: &str) -> Self {
         self.location = Some(value.to_string());
         self
     }
-    pub fn revision(mut self, value: &str) -> SubcomponentBuilder {
+    pub fn revision(mut self, value: &str) -> Self {
         self.revision = Some(value.to_string());
         self
     }
@@ -305,27 +305,27 @@ impl SoftwareInfoBuilder {
         }
     }
 
-    pub fn id(mut self, value: tv::Ident) -> SoftwareInfoBuilder {
+    pub fn id(mut self, value: tv::Ident) -> Self {
         self.id = value;
         self
     }
 
-    pub fn version(mut self, value: &str) -> SoftwareInfoBuilder {
+    pub fn version(mut self, value: &str) -> Self {
         self.version = Some(value.to_string());
         self
     }
 
-    pub fn revision(mut self, value: &str) -> SoftwareInfoBuilder {
+    pub fn revision(mut self, value: &str) -> Self {
         self.revision = Some(value.to_string());
         self
     }
 
-    pub fn software_type(mut self, value: spec::SoftwareType) -> SoftwareInfoBuilder {
+    pub fn software_type(mut self, value: spec::SoftwareType) -> Self {
         self.software_type = Some(value);
         self
     }
 
-    pub fn computer_system(mut self, value: &str) -> SoftwareInfoBuilder {
+    pub fn computer_system(mut self, value: &str) -> Self {
         self.computer_system = Some(value.to_string());
         self
     }
@@ -428,57 +428,57 @@ impl HardwareInfoBuilder {
         }
     }
 
-    pub fn id(mut self, value: tv::Ident) -> HardwareInfoBuilder {
+    pub fn id(mut self, value: tv::Ident) -> Self {
         self.id = value;
         self
     }
 
-    pub fn version(mut self, value: &str) -> HardwareInfoBuilder {
+    pub fn version(mut self, value: &str) -> Self {
         self.version = Some(value.to_string());
         self
     }
 
-    pub fn revision(mut self, value: &str) -> HardwareInfoBuilder {
+    pub fn revision(mut self, value: &str) -> Self {
         self.revision = Some(value.to_string());
         self
     }
 
-    pub fn location(mut self, value: &str) -> HardwareInfoBuilder {
+    pub fn location(mut self, value: &str) -> Self {
         self.location = Some(value.to_string());
         self
     }
 
-    pub fn serial_no(mut self, value: &str) -> HardwareInfoBuilder {
+    pub fn serial_no(mut self, value: &str) -> Self {
         self.serial_no = Some(value.to_string());
         self
     }
 
-    pub fn part_no(mut self, value: &str) -> HardwareInfoBuilder {
+    pub fn part_no(mut self, value: &str) -> Self {
         self.part_no = Some(value.to_string());
         self
     }
 
-    pub fn manufacturer(mut self, value: &str) -> HardwareInfoBuilder {
+    pub fn manufacturer(mut self, value: &str) -> Self {
         self.manufacturer = Some(value.to_string());
         self
     }
 
-    pub fn manufacturer_part_no(mut self, value: &str) -> HardwareInfoBuilder {
+    pub fn manufacturer_part_no(mut self, value: &str) -> Self {
         self.manufacturer_part_no = Some(value.to_string());
         self
     }
 
-    pub fn odata_id(mut self, value: &str) -> HardwareInfoBuilder {
+    pub fn odata_id(mut self, value: &str) -> Self {
         self.odata_id = Some(value.to_string());
         self
     }
 
-    pub fn computer_system(mut self, value: &str) -> HardwareInfoBuilder {
+    pub fn computer_system(mut self, value: &str) -> Self {
         self.computer_system = Some(value.to_string());
         self
     }
 
-    pub fn manager(mut self, value: &str) -> HardwareInfoBuilder {
+    pub fn manager(mut self, value: &str) -> Self {
         self.manager = Some(value.to_string());
         self
     }

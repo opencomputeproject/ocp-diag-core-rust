@@ -43,11 +43,11 @@ impl LogBuilder {
             source_location: None,
         }
     }
-    pub fn severity(mut self, value: spec::LogSeverity) -> LogBuilder {
+    pub fn severity(mut self, value: spec::LogSeverity) -> Self {
         self.severity = value;
         self
     }
-    pub fn source(mut self, file: &str, line: i32) -> LogBuilder {
+    pub fn source(mut self, file: &str, line: i32) -> Self {
         self.source_location = Some(spec::SourceLocation {
             file: file.to_string(),
             line,

@@ -273,7 +273,7 @@ pub struct MeasurementSeriesElemDetailsBuilder {
 }
 
 impl MeasurementSeriesElemDetailsBuilder {
-    pub fn new(value: tv::Value) -> Self {
+    fn new(value: tv::Value) -> Self {
         Self {
             value,
             ..Default::default()
@@ -312,6 +312,7 @@ impl Validator {
     pub fn builder(validator_type: spec::ValidatorType, value: tv::Value) -> ValidatorBuilder {
         ValidatorBuilder::new(validator_type, value)
     }
+
     pub fn to_spec(&self) -> spec::Validator {
         spec::Validator {
             name: self.name.clone(),
@@ -341,11 +342,13 @@ impl ValidatorBuilder {
             metadata: BTreeMap::new(),
         }
     }
-    pub fn name(mut self, value: &str) -> ValidatorBuilder {
+
+    pub fn name(mut self, value: &str) -> Self {
         self.name = Some(value.to_string());
         self
     }
-    pub fn add_metadata(mut self, key: &str, value: tv::Value) -> ValidatorBuilder {
+
+    pub fn add_metadata(mut self, key: &str, value: tv::Value) -> Self {
         self.metadata.insert(key.to_string(), value);
         self
     }
@@ -475,7 +478,7 @@ impl Measurement {
 /// let mut dut = DutInfo::new("dut0");
 /// let hw_info = dut.add_hardware_info(HardwareInfo::builder("name").build());
 ///
-/// let builder = MeasurementBuilder::new("name", 50.into())
+/// let builder = Measurement::builder("name", 50.into())
 ///     .add_validator(Validator::builder(ValidatorType::Equal, 30.into()).build())
 ///     .add_metadata("key", "value".into())
 ///     .hardware_info(&hw_info)
@@ -497,15 +500,7 @@ pub struct MeasurementBuilder {
 }
 
 impl MeasurementBuilder {
-    /// Creates a new MeasurementBuilder.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use ocptv::output::*;
-    /// let builder = MeasurementBuilder::new("name", 50.into());
-    /// ```
-    pub fn new(name: &str, value: tv::Value) -> Self {
+    fn new(name: &str, value: tv::Value) -> Self {
         MeasurementBuilder {
             name: name.to_string(),
             value,
@@ -519,10 +514,10 @@ impl MeasurementBuilder {
     ///
     /// ```
     /// # use ocptv::output::*;
-    /// let builder = MeasurementBuilder::new("name", 50.into())
+    /// let builder = Measurement::builder("name", 50.into())
     ///     .add_validator(Validator::builder(ValidatorType::Equal, 30.into()).build());
     /// ```
-    pub fn add_validator(mut self, validator: Validator) -> MeasurementBuilder {
+    pub fn add_validator(mut self, validator: Validator) -> Self {
         self.validators.push(validator.clone());
         self
     }
@@ -536,10 +531,10 @@ impl MeasurementBuilder {
     /// let mut dut = DutInfo::new("dut0");
     /// let hw_info = dut.add_hardware_info(HardwareInfo::builder("name").build());
     ///
-    /// let builder = MeasurementBuilder::new("name", 50.into())
+    /// let builder = Measurement::builder("name", 50.into())
     ///     .hardware_info(&hw_info);
     /// ```
-    pub fn hardware_info(mut self, hardware_info: &dut::DutHardwareInfo) -> MeasurementBuilder {
+    pub fn hardware_info(mut self, hardware_info: &dut::DutHardwareInfo) -> Self {
         self.hardware_info = Some(hardware_info.clone());
         self
     }
@@ -550,10 +545,10 @@ impl MeasurementBuilder {
     ///
     /// ```
     /// # use ocptv::output::*;
-    /// let builder = MeasurementBuilder::new("name", 50.into())
+    /// let builder = Measurement::builder("name", 50.into())
     ///     .subcomponent(Subcomponent::builder("name").build());
     /// ```
-    pub fn subcomponent(mut self, subcomponent: dut::Subcomponent) -> MeasurementBuilder {
+    pub fn subcomponent(mut self, subcomponent: dut::Subcomponent) -> Self {
         self.subcomponent = Some(subcomponent);
         self
     }
@@ -565,9 +560,9 @@ impl MeasurementBuilder {
     /// ```
     /// # use ocptv::output::*;
     /// let builder =
-    ///     MeasurementBuilder::new("name", 50.into()).add_metadata("key", "value".into());
+    ///     Measurement::builder("name", 50.into()).add_metadata("key", "value".into());
     /// ```
-    pub fn add_metadata(mut self, key: &str, value: tv::Value) -> MeasurementBuilder {
+    pub fn add_metadata(mut self, key: &str, value: tv::Value) -> Self {
         self.metadata.insert(key.to_string(), value);
         self
     }
@@ -578,7 +573,7 @@ impl MeasurementBuilder {
     ///
     /// ```
     /// # use ocptv::output::*;
-    /// let builder = MeasurementBuilder::new("name", 50000.into()).unit("RPM");
+    /// let builder = Measurement::builder("name", 50000.into()).unit("RPM");
     /// ```
     pub fn unit(mut self, unit: &str) -> MeasurementBuilder {
         self.unit = Some(unit.to_string());
@@ -590,10 +585,8 @@ impl MeasurementBuilder {
     /// # Examples
     ///
     /// ```
-    /// use ocptv::output::MeasurementBuilder;
-    /// use ocptv::output::Value;
-    ///
-    /// let builder = MeasurementBuilder::new("name", 50.into());
+    /// # use ocptv::output::*;
+    /// let builder = Measurement::builder("name", 50.into());
     /// let measurement = builder.build();
     /// ```
     pub fn build(self) -> Measurement {
@@ -651,7 +644,7 @@ pub struct MeasurementSeriesInfoBuilder {
 }
 
 impl MeasurementSeriesInfoBuilder {
-    pub fn new(name: &str) -> Self {
+    fn new(name: &str) -> Self {
         MeasurementSeriesInfoBuilder {
             id: Ident::Auto,
             name: name.to_string(),
@@ -659,35 +652,32 @@ impl MeasurementSeriesInfoBuilder {
         }
     }
 
-    pub fn id(mut self, id: tv::Ident) -> MeasurementSeriesInfoBuilder {
+    pub fn id(mut self, id: tv::Ident) -> Self {
         self.id = id;
         self
     }
 
-    pub fn unit(mut self, unit: &str) -> MeasurementSeriesInfoBuilder {
+    pub fn unit(mut self, unit: &str) -> Self {
         self.unit = Some(unit.to_string());
         self
     }
 
-    pub fn add_validator(mut self, validator: Validator) -> MeasurementSeriesInfoBuilder {
+    pub fn add_validator(mut self, validator: Validator) -> Self {
         self.validators.push(validator);
         self
     }
 
-    pub fn hardware_info(
-        mut self,
-        hardware_info: &dut::DutHardwareInfo,
-    ) -> MeasurementSeriesInfoBuilder {
+    pub fn hardware_info(mut self, hardware_info: &dut::DutHardwareInfo) -> Self {
         self.hardware_info = Some(hardware_info.clone());
         self
     }
 
-    pub fn subcomponent(mut self, subcomponent: dut::Subcomponent) -> MeasurementSeriesInfoBuilder {
+    pub fn subcomponent(mut self, subcomponent: dut::Subcomponent) -> Self {
         self.subcomponent = Some(subcomponent);
         self
     }
 
-    pub fn add_metadata(mut self, key: &str, value: tv::Value) -> MeasurementSeriesInfoBuilder {
+    pub fn add_metadata(mut self, key: &str, value: tv::Value) -> Self {
         self.metadata.insert(key.to_string(), value);
         self
     }
