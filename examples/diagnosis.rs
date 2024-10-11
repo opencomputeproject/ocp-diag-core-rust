@@ -8,6 +8,7 @@ use anyhow::Result;
 use futures::FutureExt;
 
 use ocptv::output as tv;
+use ocptv::{ocptv_diagnosis_fail, ocptv_diagnosis_pass};
 use rand::Rng;
 use tv::{TestResult, TestStatus};
 
@@ -28,6 +29,20 @@ async fn run_diagnosis_step(step: &tv::StartedTestStep) -> Result<TestStatus, tv
     Ok(TestStatus::Complete)
 }
 
+async fn run_diagnosis_macros_step(
+    step: &tv::StartedTestStep,
+) -> Result<TestStatus, tv::OcptvError> {
+    let fan_speed = get_fan_speed();
+
+    if fan_speed >= 1600 {
+        ocptv_diagnosis_pass!(step, "fan_ok").await?;
+    } else {
+        ocptv_diagnosis_fail!(step, "fan_low").await?;
+    }
+
+    Ok(TestStatus::Complete)
+}
+
 /// Simple demo with diagnosis.
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -39,6 +54,9 @@ async fn main() -> Result<()> {
             async move {
                 r.add_step("step0")
                     .scope(|s| run_diagnosis_step(s).boxed())
+                    .await?;
+                r.add_step("step1")
+                    .scope(|s| run_diagnosis_macros_step(s).boxed())
                     .await?;
 
                 Ok(tv::TestRunOutcome {
