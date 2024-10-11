@@ -12,7 +12,7 @@ This project is part of [ocp-diag-core](https://github.com/opencomputeproject/oc
 
 ### Installation
 
-Stable releases of the **ocp-diag-core-rust** codebase are published to **crates.io** under the package name [ocptv](https://crates.io/crates/ocptv), and can be easily installed with rust package manager.
+Stable releases of the **ocp-diag-core-rust** codebase are published to **crates.io** under the package name [ocptv](https://crates.io/crates/ocptv), and can be easily installed with cargo.
 
 For general usage, the following steps should be sufficient to get the latest stable version using the [Package Installer for Rust](https://github.com/rust-lang/cargo):
 
@@ -27,27 +27,14 @@ For general usage, the following steps should be sufficient to get the latest st
     
     ```toml
     [dependencies]
-    ocptv = "1.0.0"
+    ocptv = "0.1.0"
     ```
-    and then run
-    ```bash
-    $ cargo update
-    ```
-
-To use the bleeding edge instead of the stable version, the git repository should be cloned.
-This assumes that the clone is manually kept up to date by git pulling whenever there are new commits upstream. All of the installation methods below will automatically use the latest library code.
-
-First clone the upstream latest code:
-```bash
-$ git clone https://github.com/opencomputeproject/ocp-diag-core-rust.git
-$ cd ocp-diag-core-rust
-$ git checkout dev # dev branch has the latest code
-```
-Then edit Cargo.toml in your project and add
+    
+To use the bleeding edge instead of the stable version, the dependecies section should be modified like this:
 
 ```
 [dependencies]
-ocptv = { version = "1.0.0", path = "/path/to/ocp-diag-core-rust" }
+ocptv = { git = "https://github.com/opencomputeproject/ocp-diag-core-rust.git", branch = "dev" }
 ```
 
 The instructions above assume a Linux-type system. However, the steps should be identical on Windows and MacOS platforms.
@@ -56,7 +43,17 @@ See [The Cargo Book](https://doc.rust-lang.org/cargo/index.html) for more detail
 
 ### Usage
 
-The specification does not impose any particular level of usage. To be compliant, a diagnostic package just needs output the correct artifact messages in the correct format. However, any particular such diagnostic is free to choose what aspects it needs to use/output; eg. a simple validation test may not output any measurements, opting to just have a final Diagnosis outcome.
+The [specification](https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec) does not impose any particular level of usage. To be compliant, a diagnostic package just needs output the correct artifact messages in the correct format. However, any particular such diagnostic is free to choose what aspects it needs to use/output; eg. a simple validation test may not output any measurements, opting to just have a final Diagnosis outcome.
+
+This crate provides the "boxed-scopes" feature. It guarantees to emit the close message every time is needed (i.e. TestRun, TestStep, etc.). 
+To enable the feature in Cargo.toml:
+
+```toml
+    [dependencies]
+    ocptv = { version = "0.1.0", features = ["boxed-scopes"] }
+```
+
+If the feature is not used, is up to the user to close correctly all the API that need it.
 
 **Full API reference is available [here](https://docs.rs/ocptv).**
 
@@ -79,9 +76,9 @@ async fn run_diagnosis_step(step: &tv::StartedTestStep) -> Result<TestStatus, tv
     let fan_speed = get_fan_speed();
 
     if fan_speed >= 1600 {
-        step.diagnosis("fan_ok", tv::DiagnosisType::Pass).await?;
+        step.add_diagnosis("fan_ok", tv::DiagnosisType::Pass).await?;
     } else {
-        step.diagnosis("fan_low", tv::DiagnosisType::Fail).await?;
+        step.add_diagnosis("fan_low", tv::DiagnosisType::Fail).await?;
     }
 
     Ok(TestStatus::Complete)
@@ -179,14 +176,6 @@ Expected output (slightly reformatted for readability):
 ### Examples
 
 The examples in [examples folder](https://github.com/opencomputeproject/ocp-diag-core-rust/tree/dev/examples) could be run using cargo.
-
-This is one of the example configured in Cargo.toml:
-
-```toml
-[[example]]
-name = "diagnosis"
-required-features = ["boxed-scopes"]
-```
 
 ```bash
 # run diagnosis example
