@@ -43,6 +43,7 @@ pub use writer::{BufferWriter, FileWriter, StdoutWriter, Writer};
 // re-export this as a public type we present
 pub use serde_json::Value;
 
+/// TODO: docs
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
 pub enum OcptvError {

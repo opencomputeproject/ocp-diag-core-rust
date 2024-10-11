@@ -11,7 +11,7 @@ use crate::output as tv;
 use crate::spec;
 use tv::trait_ext::VecExt;
 
-// TODO: docs
+/// TODO: docs
 #[derive(Clone, Debug, PartialEq, Default)]
 pub enum Ident {
     #[default]
@@ -83,6 +83,7 @@ impl DutInfo {
     }
 }
 
+/// TODO: docs
 #[derive(Default)]
 pub struct DutInfoBuilder {
     id: String,
@@ -133,6 +134,7 @@ impl DutInfoBuilder {
     }
 }
 
+/// TODO: docs
 #[derive(Debug, Clone)]
 pub struct Subcomponent {
     subcomponent_type: Option<spec::SubcomponentType>,
@@ -157,6 +159,7 @@ impl Subcomponent {
     }
 }
 
+/// TODO: docs
 #[derive(Debug)]
 pub struct SubcomponentBuilder {
     subcomponent_type: Option<spec::SubcomponentType>,
@@ -204,6 +207,7 @@ impl SubcomponentBuilder {
     }
 }
 
+/// TODO: docs
 #[derive(Debug, Clone, PartialEq)]
 pub struct PlatformInfo {
     info: String,
@@ -227,6 +231,7 @@ impl PlatformInfo {
     }
 }
 
+/// TODO: docs
 #[derive(Debug)]
 pub struct PlatformInfoBuilder {
     info: String,
@@ -244,6 +249,7 @@ impl PlatformInfoBuilder {
     }
 }
 
+/// TODO: docs
 #[derive(Debug, Clone)]
 pub struct SoftwareInfo {
     id: tv::Ident,
@@ -260,6 +266,7 @@ impl SoftwareInfo {
     }
 }
 
+/// TODO: docs
 #[derive(Debug, Clone)]
 pub struct DutSoftwareInfo {
     id: String,
@@ -287,6 +294,7 @@ impl PartialEq for DutSoftwareInfo {
     }
 }
 
+/// TODO: docs
 #[derive(Debug, Default)]
 pub struct SoftwareInfoBuilder {
     id: tv::Ident,
@@ -343,6 +351,7 @@ impl SoftwareInfoBuilder {
     }
 }
 
+/// TODO: docs
 #[derive(Debug, Clone)]
 pub struct HardwareInfo {
     id: Ident,
@@ -367,6 +376,7 @@ impl HardwareInfo {
     }
 }
 
+/// TODO: docs
 #[derive(Debug, Clone)]
 pub struct DutHardwareInfo {
     id: String,
@@ -400,6 +410,7 @@ impl PartialEq for DutHardwareInfo {
     }
 }
 
+/// TODO: docs
 #[derive(Debug, Default)]
 pub struct HardwareInfoBuilder {
     id: tv::Ident,

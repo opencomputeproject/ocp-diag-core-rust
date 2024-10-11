@@ -2,7 +2,7 @@
 //
 // Use of this source code is governed by an MIT-style
 // license that can be found in the LICENSE file or at
-// https://opensource.org/licenses/MIT.
+// <https://opensource.org/licenses/MIT.>
 
 use std::collections::BTreeMap;
 
@@ -13,6 +13,7 @@ use serde_with::serde_as;
 
 use crate::output as tv;
 
+/// TODO: docs
 pub const SPEC_VERSION: (i8, i8) = (2, 0);
 
 mod rfc3339_format {
@@ -58,6 +59,7 @@ mod serialize_ids {
     }
 }
 
+/// TODO: docs
 #[derive(Debug, Serialize, Clone, PartialEq)]
 #[non_exhaustive]
 pub enum ValidatorType {
@@ -83,6 +85,7 @@ pub enum ValidatorType {
     NotInSet,
 }
 
+/// TODO: docs
 #[derive(Debug, Serialize, Clone, PartialEq)]
 #[non_exhaustive]
 pub enum SubcomponentType {
@@ -101,9 +104,12 @@ pub enum SubcomponentType {
 }
 
 /// Outcome of a diagnosis operation.
-/// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#diagnosistype
-/// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/diagnosis.json
-/// schema ref: https://github.com/opencomputeproject/ocp-diag-core/diagnosis/$defs/type
+///
+/// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#diagnosistype>
+///
+/// schema url: <https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/diagnosis.json>
+///
+/// schema ref: <https://github.com/opencomputeproject/ocp-diag-core/diagnosis/$defs/type>
 #[derive(Debug, Serialize, PartialEq, Clone, Default)]
 pub enum DiagnosisType {
     #[serde(rename = "PASS")]
@@ -116,9 +122,12 @@ pub enum DiagnosisType {
 }
 
 /// Represents the final execution status of a test.
-/// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#teststatus
-/// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/test_status.json
-/// schema ref: https://github.com/opencomputeproject/ocp-diag-core/testStatus
+///
+/// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#teststatus>
+///
+/// schema url: <https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/test_status.json>
+///
+/// schema ref: <https://github.com/opencomputeproject/ocp-diag-core/testStatus>
 #[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename = "testStatus")]
 #[non_exhaustive]
@@ -132,9 +141,12 @@ pub enum TestStatus {
 }
 
 /// Represents the final outcome of a test execution.
-/// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#testresult
-/// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/test_run_end.json
-/// schema ref: https://github.com/opencomputeproject/ocp-diag-core/testRunEnd/$defs/testResult
+///
+/// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#testresult>
+///
+/// schema url: <https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/test_run_end.json>
+///
+/// schema ref: <https://github.com/opencomputeproject/ocp-diag-core/testRunEnd/$defs/testResult>
 #[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename = "testResult")]
 #[non_exhaustive]
@@ -148,9 +160,12 @@ pub enum TestResult {
 }
 
 /// Known log severity variants.
-/// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#severity
-/// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/log.json
-/// schema ref: https://github.com/opencomputeproject/ocp-diag-core/log/$defs/severity
+///
+/// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#severity>
+///
+/// schema url: <https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/log.json>
+///
+/// schema ref: <https://github.com/opencomputeproject/ocp-diag-core/log/$defs/severity>
 #[derive(Debug, Serialize, Clone, PartialEq)]
 #[non_exhaustive]
 pub enum LogSeverity {
@@ -167,9 +182,12 @@ pub enum LogSeverity {
 }
 
 /// Type specification for a software component of the DUT.
-/// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#softwaretype
-/// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/dut_info.json
-/// schema ref: https://github.com/opencomputeproject/ocp-diag-core/dutInfo/$defs/softwareInfo/properties/softwareType
+///
+/// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#softwaretype>
+///
+/// schema url: <https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/dut_info.json>
+///
+/// schema ref: <https://github.com/opencomputeproject/ocp-diag-core/dutInfo/$defs/softwareInfo/properties/softwareType>
 #[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename = "softwareType")]
 #[non_exhaustive]
@@ -212,9 +230,12 @@ pub enum RootImpl {
 
 /// Low-level model for the `schemaVersion` spec object.
 /// Specifies the version that should be used to interpret following json outputs.
-/// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#schemaversion
-/// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/root.json
-/// schema ref: https://github.com/opencomputeproject/ocp-diag-core/output/$defs/schemaVersion
+///
+/// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#schemaversion>
+///
+/// schema url: <https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/root.json>
+///
+/// schema ref: <https://github.com/opencomputeproject/ocp-diag-core/output/$defs/schemaVersion>
 #[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename = "schemaVersion")]
 pub struct SchemaVersion {
@@ -236,9 +257,12 @@ impl Default for SchemaVersion {
 
 /// Low-level model for the `testRunArtifact` spec object.
 /// Container for the run level artifacts.
-/// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#test-run-artifacts
-/// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/test_run_artifact.json
-/// schema ref: https://github.com/opencomputeproject/ocp-diag-core/testRunArtifact
+///
+/// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#test-run-artifacts>
+///
+/// schema url: <https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/test_run_artifact.json>
+///
+/// schema ref: <https://github.com/opencomputeproject/ocp-diag-core/testRunArtifact>
 #[derive(Debug, Serialize, PartialEq, Clone)]
 pub struct TestRunArtifact {
     #[serde(flatten)]
@@ -262,9 +286,12 @@ pub enum TestRunArtifactImpl {
 
 /// Low-level model for the `testRunStart` spec object.
 /// Start marker for the beginning of a diagnostic test.
-/// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#testrunstart
-/// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/test_run_start.json
-/// schema ref: https://github.com/opencomputeproject/ocp-diag-core/testRunStart
+///
+/// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#testrunstart>
+///
+/// schema url: <https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/test_run_start.json>
+///
+/// schema ref: <https://github.com/opencomputeproject/ocp-diag-core/testRunStart>
 #[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename = "testRunStart")]
 pub struct TestRunStart {
@@ -290,9 +317,12 @@ pub struct TestRunStart {
 
 /// Low-level model for the `dutInfo` spec object.
 /// Contains all relevant information describing the DUT.
-/// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#dutinfo
-/// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/dut_info.json
-/// schema ref: https://github.com/opencomputeproject/ocp-diag-core/dutInfo
+///
+/// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#dutinfo>
+///
+/// schema url: <https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/dut_info.json>
+///
+/// schema ref: <https://github.com/opencomputeproject/ocp-diag-core/dutInfo>
 #[derive(Debug, Serialize, Default, Clone, PartialEq)]
 #[serde(rename = "dutInfo")]
 pub struct DutInfo {
@@ -322,9 +352,12 @@ pub struct DutInfo {
 
 /// Low-level model for the `platformInfo` spec object.
 /// Describe platform specific attributes of the DUT.
-/// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#platforminfo
-/// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/dut_info.json
-/// schema ref: https://github.com/opencomputeproject/ocp-diag-core/dutInfo/$defs/platformInfo
+///
+/// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#platforminfo>
+///
+/// schema url: <https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/dut_info.json>
+///
+/// schema ref: <https://github.com/opencomputeproject/ocp-diag-core/dutInfo/$defs/platformInfo>
 #[derive(Debug, Serialize, Default, Clone, PartialEq)]
 #[serde(rename = "platformInfo")]
 pub struct PlatformInfo {
@@ -334,9 +367,12 @@ pub struct PlatformInfo {
 
 /// Low-level model for the `softwareInfo` spec object.
 /// Represents information of a discovered or exercised software component of the DUT.
-/// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#softwareinfo
-/// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/dut_info.json
-/// schema ref: https://github.com/opencomputeproject/ocp-diag-core/dutInfo/$defs/softwareInfo
+///
+/// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#softwareinfo>
+///
+/// schema url: <https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/dut_info.json>
+///
+/// schema ref: <https://github.com/opencomputeproject/ocp-diag-core/dutInfo/$defs/softwareInfo>
 #[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename = "softwareInfo")]
 pub struct SoftwareInfo {
@@ -371,9 +407,12 @@ impl serialize_ids::IdGetter for SoftwareInfo {
 
 /// Low-level model for the `hardwareInfo` spec object.
 /// Represents information of an enumerated or exercised hardware component of the DUT.
-/// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#hardwareinfo
-/// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/dut_info.json
-/// schema ref: https://github.com/opencomputeproject/ocp-diag-core/dutInfo/$defs/hardwareInfo
+///
+/// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#hardwareinfo>
+///
+/// schema url: <https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/dut_info.json>
+///
+/// schema ref: <https://github.com/opencomputeproject/ocp-diag-core/dutInfo/$defs/hardwareInfo>
 #[derive(Debug, Serialize, Default, Clone, PartialEq)]
 #[serde(rename = "hardwareInfo")]
 pub struct HardwareInfo {
@@ -432,9 +471,12 @@ impl serialize_ids::IdGetter for HardwareInfo {
 
 /// Low-level model for the `testRunEnd` spec object.
 /// End marker signaling the finality of a diagnostic test.
-/// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#testrunend
-/// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/test_run_end.json
-/// schema ref: https://github.com/opencomputeproject/ocp-diag-core/testRunEnd
+///
+/// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#testrunend>
+///
+/// schema url: <https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/test_run_end.json>
+///
+/// schema ref: <https://github.com/opencomputeproject/ocp-diag-core/testRunEnd>
 #[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename = "testRunEnd")]
 pub struct TestRunEnd {
@@ -448,9 +490,12 @@ pub struct TestRunEnd {
 /// Low-level model for the `error` spec object.
 /// Represents an error encountered by the diagnostic software. It may refer to a DUT
 /// component or the diagnostic itself.
-/// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#error
-/// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/error.json
-/// schema ref: https://github.com/opencomputeproject/ocp-diag-core/error
+///
+/// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#error>
+///
+/// schema url: <https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/error.json>
+///
+/// schema ref: <https://github.com/opencomputeproject/ocp-diag-core/error>
 #[serde_as]
 #[derive(Debug, Serialize, Default, Clone, PartialEq)]
 #[serde(rename = "error")]
@@ -474,9 +519,12 @@ pub struct Error {
 
 /// Low-level model for `log` spec object.
 /// Is currently relevant for test run and test step artifact types.
-/// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#log
-/// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/log.json
-/// schema ref: https://github.com/opencomputeproject/ocp-diag-core/log
+///
+/// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#log>
+///
+/// schema url: <https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/log.json>
+///
+/// schema ref: <https://github.com/opencomputeproject/ocp-diag-core/log>
 #[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename = "log")]
 pub struct Log {
@@ -493,9 +541,12 @@ pub struct Log {
 
 /// Provides information about which file/line of the source code in
 /// the diagnostic package generated the output.
-/// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#sourcelocation
-/// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/source_location.json
-/// schema ref: https://github.com/opencomputeproject/ocp-diag-core/sourceLocation
+///
+/// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#sourcelocation>
+///
+/// schema url: <https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/source_location.json>
+///
+/// schema ref: <https://github.com/opencomputeproject/ocp-diag-core/sourceLocation>
 #[derive(Debug, Serialize, Clone, Default, PartialEq)]
 #[serde(rename = "sourceLocation")]
 pub struct SourceLocation {
@@ -508,9 +559,12 @@ pub struct SourceLocation {
 
 /// Low-level model for the `testStepArtifact` spec object.
 /// Container for the step level artifacts.
-/// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#test-step-artifacts
-/// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/test_step_artifact.json
-/// schema ref: https://github.com/opencomputeproject/ocp-diag-core/testStepArtifact
+///
+/// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#test-step-artifacts>
+///
+/// schema url: <https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/test_step_artifact.json>
+///
+/// schema ref: <https://github.com/opencomputeproject/ocp-diag-core/testStepArtifact>
 #[derive(Debug, Serialize, PartialEq, Clone)]
 pub struct TestStepArtifact {
     #[serde(rename = "testStepId")]
@@ -559,9 +613,12 @@ pub enum TestStepArtifactImpl {
 
 /// Low-level model for the `testStepStart` spec object.
 /// Start marker for a test step inside a diagnosis run.
-/// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#teststepstart
-/// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/test_step_start.json
-/// schema ref: https://github.com/opencomputeproject/ocp-diag-core/testStepStart
+///
+/// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#teststepstart>
+///
+/// schema url: <https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/test_step_start.json>
+///
+/// schema ref: <https://github.com/opencomputeproject/ocp-diag-core/testStepStart>
 #[derive(Debug, Serialize, PartialEq, Clone)]
 #[serde(rename = "testStepStart")]
 pub struct TestStepStart {
@@ -571,9 +628,12 @@ pub struct TestStepStart {
 
 /// Low-level model for the `testStepEnd` spec object.
 /// End marker for a test step inside a diagnosis run.
-/// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#teststepend
-/// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/test_step_end.json
-/// schema ref: https://github.com/opencomputeproject/ocp-diag-core/testStepEnd
+///
+/// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#teststepend>
+///
+/// schema url: <https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/test_step_end.json>
+///
+/// schema ref: <https://github.com/opencomputeproject/ocp-diag-core/testStepEnd>
 #[derive(Debug, Serialize, PartialEq, Clone)]
 #[serde(rename = "testStepEnd")]
 pub struct TestStepEnd {
@@ -583,9 +643,12 @@ pub struct TestStepEnd {
 
 /// Low-level model for the `measurement` spec object.
 /// Represents an individual measurement taken by the diagnostic regarding the DUT.
-/// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#measurement
-/// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/measurement.json
-/// schema ref: https://github.com/opencomputeproject/ocp-diag-core/measurement
+///
+/// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#measurement>
+///
+/// schema url: <https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/measurement.json>
+///
+/// schema ref: <https://github.com/opencomputeproject/ocp-diag-core/measurement>
 #[serde_as]
 #[derive(Debug, Serialize, PartialEq, Clone)]
 #[serde(rename = "measurement")]
@@ -620,9 +683,12 @@ pub struct Measurement {
 
 /// Low-level model for the `validator` spec object.
 /// Contains the validation logic that the diagnostic applied for a specific measurement.
-/// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#validator
-/// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/validator.json
-/// schema ref: https://github.com/opencomputeproject/ocp-diag-core/validator
+///
+/// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#validator>
+///
+/// schema url: <https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/validator.json>
+///
+/// schema ref: <https://github.com/opencomputeproject/ocp-diag-core/validator>
 #[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename = "validator")]
 pub struct Validator {
@@ -643,9 +709,12 @@ pub struct Validator {
 
 /// Low-level model for the `subcomponent` spec object.
 /// Represents a physical subcomponent of a DUT hardware element.
-/// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#subcomponent
-/// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/subcomponent.json
-/// schema ref: https://github.com/opencomputeproject/ocp-diag-core/subcomponent
+///
+/// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#subcomponent>
+///
+/// schema url: <https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/subcomponent.json>
+///
+/// schema ref: <https://github.com/opencomputeproject/ocp-diag-core/subcomponent>
 #[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename = "subcomponent")]
 pub struct Subcomponent {
@@ -671,9 +740,12 @@ pub struct Subcomponent {
 
 /// Low-level model for the `measurementSeriesStart` spec object.
 /// Start marker for a time based series of measurements.
-/// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#measurementseriesstart
-/// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/measurement_series_start.json
-/// schema ref: https://github.com/opencomputeproject/ocp-diag-core/measurementSeriesStart
+///
+/// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#measurementseriesstart>
+///
+/// schema url: <https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/measurement_series_start.json>
+///
+/// schema ref: <https://github.com/opencomputeproject/ocp-diag-core/measurementSeriesStart>
 #[serde_as]
 #[derive(Debug, Serialize, PartialEq, Clone)]
 #[serde(rename = "measurementSeriesStart")]
@@ -708,9 +780,12 @@ pub struct MeasurementSeriesStart {
 
 /// Low-level model for the `measurementSeriesEnd` spec object.
 /// End marker for a time based series of measurements.
-/// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#measurementseriesend
-/// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/measurement_series_end.json
-/// schema ref: https://github.com/opencomputeproject/ocp-diag-core/measurementSeriesEnd
+///
+/// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#measurementseriesend>
+///
+/// schema url: <https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/measurement_series_end.json>
+///
+/// schema ref: <https://github.com/opencomputeproject/ocp-diag-core/measurementSeriesEnd>
 #[derive(Debug, Serialize, PartialEq, Clone)]
 #[serde(rename = "measurementSeriesEnd")]
 pub struct MeasurementSeriesEnd {
@@ -723,9 +798,12 @@ pub struct MeasurementSeriesEnd {
 
 /// Low-level model for the `measurementSeriesElement` spec object.
 /// Equivalent to the `Measurement` model but inside a time based series.
-/// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#measurementserieselement
-/// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/measurement_series_element.json
-/// schema ref: https://github.com/opencomputeproject/ocp-diag-core/measurementSeriesElement
+///
+/// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#measurementserieselement>
+///
+/// schema url: <https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/measurement_series_element.json>
+///
+/// schema ref: <https://github.com/opencomputeproject/ocp-diag-core/measurementSeriesElement>
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(rename = "measurementSeriesElement")]
 pub struct MeasurementSeriesElement {
@@ -748,9 +826,12 @@ pub struct MeasurementSeriesElement {
 
 /// Low-level model for the `diagnosis` spec object.
 /// Contains the verdict given by the diagnostic regarding the DUT that was inspected.
-/// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#diagnosis
-/// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/diagnosis.json
-/// schema ref: https://github.com/opencomputeproject/ocp-diag-core/diagnosis
+///
+/// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#diagnosis>
+///
+/// schema url: <https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/diagnosis.json>
+///
+/// schema ref: <https://github.com/opencomputeproject/ocp-diag-core/diagnosis>
 #[serde_as]
 #[derive(Debug, Serialize, PartialEq, Clone)]
 #[serde(rename = "diagnosis")]
@@ -781,9 +862,12 @@ pub struct Diagnosis {
 
 /// Low-level model for the `file` spec object.
 /// Represents a file artifact that was generated by running the diagnostic.
-/// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#file
-/// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/file.json
-/// schema ref: https://github.com/opencomputeproject/ocp-diag-core/file
+///
+/// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#file>
+///
+/// schema url: <https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/file.json>
+///
+/// schema ref: <https://github.com/opencomputeproject/ocp-diag-core/file>
 #[derive(Debug, Serialize, PartialEq, Clone)]
 #[serde(rename = "file")]
 pub struct File {
@@ -811,9 +895,12 @@ pub struct File {
 
 /// Low-level model for the `extension` spec object.
 /// Left as an implementation detail, the `Extension` just has a name and arbitrary data.
-/// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#extension
-/// schema url: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/test_step_artifact.json
-/// schema ref: https://github.com/opencomputeproject/ocp-diag-core/testStepArtifact/$defs/extension
+///
+/// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#extension>
+///
+/// schema url: <https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/output/test_step_artifact.json>
+///
+/// schema ref: <https://github.com/opencomputeproject/ocp-diag-core/testStepArtifact/$defs/extension>
 #[derive(Debug, Serialize, PartialEq, Clone)]
 #[serde(rename = "extension")]
 pub struct Extension {

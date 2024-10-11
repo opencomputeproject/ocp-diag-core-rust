@@ -8,6 +8,7 @@ use crate::output as tv;
 use crate::spec;
 use tv::{dut, trait_ext::VecExt, DutSoftwareInfo};
 
+/// TODO: docs
 pub struct Error {
     symptom: String,
     message: Option<String>,
@@ -30,6 +31,7 @@ impl Error {
     }
 }
 
+/// TODO: docs
 #[derive(Debug, Default)]
 pub struct ErrorBuilder {
     symptom: String,

@@ -6,6 +6,7 @@
 
 use crate::spec;
 
+/// TODO: docs
 pub struct Log {
     severity: spec::LogSeverity,
     message: String,
@@ -26,6 +27,7 @@ impl Log {
     }
 }
 
+/// TODO: docs
 #[derive(Debug)]
 pub struct LogBuilder {
     severity: spec::LogSeverity,

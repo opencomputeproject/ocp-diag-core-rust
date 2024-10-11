@@ -21,7 +21,7 @@ use super::trait_ext::VecExt;
 /// The measurement series.
 /// A Measurement Series is a time-series list of measurements.
 ///
-/// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#measurementseriesstart
+/// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#measurementseriesstart>
 pub struct MeasurementSeries {
     id: String,
     info: MeasurementSeriesInfo,
@@ -46,14 +46,13 @@ impl MeasurementSeries {
 
     /// Starts the measurement series.
     ///
-    /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#measurementseriesstart
+    /// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#measurementseriesstart>
     ///
     /// # Examples
     ///
     /// ```rust
     /// # tokio_test::block_on(async {
     /// # use ocptv::output::*;
-    ///
     /// let dut = DutInfo::new("my_dut");
     /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
     /// let step = run.add_step("step_name").start().await?;
@@ -91,7 +90,7 @@ impl MeasurementSeries {
     }
 
     /// Builds a scope in the [`MeasurementSeries`] object, taking care of starting and
-    /// ending it. View [`MeasurementSeries::start`] and [`MeasurementSeries::end`] methods.
+    /// ending it. View [`MeasurementSeries::start`] and [`StartedMeasurementSeries::end`] methods.
     /// After the scope is constructed, additional objects may be added to it.
     /// This is the preferred usage for the [`MeasurementSeries`], since it guarantees
     /// all the messages are emitted between the start and end messages, the order
@@ -103,7 +102,6 @@ impl MeasurementSeries {
     /// # tokio_test::block_on(async {
     /// # use futures::FutureExt;
     /// # use ocptv::output::*;
-    ///
     /// let dut = DutInfo::new("my_dut");
     /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
     /// let step = run.add_step("step_name").start().await?;
@@ -134,6 +132,7 @@ impl MeasurementSeries {
     }
 }
 
+/// TODO: docs
 pub struct StartedMeasurementSeries {
     parent: MeasurementSeries,
 
@@ -147,14 +146,13 @@ impl StartedMeasurementSeries {
 
     /// Ends the measurement series.
     ///
-    /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#measurementseriesend
+    /// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#measurementseriesend>
     ///
     /// # Examples
     ///
     /// ```rust
     /// # tokio_test::block_on(async {
     /// # use ocptv::output::*;
-    ///
     /// let dut = DutInfo::new("my_dut");
     /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
     /// let step = run.add_step("step_name").start().await?;
@@ -181,14 +179,13 @@ impl StartedMeasurementSeries {
 
     /// Adds a measurement element to the measurement series.
     ///
-    /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#measurementserieselement
+    /// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#measurementserieselement>
     ///
     /// # Examples
     ///
     /// ```rust
     /// # tokio_test::block_on(async {
     /// # use ocptv::output::*;
-    ///
     /// let dut = DutInfo::new("my_dut");
     /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
     /// let step = run.add_step("step_name").start().await?;
@@ -210,14 +207,13 @@ impl StartedMeasurementSeries {
     /// Adds a measurement element to the measurement series.
     /// This method accepts a full set of details for the measurement element.
     ///
-    /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#measurementserieselement
+    /// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#measurementserieselement>
     ///
     /// # Examples
     ///
     /// ```rust
     /// # tokio_test::block_on(async {
     /// # use ocptv::output::*;
-    ///
     /// let dut = DutInfo::new("my_dut");
     /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
     /// let step = run.add_step("step_name").start().await?;
@@ -254,6 +250,7 @@ impl StartedMeasurementSeries {
     }
 }
 
+/// TODO: docs
 #[derive(Default)]
 pub struct MeasurementSeriesElemDetails {
     value: tv::Value,
@@ -268,6 +265,7 @@ impl MeasurementSeriesElemDetails {
     }
 }
 
+/// TODO: docs
 #[derive(Default)]
 pub struct MeasurementSeriesElemDetailsBuilder {
     value: tv::Value,
@@ -311,6 +309,7 @@ impl MeasurementSeriesElemDetailsBuilder {
     }
 }
 
+/// TODO: docs
 #[derive(Clone)]
 pub struct Validator {
     name: Option<String>,
@@ -333,6 +332,7 @@ impl Validator {
     }
 }
 
+/// TODO: docs
 #[derive(Debug)]
 pub struct ValidatorBuilder {
     name: Option<String>,
@@ -378,16 +378,14 @@ impl ValidatorBuilder {
 }
 
 /// This structure represents a Measurement message.
-/// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#measurement
+/// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#measurement>
 ///
 /// # Examples
 ///
 /// ## Create a Measurement object with the `new` method
 ///
 /// ```
-/// use ocptv::output::Measurement;
-/// use ocptv::output::Value;
-///
+/// # use ocptv::output::*;
 /// let measurement = Measurement::new("name", 50.into());
 /// ```
 ///
@@ -395,7 +393,6 @@ impl ValidatorBuilder {
 ///
 /// ```
 /// # use ocptv::output::*;
-///
 /// let mut dut = DutInfo::new("dut0");
 /// let hw_info = dut.add_hardware_info(HardwareInfo::builder("name").build());
 ///
@@ -425,9 +422,7 @@ impl Measurement {
     /// # Examples
     ///
     /// ```
-    /// use ocptv::output::Measurement;
-    /// use ocptv::output::Value;
-    ///
+    /// # use ocptv::output::*;
     /// let measurement = Measurement::new("name", 50.into());
     /// ```
     pub fn new(name: &str, value: tv::Value) -> Self {
@@ -468,9 +463,7 @@ impl Measurement {
     /// # Examples
     ///
     /// ```
-    /// use ocptv::output::Measurement;
-    /// use ocptv::output::Value;
-    ///
+    /// # use ocptv::output::*;
     /// let measurement = Measurement::new("name", 50.into());
     /// let _ = measurement.to_artifact();
     /// ```
@@ -502,7 +495,6 @@ impl Measurement {
 ///
 /// ```
 /// # use ocptv::output::*;
-///
 /// let mut dut = DutInfo::new("dut0");
 /// let hw_info = dut.add_hardware_info(HardwareInfo::builder("name").build());
 ///
@@ -532,9 +524,7 @@ impl MeasurementBuilder {
     /// # Examples
     ///
     /// ```
-    /// use ocptv::output::MeasurementBuilder;
-    /// use ocptv::output::Value;
-    ///
+    /// # use ocptv::output::*;
     /// let builder = MeasurementBuilder::new("name", 50.into());
     /// ```
     pub fn new(name: &str, value: tv::Value) -> Self {
@@ -555,7 +545,6 @@ impl MeasurementBuilder {
     ///
     /// ```
     /// # use ocptv::output::*;
-    ///
     /// let builder = MeasurementBuilder::new("name", 50.into())
     ///     .add_validator(&Validator::builder(ValidatorType::Equal, 30.into()).build());
     /// ```
@@ -570,13 +559,12 @@ impl MeasurementBuilder {
         self
     }
 
-    /// Add a [`HardwareInfo`] to a [`MeasurementBuilder`].
+    /// Add a [`tv::HardwareInfo`] to a [`MeasurementBuilder`].
     ///
     /// # Examples
     ///
     /// ```
     /// # use ocptv::output::*;
-    ///
     /// let mut dut = DutInfo::new("dut0");
     /// let hw_info = dut.add_hardware_info(HardwareInfo::builder("name").build());
     ///
@@ -588,15 +576,12 @@ impl MeasurementBuilder {
         self
     }
 
-    /// Add a [`Subcomponent`] to a [`MeasurementBuilder`].
+    /// Add a [`tv::Subcomponent`] to a [`MeasurementBuilder`].
     ///
     /// # Examples
     ///
     /// ```
-    /// use ocptv::output::MeasurementBuilder;
-    /// use ocptv::output::Subcomponent;
-    /// use ocptv::output::Value;
-    ///
+    /// # use ocptv::output::*;
     /// let builder = MeasurementBuilder::new("name", 50.into())
     ///     .subcomponent(&Subcomponent::builder("name").build());
     /// ```
@@ -610,9 +595,7 @@ impl MeasurementBuilder {
     /// # Examples
     ///
     /// ```
-    /// use ocptv::output::MeasurementBuilder;
-    /// use ocptv::output::Value;
-    ///
+    /// # use ocptv::output::*;
     /// let builder =
     ///     MeasurementBuilder::new("name", 50.into()).add_metadata("key", "value".into());
     /// ```
@@ -635,9 +618,7 @@ impl MeasurementBuilder {
     /// # Examples
     ///
     /// ```
-    /// use ocptv::output::MeasurementBuilder;
-    /// use ocptv::output::Value;
-    ///
+    /// # use ocptv::output::*;
     /// let builder = MeasurementBuilder::new("name", 50000.into()).unit("RPM");
     /// ```
     pub fn unit(mut self, unit: &str) -> MeasurementBuilder {
@@ -669,6 +650,7 @@ impl MeasurementBuilder {
     }
 }
 
+/// TODO: docs
 pub struct MeasurementSeriesInfo {
     // note: this object is crate public and we need access to this field
     // when making a new series in `StartedTestStep.add_measurement_series*`
@@ -694,6 +676,7 @@ impl MeasurementSeriesInfo {
     }
 }
 
+/// TODO: docs
 #[derive(Default)]
 pub struct MeasurementSeriesInfoBuilder {
     id: tv::Ident,

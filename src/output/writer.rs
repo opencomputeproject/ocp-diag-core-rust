@@ -14,6 +14,7 @@ use tokio::fs;
 use tokio::io::AsyncWriteExt;
 use tokio::sync::Mutex;
 
+/// TODO: docs
 #[async_trait]
 pub trait Writer {
     async fn write(&self, s: &str) -> Result<(), io::Error>;
@@ -28,6 +29,7 @@ pub enum WriterType {
     Custom(Box<dyn Writer + Send + Sync + 'static>),
 }
 
+/// TODO: docs
 pub struct FileWriter {
     file: Arc<Mutex<fs::File>>,
 }
@@ -53,6 +55,7 @@ impl FileWriter {
     }
 }
 
+/// TODO: docs
 #[derive(Debug)]
 pub struct BufferWriter {
     buffer: Arc<Mutex<Vec<String>>>,
@@ -69,6 +72,7 @@ impl BufferWriter {
     }
 }
 
+/// TODO: docs
 #[derive(Debug, Clone)]
 pub struct StdoutWriter {}
 
