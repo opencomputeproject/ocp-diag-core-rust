@@ -81,3 +81,7 @@ required-features = ["boxed-scopes"]
 [[example]]
 name = "simple_step_fail"
 required-features = ["boxed-scopes"]
+
+[[example]]
+name = "file"
+required-features = ["boxed-scopes"]
