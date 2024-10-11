@@ -85,13 +85,13 @@ async fn test_step_with_measurement_builder() -> Result<()> {
             let hw_info = dut.hardware_info("hw0").unwrap(); // must exist
 
             let measurement = Measurement::builder("name", 50.into())
-                .add_validator(&Validator::builder(ValidatorType::Equal, 30.into()).build())
+                .add_validator(Validator::builder(ValidatorType::Equal, 30.into()).build())
                 .add_metadata("key", "value".into())
                 .add_metadata("key2", "value2".into())
                 .hardware_info(hw_info)
-                .subcomponent(&Subcomponent::builder("name").build())
+                .subcomponent(Subcomponent::builder("name").build())
                 .build();
-            s.add_measurement_with_details(&measurement).await?;
+            s.add_measurement_with_details(measurement).await?;
 
             Ok(())
         }
@@ -269,9 +269,9 @@ async fn test_step_with_measurement_series_with_details() -> Result<()> {
                         .unit("unit")
                         .add_metadata("key", "value".into())
                         .add_metadata("key2", "value2".into())
-                        .add_validator(&Validator::builder(ValidatorType::Equal, 30.into()).build())
+                        .add_validator(Validator::builder(ValidatorType::Equal, 30.into()).build())
                         .hardware_info(hw_info)
-                        .subcomponent(&Subcomponent::builder("name").build())
+                        .subcomponent(Subcomponent::builder("name").build())
                         .build(),
                 )
                 .start()

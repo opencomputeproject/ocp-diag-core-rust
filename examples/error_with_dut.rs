@@ -27,7 +27,7 @@ async fn main() -> Result<()> {
         .scope(dut, |r| {
             async move {
                 r.add_error_with_details(
-                    &tv::Error::builder("power-fail")
+                    tv::Error::builder("power-fail")
                         .add_software_info(&sw_info)
                         .build(),
                 )

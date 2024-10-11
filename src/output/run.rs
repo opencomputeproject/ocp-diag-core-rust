@@ -149,7 +149,7 @@ impl TestRun {
     pub async fn add_error(&self, symptom: &str) -> Result<(), tv::OcptvError> {
         let error = error::Error::builder(symptom).build();
 
-        self.add_error_with_details(&error).await?;
+        self.add_error_with_details(error).await?;
         Ok(())
     }
 
@@ -162,7 +162,7 @@ impl TestRun {
     pub async fn add_error_with_msg(&self, symptom: &str, msg: &str) -> Result<(), tv::OcptvError> {
         let error = error::Error::builder(symptom).message(msg).build();
 
-        self.add_error_with_details(&error).await?;
+        self.add_error_with_details(error).await?;
         Ok(())
     }
 
@@ -172,7 +172,7 @@ impl TestRun {
     /// (eg. failing to discover a DUT).
     ///
     /// See: [`StartedTestRun::add_error_with_details`] for details and examples.
-    pub async fn add_error_with_details(&self, error: &error::Error) -> Result<(), tv::OcptvError> {
+    pub async fn add_error_with_details(&self, error: error::Error) -> Result<(), tv::OcptvError> {
         let artifact = spec::TestRunArtifact {
             artifact: spec::TestRunArtifactImpl::Error(error.to_artifact()),
         };
@@ -218,7 +218,7 @@ impl TestRunBuilder {
     ///     .build();
     /// ```
     pub fn add_parameter(mut self, key: &str, value: tv::Value) -> TestRunBuilder {
-        self.parameters.insert(key.to_string(), value.clone());
+        self.parameters.insert(key.to_string(), value);
         self
     }
 
@@ -265,7 +265,7 @@ impl TestRunBuilder {
     ///     .build();
     /// ```
     pub fn add_metadata(mut self, key: &str, value: tv::Value) -> TestRunBuilder {
-        self.metadata.insert(key.to_string(), value.clone());
+        self.metadata.insert(key.to_string(), value);
         self
     }
 
@@ -384,7 +384,7 @@ impl StartedTestRun {
     /// let dut = DutInfo::builder("my_dut").build();
     /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
     /// run.add_log_with_details(
-    ///     &Log::builder("This is a log message with INFO severity")
+    ///     Log::builder("This is a log message with INFO severity")
     ///         .severity(LogSeverity::Info)
     ///         .source("file", 1)
     ///         .build(),
@@ -394,7 +394,7 @@ impl StartedTestRun {
     /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn add_log_with_details(&self, log: &log::Log) -> Result<(), tv::OcptvError> {
+    pub async fn add_log_with_details(&self, log: log::Log) -> Result<(), tv::OcptvError> {
         let artifact = spec::TestRunArtifact {
             artifact: spec::TestRunArtifactImpl::Log(log.to_artifact()),
         };
@@ -427,7 +427,7 @@ impl StartedTestRun {
     pub async fn add_error(&self, symptom: &str) -> Result<(), tv::OcptvError> {
         let error = error::Error::builder(symptom).build();
 
-        self.add_error_with_details(&error).await?;
+        self.add_error_with_details(error).await?;
         Ok(())
     }
 
@@ -453,7 +453,7 @@ impl StartedTestRun {
     pub async fn add_error_with_msg(&self, symptom: &str, msg: &str) -> Result<(), tv::OcptvError> {
         let error = error::Error::builder(symptom).message(msg).build();
 
-        self.add_error_with_details(&error).await?;
+        self.add_error_with_details(error).await?;
         Ok(())
     }
 
@@ -472,7 +472,7 @@ impl StartedTestRun {
     /// let run = TestRun::builder("diagnostic_name", "1.0").build().start(dut).await?;
     ///
     /// run.add_error_with_details(
-    ///     &Error::builder("symptom")
+    ///     Error::builder("symptom")
     ///         .message("Error message")
     ///         .source("file", 1)
     ///         .add_software_info(&sw_info)
@@ -484,7 +484,7 @@ impl StartedTestRun {
     /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn add_error_with_details(&self, error: &error::Error) -> Result<(), tv::OcptvError> {
+    pub async fn add_error_with_details(&self, error: error::Error) -> Result<(), tv::OcptvError> {
         let artifact = spec::TestRunArtifact {
             artifact: spec::TestRunArtifactImpl::Error(error.to_artifact()),
         };

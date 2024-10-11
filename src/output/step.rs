@@ -213,7 +213,7 @@ impl StartedTestStep {
     ///
     /// let step = run.add_step("step_name").start().await?;
     /// step.add_log_with_details(
-    ///     &Log::builder("This is a log message with INFO severity")
+    ///     Log::builder("This is a log message with INFO severity")
     ///         .severity(LogSeverity::Info)
     ///         .source("file", 1)
     ///         .build(),
@@ -223,7 +223,7 @@ impl StartedTestStep {
     /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn add_log_with_details(&self, log: &log::Log) -> Result<(), tv::OcptvError> {
+    pub async fn add_log_with_details(&self, log: log::Log) -> Result<(), tv::OcptvError> {
         self.step
             .emitter
             .emit(&TestStepArtifactImpl::Log(log.to_artifact()))
@@ -347,7 +347,7 @@ impl StartedTestStep {
     ///
     /// let step = run.add_step("step_name").start().await?;
     /// step.add_error_with_details(
-    ///     &Error::builder("symptom")
+    ///     Error::builder("symptom")
     ///         .message("Error message")
     ///         .source("file", 1)
     ///         .add_software_info(&sw_info)
@@ -358,7 +358,7 @@ impl StartedTestStep {
     /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn add_error_with_details(&self, error: &error::Error) -> Result<(), tv::OcptvError> {
+    pub async fn add_error_with_details(&self, error: error::Error) -> Result<(), tv::OcptvError> {
         self.step
             .emitter
             .emit(&TestStepArtifactImpl::Error(error.to_artifact()))
@@ -454,12 +454,12 @@ impl StartedTestStep {
     /// let step = run.add_step("step_name").start().await?;
     ///
     /// let measurement = Measurement::builder("name", 5000.into())
-    ///     .add_validator(&Validator::builder(ValidatorType::Equal, 30.into()).build())
+    ///     .add_validator(Validator::builder(ValidatorType::Equal, 30.into()).build())
     ///     .add_metadata("key", "value".into())
     ///     .hardware_info(&hw_info)
-    ///     .subcomponent(&Subcomponent::builder("name").build())
+    ///     .subcomponent(Subcomponent::builder("name").build())
     ///     .build();
-    /// step.add_measurement_with_details(&measurement).await?;
+    /// step.add_measurement_with_details(measurement).await?;
     ///
     /// step.end(TestStatus::Complete).await?;
     ///
@@ -468,7 +468,7 @@ impl StartedTestStep {
     /// ```
     pub async fn add_measurement_with_details(
         &self,
-        measurement: &measure::Measurement,
+        measurement: measure::Measurement,
     ) -> Result<(), tv::OcptvError> {
         self.step
             .emitter
@@ -595,7 +595,7 @@ impl StartedTestStep {
     ///     .subcomponent(&Subcomponent::builder("name").build())
     ///     .source("file.rs", 1)
     ///     .build();
-    /// step.diagnosis_with_details(&diagnosis).await?;
+    /// step.diagnosis_with_details(diagnosis).await?;
     ///
     /// step.end(TestStatus::Complete).await?;
     ///
@@ -604,7 +604,7 @@ impl StartedTestStep {
     /// ```
     pub async fn diagnosis_with_details(
         &self,
-        diagnosis: &diagnosis::Diagnosis,
+        diagnosis: diagnosis::Diagnosis,
     ) -> Result<(), tv::OcptvError> {
         self.step
             .emitter

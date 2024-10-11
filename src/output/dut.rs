@@ -104,13 +104,13 @@ impl DutInfoBuilder {
         self
     }
 
-    pub fn add_platform_info(mut self, platform_info: &PlatformInfo) -> DutInfoBuilder {
-        self.platform_infos.push(platform_info.clone());
+    pub fn add_platform_info(mut self, platform_info: PlatformInfo) -> DutInfoBuilder {
+        self.platform_infos.push(platform_info);
         self
     }
 
     pub fn add_metadata(mut self, key: &str, value: tv::Value) -> DutInfoBuilder {
-        self.metadata.insert(key.to_string(), value.clone());
+        self.metadata.insert(key.to_string(), value);
         self
     }
 
@@ -520,7 +520,7 @@ mod tests {
             .name("dut")
             .add_metadata("key", "value".into())
             .add_metadata("key2", "value2".into())
-            .add_platform_info(&PlatformInfo::builder("platform_info").build())
+            .add_platform_info(PlatformInfo::builder("platform_info").build())
             .build();
 
         dut.add_software_info(

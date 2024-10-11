@@ -77,7 +77,7 @@ async fn test_step_with_diagnosis_builder() -> Result<()> {
                 .subcomponent(&Subcomponent::builder("name").build())
                 .message("message")
                 .build();
-            s.diagnosis_with_details(&diagnosis).await?;
+            s.diagnosis_with_details(diagnosis).await?;
 
             Ok(())
         }

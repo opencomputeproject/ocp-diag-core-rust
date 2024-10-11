@@ -9,6 +9,7 @@ use crate::spec;
 use tv::{dut, trait_ext::VecExt, DutSoftwareInfo};
 
 /// TODO: docs
+#[derive(Clone)]
 pub struct Error {
     symptom: String,
     message: Option<String>,

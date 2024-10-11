@@ -87,7 +87,7 @@ async fn test_testrun_with_error_with_details() -> Result<()> {
     check_output_run(&expected, |r, dut| {
         async move {
             r.add_error_with_details(
-                &Error::builder("symptom")
+                Error::builder("symptom")
                     .message("Error message")
                     .source("file", 1)
                     .add_software_info(dut.software_info("sw0").unwrap()) // must exist
@@ -180,7 +180,7 @@ async fn test_testrun_with_error_with_details_before_start() -> Result<()> {
         async move {
             let run = run_builder.build();
             run.add_error_with_details(
-                &Error::builder("no-dut")
+                Error::builder("no-dut")
                     .message("failed to find dut")
                     .source("file", 1)
                     .build(),
@@ -288,7 +288,7 @@ async fn test_testrun_step_error_with_details() -> Result<()> {
     check_output_step(&expected, |s, dut| {
         async move {
             s.add_error_with_details(
-                &Error::builder("symptom")
+                Error::builder("symptom")
                     .message("Error message")
                     .source("file", 1)
                     .add_software_info(dut.software_info("sw0").unwrap())
