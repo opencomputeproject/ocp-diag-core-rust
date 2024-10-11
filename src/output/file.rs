@@ -4,15 +4,16 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
-use mime;
 use std::collections::BTreeMap;
 
-use crate::output as tv;
+use mime;
+
+use crate::output::{self as tv, trait_ext::MapExt};
 use crate::spec;
-use maplit::{btreemap, convert_args};
 
 /// This structure represents a File message.
-/// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#file
+///
+/// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#file>
 ///
 /// # Examples
 ///
@@ -20,7 +21,6 @@ use maplit::{btreemap, convert_args};
 ///
 /// ```
 /// # use ocptv::output::*;
-///
 /// let uri = Uri::parse("file:///tmp/foo").unwrap();
 /// let file = File::new("name", uri);
 /// ```
@@ -30,7 +30,6 @@ use maplit::{btreemap, convert_args};
 /// ```
 /// # use ocptv::output::*;
 /// # use std::str::FromStr;
-///
 /// let uri = Uri::parse("file:///tmp/foo").unwrap();
 /// let file = File::builder("name", uri)
 ///     .is_snapshot(true)
@@ -45,7 +44,7 @@ pub struct File {
     is_snapshot: bool,
     description: Option<String>,
     content_type: Option<mime::Mime>,
-    metadata: Option<BTreeMap<String, tv::Value>>,
+    metadata: BTreeMap<String, tv::Value>,
 }
 
 impl File {
@@ -55,7 +54,6 @@ impl File {
     ///
     /// ```
     /// # use ocptv::output::*;
-    ///
     /// let uri = Uri::parse("file:///tmp/foo").unwrap();
     /// let file = File::new("name", uri);
     /// ```
@@ -66,7 +64,7 @@ impl File {
             is_snapshot: false,
             description: None,
             content_type: None,
-            metadata: None,
+            metadata: BTreeMap::new(),
         }
     }
 
@@ -77,7 +75,6 @@ impl File {
     /// ```
     /// # use ocptv::output::*;
     /// # use std::str::FromStr;
-    ///
     /// let uri = Uri::parse("file:///tmp/foo").unwrap();
     /// let file = File::builder("name", uri)
     ///     .description("description")
@@ -95,7 +92,6 @@ impl File {
     ///
     /// ```
     /// # use ocptv::output::*;
-    ///
     /// let uri = Uri::parse("file:///tmp/foo").unwrap();
     /// let file = File::new("name", uri);
     /// let _ = file.to_artifact();
@@ -107,7 +103,7 @@ impl File {
             is_snapshot: self.is_snapshot,
             description: self.description.clone(),
             content_type: self.content_type.as_ref().map(|ct| ct.to_string()),
-            metadata: self.metadata.clone(),
+            metadata: self.metadata.option(),
         }
     }
 }
@@ -119,7 +115,6 @@ impl File {
 /// ```
 /// # use ocptv::output::*;
 /// # use std::str::FromStr;
-///
 /// let uri = Uri::parse("file:///tmp/foo").unwrap();
 /// let builder = File::builder("name", uri)
 ///     .description("description")
@@ -133,28 +128,19 @@ pub struct FileBuilder {
     is_snapshot: bool,
     description: Option<String>,
     content_type: Option<mime::Mime>,
-    metadata: Option<BTreeMap<String, tv::Value>>,
+
+    metadata: BTreeMap<String, tv::Value>,
 }
 
 impl FileBuilder {
-    /// Creates a new FileBuilder.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use ocptv::output::*;
-    ///
-    /// let uri = Uri::parse("file:///tmp/foo").unwrap();
-    /// let builder = FileBuilder::new("name", uri);
-    /// ```
-    pub fn new(name: &str, uri: tv::Uri) -> Self {
+    fn new(name: &str, uri: tv::Uri) -> Self {
         FileBuilder {
             name: name.to_string(),
             uri,
             is_snapshot: false,
             description: None,
             content_type: None,
-            metadata: None,
+            metadata: BTreeMap::new(),
         }
     }
 
@@ -164,9 +150,8 @@ impl FileBuilder {
     ///
     /// ```
     /// # use ocptv::output::*;
-    ///
     /// let uri = Uri::parse("file:///tmp/foo").unwrap();
-    /// let builder = FileBuilder::new("name", uri)
+    /// let builder = File::builder("name", uri)
     ///     .is_snapshot(true);
     /// ```
     pub fn is_snapshot(mut self, value: bool) -> FileBuilder {
@@ -180,9 +165,8 @@ impl FileBuilder {
     ///
     /// ```
     /// # use ocptv::output::*;
-    ///
     /// let uri = Uri::parse("file:///tmp/foo").unwrap();
-    /// let builder = FileBuilder::new("name", uri)
+    /// let builder = File::builder("name", uri)
     ///     .description("description");
     /// ```
     pub fn description(mut self, description: &str) -> FileBuilder {
@@ -197,9 +181,8 @@ impl FileBuilder {
     /// ```
     /// # use ocptv::output::*;
     /// # use std::str::FromStr;
-    ///
     /// let uri = Uri::parse("file:///tmp/foo").unwrap();
-    /// let builder = FileBuilder::new("name", uri)
+    /// let builder = File::builder("name", uri)
     ///     .content_type(mime::TEXT_PLAIN);
     /// ```
     pub fn content_type(mut self, content_type: mime::Mime) -> FileBuilder {
@@ -215,20 +198,11 @@ impl FileBuilder {
     /// # use ocptv::output::*;
     ///
     /// let uri = Uri::parse("file:///tmp/foo").unwrap();
-    /// let builder = FileBuilder::new("name", uri)
+    /// let builder = File::builder("name", uri)
     ///     .add_metadata("key", "value".into());
     /// ```
     pub fn add_metadata(mut self, key: &str, value: tv::Value) -> FileBuilder {
-        match self.metadata {
-            Some(ref mut metadata) => {
-                metadata.insert(key.to_string(), value.clone());
-            }
-            None => {
-                self.metadata = Some(convert_args!(btreemap!(
-                    key => value,
-                )));
-            }
-        };
+        self.metadata.insert(key.to_string(), value);
         self
     }
 
@@ -240,7 +214,7 @@ impl FileBuilder {
     /// # use ocptv::output::*;
     ///
     /// let uri = Uri::parse("file:///tmp/foo").unwrap();
-    /// let builder = FileBuilder::new("name", uri);
+    /// let builder = File::builder("name", uri);
     /// let file = builder.build();
     /// ```
     pub fn build(self) -> File {
@@ -261,6 +235,8 @@ mod tests {
     use crate::output as tv;
     use crate::spec;
     use anyhow::Result;
+    use maplit::btreemap;
+    use maplit::convert_args;
 
     #[test]
     fn test_file_as_test_step_descendant_to_artifact() -> Result<()> {

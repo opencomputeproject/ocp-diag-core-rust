@@ -25,7 +25,6 @@ impl Config {
     /// # Examples
     /// ```rust
     /// # use ocptv::output::*;
-    ///
     /// let builder = Config::builder();
     /// ```
     pub fn builder() -> ConfigBuilder {
@@ -47,7 +46,7 @@ impl ConfigBuilder {
         }
     }
 
-    // TODO: docs for all these
+    /// TODO: docs for all these
     pub fn timezone(mut self, timezone: chrono_tz::Tz) -> Self {
         self.timestamp_provider = Box::new(ConfiguredTzProvider { tz: timezone });
         self
@@ -92,6 +91,7 @@ impl ConfigBuilder {
     }
 }
 
+/// TODO: docs
 pub trait TimestampProvider {
     fn now(&self) -> chrono::DateTime<chrono_tz::Tz>;
 }

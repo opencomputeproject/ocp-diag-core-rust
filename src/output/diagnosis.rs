@@ -9,7 +9,8 @@ use crate::spec;
 use tv::dut;
 
 /// This structure represents a Diagnosis message.
-/// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#diagnosis
+///
+/// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#diagnosis>
 ///
 /// Information about the source file and line number are not automatically added.
 /// Add them using the builder or the macros octptv_diagnosis_*
@@ -20,7 +21,6 @@ use tv::dut;
 ///
 /// ```
 /// # use ocptv::output::*;
-///
 /// let diagnosis = Diagnosis::new("verdict", DiagnosisType::Pass);
 /// ```
 ///
@@ -28,7 +28,6 @@ use tv::dut;
 ///
 /// ```
 /// # use ocptv::output::*;
-///
 /// let mut dut = DutInfo::new("dut0");
 /// let hw_info = dut.add_hardware_info(HardwareInfo::builder("name").build());
 ///
@@ -73,7 +72,6 @@ impl Diagnosis {
     ///
     /// ```
     /// # use ocptv::output::*;
-    ///
     /// let mut dut = DutInfo::new("dut0");
     /// let hw_info = dut.add_hardware_info(HardwareInfo::builder("name").build());
     ///
@@ -94,7 +92,6 @@ impl Diagnosis {
     ///
     /// ```
     /// # use ocptv::output::*;
-    ///
     /// let diagnosis = Diagnosis::new("verdict", DiagnosisType::Pass);
     /// let _ = diagnosis.to_artifact();
     /// ```
@@ -122,7 +119,6 @@ impl Diagnosis {
 ///
 /// ```
 /// # use ocptv::output::*;
-///
 /// let mut dut = DutInfo::new("dut0");
 /// let hw_info = dut.add_hardware_info(HardwareInfo::builder("name").build());
 ///
@@ -146,16 +142,7 @@ pub struct DiagnosisBuilder {
 }
 
 impl DiagnosisBuilder {
-    /// Creates a new DiagnosisBuilder.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use ocptv::output::*;
-    ///
-    /// let builder = DiagnosisBuilder::new("verdict", DiagnosisType::Pass);
-    /// ```
-    pub fn new(verdict: &str, diagnosis_type: spec::DiagnosisType) -> Self {
+    fn new(verdict: &str, diagnosis_type: spec::DiagnosisType) -> Self {
         DiagnosisBuilder {
             verdict: verdict.to_owned(),
             diagnosis_type,
@@ -169,59 +156,55 @@ impl DiagnosisBuilder {
     ///
     /// ```
     /// # use ocptv::output::*;
-    ///
-    /// let builder = DiagnosisBuilder::new("verdict", DiagnosisType::Pass)
+    /// let builder = Diagnosis::builder("verdict", DiagnosisType::Pass)
     ///     .message("message");
     /// ```
-    pub fn message(mut self, message: &str) -> DiagnosisBuilder {
+    pub fn message(mut self, message: &str) -> Self {
         self.message = Some(message.to_owned());
         self
     }
 
-    /// Add a [`HardwareInfo`] to a [`DiagnosisBuilder`].
+    /// Add a [`dut::HardwareInfo`] to a [`DiagnosisBuilder`].
     ///
     /// # Examples
     ///
     /// ```
     /// # use ocptv::output::*;
-    ///
     /// let mut dut = DutInfo::new("dut0");
     /// let hw_info = dut.add_hardware_info(HardwareInfo::builder("name").build());
     ///
-    /// let builder = DiagnosisBuilder::new("verdict", DiagnosisType::Pass)
+    /// let builder = Diagnosis::builder("verdict", DiagnosisType::Pass)
     ///     .hardware_info(&hw_info);
     /// ```
-    pub fn hardware_info(mut self, hardware_info: &dut::DutHardwareInfo) -> DiagnosisBuilder {
+    pub fn hardware_info(mut self, hardware_info: &dut::DutHardwareInfo) -> Self {
         self.hardware_info = Some(hardware_info.clone());
         self
     }
 
-    /// Add a [`Subcomponent`] to a [`DiagnosisBuilder`].
+    /// Add a [`dut::Subcomponent`] to a [`DiagnosisBuilder`].
     ///
     /// # Examples
     ///
     /// ```
     /// # use ocptv::output::*;
-    ///
-    /// let builder = DiagnosisBuilder::new("verdict", DiagnosisType::Pass)
+    /// let builder = Diagnosis::builder("verdict", DiagnosisType::Pass)
     ///     .subcomponent(&Subcomponent::builder("name").build());
     /// ```
-    pub fn subcomponent(mut self, subcomponent: &dut::Subcomponent) -> DiagnosisBuilder {
+    pub fn subcomponent(mut self, subcomponent: &dut::Subcomponent) -> Self {
         self.subcomponent = Some(subcomponent.clone());
         self
     }
 
-    /// Add a [`SourceLocation`] to a [`DiagnosisBuilder`].
+    /// Add a source location to a [`DiagnosisBuilder`].
     ///
     /// # Examples
     ///
     /// ```
     /// # use ocptv::output::*;
-    ///
-    /// let builder = DiagnosisBuilder::new("verdict", DiagnosisType::Pass)
+    /// let builder = Diagnosis::builder("verdict", DiagnosisType::Pass)
     ///     .source("file.rs", 1);
     /// ```
-    pub fn source(mut self, file: &str, line: i32) -> DiagnosisBuilder {
+    pub fn source(mut self, file: &str, line: i32) -> Self {
         self.source_location = Some(spec::SourceLocation {
             file: file.to_owned(),
             line,
@@ -235,8 +218,7 @@ impl DiagnosisBuilder {
     ///
     /// ```
     /// # use ocptv::output::*;
-    ///
-    /// let builder = DiagnosisBuilder::new("verdict", DiagnosisType::Pass);
+    /// let builder = Diagnosis::builder("verdict", DiagnosisType::Pass);
     /// let diagnosis = builder.build();
     /// ```
     pub fn build(self) -> Diagnosis {

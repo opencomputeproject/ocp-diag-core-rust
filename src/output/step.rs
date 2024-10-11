@@ -16,9 +16,9 @@ use crate::spec::{self, TestStepArtifactImpl};
 use tv::OcptvError;
 use tv::{config, diagnosis, emitter, error, file, log, measure, Ident};
 
-/// A single test step in the scope of a [`TestRun`].
+/// A single test step in the scope of a [`tv::TestRun`].
 ///
-/// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#test-step-artifacts
+/// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#test-step-artifacts>
 pub struct TestStep {
     name: String,
 
@@ -40,14 +40,13 @@ impl TestStep {
 
     /// Starts the test step.
     ///
-    /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#teststepstart
+    /// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#teststepstart>
     ///
     /// # Examples
     ///
     /// ```rust
     /// # tokio_test::block_on(async {
     /// # use ocptv::output::*;
-    ///
     /// let dut = DutInfo::new("my_dut");
     /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
     /// let step = run.add_step("step_name").start().await?;
@@ -69,7 +68,7 @@ impl TestStep {
     }
 
     /// Builds a scope in the [`TestStep`] object, taking care of starting and
-    /// ending it. View [`TestStep::start`] and [`TestStep::end`] methods.
+    /// ending it. View [`TestStep::start`] and [`StartedTestStep::end`] methods.
     /// After the scope is constructed, additional objects may be added to it.
     /// This is the preferred usage for the [`TestStep`], since it guarantees
     /// all the messages are emitted between the start and end messages, the order
@@ -81,7 +80,6 @@ impl TestStep {
     /// # tokio_test::block_on(async {
     /// # use futures::FutureExt;
     /// # use ocptv::output::*;
-    ///
     /// let dut = DutInfo::new("my_dut");
     /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
     ///
@@ -112,6 +110,7 @@ impl TestStep {
     }
 }
 
+/// TODO: docs
 pub struct StartedTestStep {
     step: TestStep,
     measurement_seqno: Arc<atomic::AtomicU64>,
@@ -120,14 +119,13 @@ pub struct StartedTestStep {
 impl StartedTestStep {
     /// Ends the test step.
     ///
-    /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#teststepend
+    /// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#teststepend>
     ///
     /// # Examples
     ///
     /// ```rust
     /// # tokio_test::block_on(async {
     /// # use ocptv::output::*;
-    ///
     /// let dut = DutInfo::new("my_dut");
     /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
     ///
@@ -145,17 +143,16 @@ impl StartedTestStep {
     }
 
     /// Emits Log message.
-    /// This method accepts a [`models::LogSeverity`] to define the severity
-    /// and a [`std::string::String`] for the message.
+    /// This method accepts a [`tv::LogSeverity`] to define the severity
+    /// and a [`String`] for the message.
     ///
-    /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#log
+    /// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#log>
     ///
     /// # Examples
     ///
     /// ```rust
     /// # tokio_test::block_on(async {
     /// # use ocptv::output::*;
-    ///
     /// let dut = DutInfo::new("my_dut");
     /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
     ///
@@ -174,7 +171,6 @@ impl StartedTestStep {
     /// ```rust
     /// # tokio_test::block_on(async {
     /// # use ocptv::output::*;
-    ///
     /// use ocptv::ocptv_log_info;
     ///
     /// let dut = DutInfo::new("my_dut");
@@ -203,22 +199,21 @@ impl StartedTestStep {
     }
 
     /// Emits Log message.
-    /// This method accepts a [`objects::Log`] object.
+    /// This method accepts a [`tv::Log`] object.
     ///
-    /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#log
+    /// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#log>
     ///
     /// # Examples
     ///
     /// ```rust
     /// # tokio_test::block_on(async {
     /// # use ocptv::output::*;
-    ///
     /// let dut = DutInfo::new("my_dut");
     /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
     ///
     /// let step = run.add_step("step_name").start().await?;
-    /// step.add_log_with_details(
-    ///     &Log::builder("This is a log message with INFO severity")
+    /// step.add_log_detail(
+    ///     Log::builder("This is a log message with INFO severity")
     ///         .severity(LogSeverity::Info)
     ///         .source("file", 1)
     ///         .build(),
@@ -228,7 +223,7 @@ impl StartedTestStep {
     /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn add_log_with_details(&self, log: &log::Log) -> Result<(), tv::OcptvError> {
+    pub async fn add_log_detail(&self, log: log::Log) -> Result<(), tv::OcptvError> {
         self.step
             .emitter
             .emit(&TestStepArtifactImpl::Log(log.to_artifact()))
@@ -238,16 +233,15 @@ impl StartedTestStep {
     }
 
     /// Emits an Error symptom.
-    /// This method accepts a [`std::string::String`] to define the symptom.
+    /// This method accepts a [`String`] to define the symptom.
     ///
-    /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#error
+    /// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#error>
     ///
     /// # Examples
     ///
     /// ```rust
     /// # tokio_test::block_on(async {
     /// # use ocptv::output::*;
-    ///
     /// let dut = DutInfo::new("my_dut");
     /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
     ///
@@ -264,7 +258,6 @@ impl StartedTestStep {
     /// ```rust
     /// # tokio_test::block_on(async {
     /// # use ocptv::output::*;
-    ///
     /// use ocptv::ocptv_error;
     ///
     /// let dut = DutInfo::new("my_dut");
@@ -289,22 +282,21 @@ impl StartedTestStep {
     }
 
     /// Emits an Error message.
-    /// This method accepts a [`std::string::String`] to define the symptom and
-    /// another [`std::string::String`] as error message.
+    /// This method accepts a [`String`] to define the symptom and
+    /// another [`String`] as error message.
     ///
-    /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#error
+    /// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#error>
     ///
     /// # Examples
     ///
     /// ```rust
     /// # tokio_test::block_on(async {
     /// # use ocptv::output::*;
-    ///
     /// let dut = DutInfo::new("my_dut");
     /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
     ///
     /// let step = run.add_step("step_name").start().await?;
-    /// step.add_error_with_msg("symptom", "error message").await?;
+    /// step.add_error_msg("symptom", "error message").await?;
     /// step.end(TestStatus::Complete).await?;
     ///
     /// # Ok::<(), OcptvError>(())
@@ -316,7 +308,6 @@ impl StartedTestStep {
     /// ```rust
     /// # tokio_test::block_on(async {
     /// # use ocptv::output::*;
-    ///
     /// use ocptv::ocptv_error;
     ///
     /// let dut = DutInfo::new("my_dut");
@@ -329,7 +320,7 @@ impl StartedTestStep {
     /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn add_error_with_msg(&self, symptom: &str, msg: &str) -> Result<(), tv::OcptvError> {
+    pub async fn add_error_msg(&self, symptom: &str, msg: &str) -> Result<(), tv::OcptvError> {
         let error = error::Error::builder(symptom).message(msg).build();
 
         self.step
@@ -341,23 +332,22 @@ impl StartedTestStep {
     }
 
     /// Emits a Error message.
-    /// This method accepts a [`objects::Error`] object.
+    /// This method accepts a [`tv::Error`] object.
     ///
-    /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#error
+    /// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#error>
     ///
     /// # Examples
     ///
     /// ```rust
     /// # tokio_test::block_on(async {
     /// # use ocptv::output::*;
-    ///
     /// let mut dut = DutInfo::new("my_dut");
     /// let sw_info = dut.add_software_info(SoftwareInfo::builder("name").build());
     /// let run = TestRun::builder("diagnostic_name", "1.0").build().start(dut).await?;
     ///
     /// let step = run.add_step("step_name").start().await?;
-    /// step.add_error_with_details(
-    ///     &Error::builder("symptom")
+    /// step.add_error_detail(
+    ///     Error::builder("symptom")
     ///         .message("Error message")
     ///         .source("file", 1)
     ///         .add_software_info(&sw_info)
@@ -368,7 +358,7 @@ impl StartedTestStep {
     /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn add_error_with_details(&self, error: &error::Error) -> Result<(), tv::OcptvError> {
+    pub async fn add_error_detail(&self, error: error::Error) -> Result<(), tv::OcptvError> {
         self.step
             .emitter
             .emit(&TestStepArtifactImpl::Error(error.to_artifact()))
@@ -379,14 +369,13 @@ impl StartedTestStep {
 
     /// Emits an extension message;
     ///
-    /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#extension
+    /// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#extension>
     ///
     /// # Examples
     ///
     /// ```rust
     /// # tokio_test::block_on(async {
     /// # use ocptv::output::*;
-    ///
     /// let dut = DutInfo::new("my_dut");
     /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
     /// let step = run.add_step("step_name").start().await?;
@@ -415,14 +404,13 @@ impl StartedTestStep {
 
     /// Emits a Measurement message.
     ///
-    /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#measurement
+    /// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#measurement>
     ///
     /// # Examples
     ///
     /// ```rust
     /// # tokio_test::block_on(async {
     /// # use ocptv::output::*;
-    ///
     /// let dut = DutInfo::new("my_dut");
     /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
     ///
@@ -451,42 +439,41 @@ impl StartedTestStep {
     }
 
     /// Emits a Measurement message.
-    /// This method accepts a [`objects::Error`] object.
+    /// This method accepts a [`tv::Error`] object.
     ///
-    /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#measurement
+    /// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#measurement>
     ///
     /// # Examples
     ///
     /// ```rust
     /// # tokio_test::block_on(async {
     /// # use ocptv::output::*;
-    ///
     /// let mut dut = DutInfo::new("my_dut");
     /// let hw_info = dut.add_hardware_info(HardwareInfo::builder("fan").build());
     /// let run = TestRun::builder("diagnostic_name", "1.0").build().start(dut).await?;
     /// let step = run.add_step("step_name").start().await?;
     ///
     /// let measurement = Measurement::builder("name", 5000.into())
-    ///     .add_validator(&Validator::builder(ValidatorType::Equal, 30.into()).build())
+    ///     .add_validator(Validator::builder(ValidatorType::Equal, 30.into()).build())
     ///     .add_metadata("key", "value".into())
     ///     .hardware_info(&hw_info)
-    ///     .subcomponent(&Subcomponent::builder("name").build())
+    ///     .subcomponent(Subcomponent::builder("name").build())
     ///     .build();
-    /// step.add_measurement_with_details(&measurement).await?;
+    /// step.add_measurement_detail(measurement).await?;
     ///
     /// step.end(TestStatus::Complete).await?;
     ///
     /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn add_measurement_with_details(
+    pub async fn add_measurement_detail(
         &self,
-        measurement: &measure::Measurement,
+        detail: measure::Measurement,
     ) -> Result<(), tv::OcptvError> {
         self.step
             .emitter
             .emit(&spec::TestStepArtifactImpl::Measurement(
-                measurement.to_artifact(),
+                detail.to_artifact(),
             ))
             .await?;
 
@@ -494,17 +481,15 @@ impl StartedTestStep {
     }
 
     /// Create a Measurement Series (a time-series list of measurements).
-    /// This method accepts a [`std::string::String`] as series ID and
-    /// a [`std::string::String`] as series name.
+    /// This method accepts a [`String`] as series ID and a [`String`] as series name.
     ///
-    /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#measurementseriesstart
+    /// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#measurementseriesstart>
     ///
     /// # Examples
     ///
     /// ```rust
     /// # tokio_test::block_on(async {
     /// # use ocptv::output::*;
-    ///
     /// let dut = DutInfo::new("my_dut");
     /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
     /// let step = run.add_step("step_name").start().await?;
@@ -514,37 +499,36 @@ impl StartedTestStep {
     /// # });
     /// ```
     pub fn add_measurement_series(&self, name: &str) -> tv::MeasurementSeries {
-        self.add_measurement_series_with_details(tv::MeasurementSeriesInfo::new(name))
+        self.add_measurement_series_detail(tv::MeasurementSeriesDetail::new(name))
     }
 
     /// Create a Measurement Series (a time-series list of measurements).
-    /// This method accepts a [`objects::MeasurementSeriesStart`] object.
+    /// This method accepts a [`tv::MeasurementSeriesDetail`] object.
     ///
-    /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#measurementseriesstart
+    /// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#measurementseriesstart>
     ///
     /// # Examples
     ///
     /// ```rust
     /// # tokio_test::block_on(async {
     /// # use ocptv::output::*;
-    ///
     /// let dut = DutInfo::new("my_dut");
     /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
     /// let step = run.add_step("step_name").start().await?;
     /// let series =
-    ///     step.add_measurement_series_with_details(MeasurementSeriesInfo::new("name"));
+    ///     step.add_measurement_series_detail(MeasurementSeriesDetail::new("name"));
     ///
     /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub fn add_measurement_series_with_details(
+    pub fn add_measurement_series_detail(
         &self,
-        info: measure::MeasurementSeriesInfo,
+        detail: measure::MeasurementSeriesDetail,
     ) -> tv::MeasurementSeries {
         // spec says this identifier is unique in the scope of the test run, so create it from
         // the step identifier and a counter
         // ref: https://github.com/opencomputeproject/ocp-diag-core/blob/main/json_spec/README.md#measurementseriesstart
-        let series_id = match &info.id {
+        let series_id = match &detail.id {
             Ident::Auto => format!(
                 "{}_series{}",
                 self.step.emitter.step_id,
@@ -553,30 +537,29 @@ impl StartedTestStep {
             Ident::Exact(value) => value.to_owned(),
         };
 
-        tv::MeasurementSeries::new(&series_id, info, Arc::clone(&self.step.emitter))
+        tv::MeasurementSeries::new(&series_id, detail, Arc::clone(&self.step.emitter))
     }
 
     /// Emits a Diagnosis message.
     ///
-    /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#diagnosis
+    /// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#diagnosis>
     ///
     /// # Examples
     ///
     /// ```rust
     /// # tokio_test::block_on(async {
     /// # use ocptv::output::*;
-    ///
     /// let dut = DutInfo::new("my dut");
     /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
     ///
     /// let step = run.add_step("step_name").start().await?;
-    /// step.diagnosis("verdict", DiagnosisType::Pass).await?;
+    /// step.add_diagnosis("verdict", DiagnosisType::Pass).await?;
     /// step.end(TestStatus::Complete).await?;
     ///
     /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn diagnosis(
+    pub async fn add_diagnosis(
         &self,
         verdict: &str,
         diagnosis_type: spec::DiagnosisType,
@@ -592,16 +575,15 @@ impl StartedTestStep {
     }
 
     /// Emits a Diagnosis message.
-    /// This method accepts a [`objects::Error`] object.
+    /// This method accepts a [`tv::Error`] object.
     ///
-    /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#diagnosis
+    /// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#diagnosis>
     ///
     /// # Examples
     ///
     /// ```rust
     /// # tokio_test::block_on(async {
     /// # use ocptv::output::*;
-    ///
     /// let mut dut = DutInfo::new("my_dut");
     /// let hw_info = dut.add_hardware_info(HardwareInfo::builder("fan").build());
     /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
@@ -613,16 +595,16 @@ impl StartedTestStep {
     ///     .subcomponent(&Subcomponent::builder("name").build())
     ///     .source("file.rs", 1)
     ///     .build();
-    /// step.diagnosis_with_details(&diagnosis).await?;
+    /// step.add_diagnosis_detail(diagnosis).await?;
     ///
     /// step.end(TestStatus::Complete).await?;
     ///
     /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn diagnosis_with_details(
+    pub async fn add_diagnosis_detail(
         &self,
-        diagnosis: &diagnosis::Diagnosis,
+        diagnosis: diagnosis::Diagnosis,
     ) -> Result<(), tv::OcptvError> {
         self.step
             .emitter
@@ -636,26 +618,25 @@ impl StartedTestStep {
 
     /// Emits a File message.
     ///
-    /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#file
+    /// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#file>
     ///
     /// # Examples
     ///
     /// ```rust
     /// # tokio_test::block_on(async {
     /// # use ocptv::output::*;
-    ///
     /// let dut = DutInfo::new("my_dut");
     /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
     ///
     /// let step = run.add_step("step_name").start().await?;
     /// let uri = Uri::parse("file:///tmp/foo").unwrap();
-    /// step.file("name", uri).await?;
+    /// step.add_file("name", uri).await?;
     /// step.end(TestStatus::Complete).await?;
     ///
     /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn file(&self, name: &str, uri: tv::Uri) -> Result<(), tv::OcptvError> {
+    pub async fn add_file(&self, name: &str, uri: tv::Uri) -> Result<(), tv::OcptvError> {
         let file = file::File::new(name, uri);
 
         self.step
@@ -667,9 +648,9 @@ impl StartedTestStep {
     }
 
     /// Emits a File message.
-    /// This method accepts a [`objects::Error`] object.
+    /// This method accepts a [`tv::Error`] object.
     ///
-    /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#file
+    /// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#file>
     ///
     /// # Examples
     ///
@@ -677,7 +658,6 @@ impl StartedTestStep {
     /// # tokio_test::block_on(async {
     /// # use ocptv::output::*;
     /// # use std::str::FromStr;
-    ///
     /// let dut = DutInfo::new("my_dut");
     /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
     /// let uri = Uri::parse("file:///tmp/foo").unwrap();
@@ -690,13 +670,13 @@ impl StartedTestStep {
     ///     .content_type(mime::TEXT_PLAIN)
     ///     .add_metadata("key", "value".into())
     ///     .build();
-    /// step.file_with_details(&file).await?;
+    /// step.add_file_detail(file).await?;
     /// step.end(TestStatus::Complete).await?;
     ///
     /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn file_with_details(&self, file: &file::File) -> Result<(), tv::OcptvError> {
+    pub async fn add_file_detail(&self, file: file::File) -> Result<(), tv::OcptvError> {
         self.step
             .emitter
             .emit(&spec::TestStepArtifactImpl::File(file.to_artifact()))

@@ -9,10 +9,11 @@
 //! This module contains a set of macros which are exported from the ocptv
 //! library.
 
-/// Emits an artifact of type Error.
-/// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#error
+/// Emit an artifact of type Error.
 ///
-/// Equivalent to the crate::runner::TestRun::error_with_details method.
+/// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#error>
+///
+/// Equivalent to the [`$crate::StartedTestRun::error_with_details`] method.
 ///
 /// It accepts both a symptom and a message, or just a symptom.
 /// Information about the source file and line number is automatically added.
@@ -24,7 +25,6 @@
 /// ```rust
 /// # tokio_test::block_on(async {
 /// # use ocptv::output::*;
-///
 /// use ocptv::ocptv_error;
 ///
 /// let dut = DutInfo::new("my_dut");
@@ -55,8 +55,8 @@
 #[macro_export]
 macro_rules! ocptv_error {
     ($runner:expr, $symptom:expr, $msg:expr) => {
-        $runner.add_error_with_details(
-            &$crate::output::Error::builder($symptom)
+        $runner.add_error_detail(
+            $crate::output::Error::builder($symptom)
                 .message($msg)
                 .source(file!(), line!() as i32)
                 .build(),
@@ -64,51 +64,50 @@ macro_rules! ocptv_error {
     };
 
     ($runner:expr, $symptom:expr) => {
-        $runner.add_error_with_details(
-            &$crate::output::Error::builder($symptom)
+        $runner.add_error_detail(
+            $crate::output::Error::builder($symptom)
                 .source(file!(), line!() as i32)
                 .build(),
         )
     };
 }
 
-/// The following macros emit an artifact of type Log.
-/// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#log
-///
-/// Equivalent to the crate::runner::TestRun::log_with_details method.
-///
-/// They accept message as only parameter.
-/// Information about the source file and line number is automatically added.
-///
-/// There is one macro for each severity level: DEBUG, INFO, WARNING, ERROR, and FATAL.
-///
-/// # Examples
-///
-/// ## DEBUG
-///
-/// ```rust
-/// # tokio_test::block_on(async {
-/// # use ocptv::output::*;
-///
-/// use ocptv::ocptv_log_debug;
-///
-/// let dut = DutInfo::new("my_dut");
-/// let run = TestRun::new("run_name", "1.0").start(dut).await?;
-/// ocptv_log_debug!(run, "Log message");
-/// run.end(TestStatus::Complete, TestResult::Pass).await?;
-///
-/// # Ok::<(), OcptvError>(())
-/// # });
-/// ```
-
 macro_rules! ocptv_log {
-    ($name:ident, $severity:ident) => {
+    ($name:ident, $severity:path) => {
+        /// Emit an artifact of type Log.
+        ///
+        /// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#log>
+        ///
+        /// Equivalent to the [`$crate::StartedTestRun::log_with_details`] method.
+        ///
+        /// They accept message as only parameter.
+        /// Information about the source file and line number is automatically added.
+        ///
+        /// There is one macro for each severity level: DEBUG, INFO, WARNING, ERROR, and FATAL.
+        ///
+        /// # Examples
+        ///
+        /// ## DEBUG
+        ///
+        /// ```rust
+        /// # tokio_test::block_on(async {
+        /// # use ocptv::output::*;
+        /// use ocptv::ocptv_log_debug;
+        ///
+        /// let dut = DutInfo::new("my_dut");
+        /// let run = TestRun::new("run_name", "1.0").start(dut).await?;
+        /// ocptv_log_debug!(run, "Log message");
+        /// run.end(TestStatus::Complete, TestResult::Pass).await?;
+        ///
+        /// # Ok::<(), OcptvError>(())
+        /// # });
+        /// ```
         #[macro_export]
         macro_rules! $name {
             ($artifact:expr, $msg:expr) => {
-                $artifact.add_log_with_details(
-                    &$crate::output::Log::builder($msg)
-                        .severity($crate::output::LogSeverity::$severity)
+                $artifact.add_log_detail(
+                    $crate::output::Log::builder($msg)
+                        .severity($severity)
                         .source(file!(), line!() as i32)
                         .build(),
                 )
@@ -117,52 +116,51 @@ macro_rules! ocptv_log {
     };
 }
 
-ocptv_log!(ocptv_log_debug, Debug);
-ocptv_log!(ocptv_log_info, Info);
-ocptv_log!(ocptv_log_warning, Warning);
-ocptv_log!(ocptv_log_error, Error);
-ocptv_log!(ocptv_log_fatal, Fatal);
-
-/// The following macros emit an artifact of type Diagnosis.
-/// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#diagnosis
-///
-/// Equivalent to the crate::output::StartedTestStep::diagnosis_with_details method.
-///
-/// They accept verdict as only parameter.
-/// Information about the source file and line number is automatically added.
-///
-/// There is one macro for each DiagnosisType variant: Pass, Fail, Unknown.
-///
-/// # Examples
-///
-/// ## DEBUG
-///
-/// ```rust
-/// # tokio_test::block_on(async {
-/// # use ocptv::output::*;
-///
-/// use ocptv::ocptv_diagnosis_pass;
-///
-/// let dut = DutInfo::new("my dut");
-/// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
-///
-/// let step = run.add_step("step_name").start().await?;
-/// ocptv_diagnosis_pass!(step, "verdict");
-/// step.end(TestStatus::Complete).await?;
-///
-/// run.end(TestStatus::Complete, TestResult::Pass).await?;
-///
-/// # Ok::<(), OcptvError>(())
-/// # });
-/// ```
+ocptv_log!(ocptv_log_debug, ocptv::output::LogSeverity::Debug);
+ocptv_log!(ocptv_log_info, ocptv::output::LogSeverity::Info);
+ocptv_log!(ocptv_log_warning, ocptv::output::LogSeverity::Warning);
+ocptv_log!(ocptv_log_error, ocptv::output::LogSeverity::Error);
+ocptv_log!(ocptv_log_fatal, ocptv::output::LogSeverity::Fatal);
 
 macro_rules! ocptv_diagnosis {
     ($name:ident, $diagnosis_type:path) => {
+        /// Emit an artifact of type Diagnosis.
+        ///
+        /// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#diagnosis>
+        ///
+        /// Equivalent to the [`$crate::StartedTestStep::diagnosis_with_details`] method.
+        ///
+        /// They accept verdict as only parameter.
+        /// Information about the source file and line number is automatically added.
+        ///
+        /// There is one macro for each DiagnosisType variant: Pass, Fail, Unknown.
+        ///
+        /// # Examples
+        ///
+        /// ## DEBUG
+        ///
+        /// ```rust
+        /// # tokio_test::block_on(async {
+        /// # use ocptv::output::*;
+        /// use ocptv::ocptv_diagnosis_pass;
+        ///
+        /// let dut = DutInfo::new("my dut");
+        /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
+        ///
+        /// let step = run.add_step("step_name").start().await?;
+        /// ocptv_diagnosis_pass!(step, "verdict");
+        /// step.end(TestStatus::Complete).await?;
+        ///
+        /// run.end(TestStatus::Complete, TestResult::Pass).await?;
+        ///
+        /// # Ok::<(), OcptvError>(())
+        /// # });
+        /// ```
         #[macro_export]
         macro_rules! $name {
             ($artifact:expr, $verdict:expr) => {
-                $artifact.diagnosis_with_details(
-                    &$crate::output::Diagnosis::builder($verdict, $diagnosis_type)
+                $artifact.add_diagnosis_detail(
+                    $crate::output::Diagnosis::builder($verdict, $diagnosis_type)
                         .source(file!(), line!() as i32)
                         .build(),
                 )

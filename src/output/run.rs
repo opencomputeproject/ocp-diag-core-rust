@@ -13,12 +13,12 @@ use std::sync::{
     Arc,
 };
 
-use maplit::{btreemap, convert_args};
-
 use crate::output as tv;
 use crate::spec;
 use tv::step::TestStep;
 use tv::{config, dut, emitter, error, log};
+
+use super::trait_ext::MapExt;
 
 /// The outcome of a TestRun.
 /// It's returned when the scope method of the [`TestRun`] object is used.
@@ -37,7 +37,7 @@ pub struct TestRun {
     version: String,
     parameters: BTreeMap<String, tv::Value>,
     command_line: String,
-    metadata: Option<BTreeMap<String, tv::Value>>,
+    metadata: BTreeMap<String, tv::Value>,
 
     emitter: Arc<emitter::JsonEmitter>,
 }
@@ -49,7 +49,6 @@ impl TestRun {
     ///
     /// ```rust
     /// # use ocptv::output::*;
-    ///
     /// let run = TestRun::new("diagnostic_name", "1.0");
     /// ```
     pub fn new(name: &str, version: &str) -> TestRun {
@@ -62,7 +61,6 @@ impl TestRun {
     ///
     /// ```rust
     /// # use ocptv::output::*;
-    ///
     /// let builder = TestRun::builder("run_name", "1.0");
     /// ```
     pub fn builder(name: &str, version: &str) -> TestRunBuilder {
@@ -71,15 +69,13 @@ impl TestRun {
 
     /// Starts the test run.
     ///
-    /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#schemaversion
-    /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#testrunstart
+    /// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#testrunstart>
     ///
     /// # Examples
     ///
     /// ```rust
     /// # tokio_test::block_on(async {
     /// # use ocptv::output::*;
-    ///
     /// let run = TestRun::new("diagnostic_name", "1.0");
     /// let dut = DutInfo::builder("my_dut").build();
     /// run.start(dut).await?;
@@ -94,7 +90,7 @@ impl TestRun {
                 version: self.version.clone(),
                 command_line: self.command_line.clone(),
                 parameters: self.parameters.clone(),
-                metadata: self.metadata.clone(),
+                metadata: self.metadata.option(),
                 dut_info: dut.to_spec(),
             }),
         });
@@ -117,7 +113,6 @@ impl TestRun {
     /// # tokio_test::block_on(async {
     /// # use futures::FutureExt;
     /// # use ocptv::output::*;
-    ///
     /// let run = TestRun::new("diagnostic_name", "1.0");
     /// let dut = DutInfo::builder("my_dut").build();
     /// run.scope(dut, |r| {
@@ -154,7 +149,7 @@ impl TestRun {
     pub async fn add_error(&self, symptom: &str) -> Result<(), tv::OcptvError> {
         let error = error::Error::builder(symptom).build();
 
-        self.add_error_with_details(&error).await?;
+        self.add_error_detail(error).await?;
         Ok(())
     }
 
@@ -163,11 +158,11 @@ impl TestRun {
     /// This operation is useful in such cases when there is an error before starting the test.
     /// (eg. failing to discover a DUT).
     ///
-    /// See: [`StartedTestRun::add_error_with_msg`] for details and examples.
-    pub async fn add_error_with_msg(&self, symptom: &str, msg: &str) -> Result<(), tv::OcptvError> {
+    /// See: [`StartedTestRun::add_error_msg`] for details and examples.
+    pub async fn add_error_msg(&self, symptom: &str, msg: &str) -> Result<(), tv::OcptvError> {
         let error = error::Error::builder(symptom).message(msg).build();
 
-        self.add_error_with_details(&error).await?;
+        self.add_error_detail(error).await?;
         Ok(())
     }
 
@@ -176,8 +171,8 @@ impl TestRun {
     /// This operation is useful in such cases when there is an error before starting the test.
     /// (eg. failing to discover a DUT).
     ///
-    /// See: [`StartedTestRun::add_error_with_details`] for details and examples.
-    pub async fn add_error_with_details(&self, error: &error::Error) -> Result<(), tv::OcptvError> {
+    /// See: [`StartedTestRun::add_error_detail`] for details and examples.
+    pub async fn add_error_detail(&self, error: error::Error) -> Result<(), tv::OcptvError> {
         let artifact = spec::TestRunArtifact {
             artifact: spec::TestRunArtifactImpl::Error(error.to_artifact()),
         };
@@ -190,24 +185,25 @@ impl TestRun {
 }
 
 /// Builder for the [`TestRun`] object.
+#[derive(Default)]
 pub struct TestRunBuilder {
     name: String,
     version: String,
     parameters: BTreeMap<String, tv::Value>,
     command_line: String,
-    metadata: Option<BTreeMap<String, tv::Value>>,
+
     config: Option<config::Config>,
+    metadata: BTreeMap<String, tv::Value>,
 }
 
 impl TestRunBuilder {
-    pub fn new(name: &str, version: &str) -> Self {
+    fn new(name: &str, version: &str) -> Self {
         Self {
             name: name.to_string(),
             version: version.to_string(),
             parameters: BTreeMap::new(),
             command_line: env::args().collect::<Vec<_>>()[1..].join(" "),
-            metadata: None,
-            config: None,
+            ..Default::default()
         }
     }
 
@@ -217,29 +213,27 @@ impl TestRunBuilder {
     ///
     /// ```rust
     /// # use ocptv::output::*;
-    ///
-    /// let run = TestRunBuilder::new("run_name", "1.0")
+    /// let run = TestRun::builder("run_name", "1.0")
     ///     .add_parameter("param1", "value1".into())
     ///     .build();
     /// ```
-    pub fn add_parameter(mut self, key: &str, value: tv::Value) -> TestRunBuilder {
-        self.parameters.insert(key.to_string(), value.clone());
+    pub fn add_parameter(mut self, key: &str, value: tv::Value) -> Self {
+        self.parameters.insert(key.to_string(), value);
         self
     }
 
-    /// Adds the command line used to run the test session  to the future
+    /// Adds the command line used to run the test session to the future
     /// [`TestRun`] object.
     ///
     /// # Examples
     ///
     /// ```rust
     /// # use ocptv::output::*;
-    ///
-    /// let run = TestRunBuilder::new("run_name", "1.0")
+    /// let run = TestRun::builder("run_name", "1.0")
     ///     .command_line("my_diag --arg value")
     ///     .build();
     /// ```
-    pub fn command_line(mut self, cmd: &str) -> TestRunBuilder {
+    pub fn command_line(mut self, cmd: &str) -> Self {
         self.command_line = cmd.to_string();
         self
     }
@@ -250,12 +244,11 @@ impl TestRunBuilder {
     ///
     /// ```rust
     /// # use ocptv::output::*;
-    ///
-    /// let run = TestRunBuilder::new("run_name", "1.0")
+    /// let run = TestRun::builder("run_name", "1.0")
     ///     .config(Config::builder().build())
     ///     .build();
     /// ```
-    pub fn config(mut self, value: config::Config) -> TestRunBuilder {
+    pub fn config(mut self, value: config::Config) -> Self {
         self.config = Some(value);
         self
     }
@@ -267,20 +260,12 @@ impl TestRunBuilder {
     /// ```rust
     /// # use ocptv::output::*;
     ///
-    /// let run = TestRunBuilder::new("run_name", "1.0")
+    /// let run = TestRun::builder("run_name", "1.0")
     ///     .add_metadata("meta1", "value1".into())
     ///     .build();
     /// ```
-    pub fn add_metadata(mut self, key: &str, value: tv::Value) -> TestRunBuilder {
-        self.metadata = match self.metadata {
-            Some(mut metadata) => {
-                metadata.insert(key.to_string(), value.clone());
-                Some(metadata)
-            }
-            None => Some(convert_args!(btreemap!(
-                key => value,
-            ))),
-        };
+    pub fn add_metadata(mut self, key: &str, value: tv::Value) -> Self {
+        self.metadata.insert(key.to_string(), value);
         self
     }
 
@@ -302,7 +287,7 @@ impl TestRunBuilder {
 
 /// A test run that was started.
 ///
-/// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#testrunstart
+/// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#testrunstart>
 pub struct StartedTestRun {
     run: TestRun,
 
@@ -319,14 +304,13 @@ impl StartedTestRun {
 
     /// Ends the test run.
     ///
-    /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#testrunend
+    /// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#testrunend>
     ///
     /// # Examples
     ///
     /// ```rust
     /// # tokio_test::block_on(async {
     /// # use ocptv::output::*;
-    ///
     /// let dut = DutInfo::builder("my_dut").build();
     /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
     /// run.end(TestStatus::Complete, TestResult::Pass).await?;
@@ -348,17 +332,16 @@ impl StartedTestRun {
     }
 
     /// Emits a Log message.
-    /// This method accepts a [`models::LogSeverity`] to define the severity
-    /// and a [`std::string::String`] for the message.
+    /// This method accepts a [`tv::LogSeverity`] to define the severity
+    /// and a [`String`] for the message.
     ///
-    /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#log
+    /// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#log>
     ///
     /// # Examples
     ///
     /// ```rust
     /// # tokio_test::block_on(async {
     /// # use ocptv::output::*;
-    ///
     /// let dut = DutInfo::builder("my_dut").build();
     /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
     /// run.add_log(
@@ -389,20 +372,19 @@ impl StartedTestRun {
     }
 
     /// Emits a Log message.
-    /// This method accepts a [`objects::Log`] object.
+    /// This method accepts a [`tv::Log`] object.
     ///
-    /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#log
+    /// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#log>
     ///
     /// # Examples
     ///
     /// ```rust
     /// # tokio_test::block_on(async {
     /// # use ocptv::output::*;
-    ///
     /// let dut = DutInfo::builder("my_dut").build();
     /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
-    /// run.add_log_with_details(
-    ///     &Log::builder("This is a log message with INFO severity")
+    /// run.add_log_detail(
+    ///     Log::builder("This is a log message with INFO severity")
     ///         .severity(LogSeverity::Info)
     ///         .source("file", 1)
     ///         .build(),
@@ -412,7 +394,7 @@ impl StartedTestRun {
     /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn add_log_with_details(&self, log: &log::Log) -> Result<(), tv::OcptvError> {
+    pub async fn add_log_detail(&self, log: log::Log) -> Result<(), tv::OcptvError> {
         let artifact = spec::TestRunArtifact {
             artifact: spec::TestRunArtifactImpl::Log(log.to_artifact()),
         };
@@ -425,16 +407,15 @@ impl StartedTestRun {
     }
 
     /// Emits a Error message.
-    /// This method accepts a [`std::string::String`] to define the symptom.
+    /// This method accepts a [`String`] to define the symptom.
     ///
-    /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#error
+    /// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#error>
     ///
     /// # Examples
     ///
     /// ```rust
     /// # tokio_test::block_on(async {
     /// # use ocptv::output::*;
-    ///
     /// let dut = DutInfo::builder("my_dut").build();
     /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
     /// run.add_error("symptom").await?;
@@ -446,54 +427,52 @@ impl StartedTestRun {
     pub async fn add_error(&self, symptom: &str) -> Result<(), tv::OcptvError> {
         let error = error::Error::builder(symptom).build();
 
-        self.add_error_with_details(&error).await?;
+        self.add_error_detail(error).await?;
         Ok(())
     }
 
     /// Emits a Error message.
-    /// This method accepts a [`std::string::String`] to define the symptom and
-    /// another [`std::string::String`] as error message.
+    /// This method accepts a [`String`] to define the symptom and
+    /// another [`String`] as error message.
     ///
-    /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#error
+    /// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#error>
     ///
     /// # Examples
     ///
     /// ```rust
     /// # tokio_test::block_on(async {
     /// # use ocptv::output::*;
-    ///
     /// let dut = DutInfo::builder("my_dut").build();
     /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
-    /// run.add_error_with_msg("symptom", "error messasge").await?;
+    /// run.add_error_msg("symptom", "error messasge").await?;
     /// run.end(TestStatus::Complete, TestResult::Pass).await?;
     ///
     /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn add_error_with_msg(&self, symptom: &str, msg: &str) -> Result<(), tv::OcptvError> {
+    pub async fn add_error_msg(&self, symptom: &str, msg: &str) -> Result<(), tv::OcptvError> {
         let error = error::Error::builder(symptom).message(msg).build();
 
-        self.add_error_with_details(&error).await?;
+        self.add_error_detail(error).await?;
         Ok(())
     }
 
     /// Emits a Error message.
-    /// This method accepts an [`error::Error`] object.
+    /// This method accepts an [`tv::Error`] object.
     ///
-    /// ref: https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#error
+    /// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#error>
     ///
     /// # Examples
     ///
     /// ```rust
     /// # tokio_test::block_on(async {
     /// # use ocptv::output::*;
-    ///
     /// let mut dut = DutInfo::new("my_dut");
     /// let sw_info = dut.add_software_info(SoftwareInfo::builder("name").build());
     /// let run = TestRun::builder("diagnostic_name", "1.0").build().start(dut).await?;
     ///
-    /// run.add_error_with_details(
-    ///     &Error::builder("symptom")
+    /// run.add_error_detail(
+    ///     Error::builder("symptom")
     ///         .message("Error message")
     ///         .source("file", 1)
     ///         .add_software_info(&sw_info)
@@ -505,7 +484,7 @@ impl StartedTestRun {
     /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn add_error_with_details(&self, error: &error::Error) -> Result<(), tv::OcptvError> {
+    pub async fn add_error_detail(&self, error: error::Error) -> Result<(), tv::OcptvError> {
         let artifact = spec::TestRunArtifact {
             artifact: spec::TestRunArtifactImpl::Error(error.to_artifact()),
         };

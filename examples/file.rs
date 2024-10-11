@@ -14,7 +14,7 @@ use tv::{TestResult, TestStatus};
 
 async fn run_file_step(step: &tv::StartedTestStep) -> Result<TestStatus, tv::OcptvError> {
     let uri = tv::Uri::from_str("file:///root/mem_cfg_log").unwrap();
-    step.file("mem_cfg_log", uri).await?;
+    step.add_file("mem_cfg_log", uri).await?;
 
     Ok(TestStatus::Complete)
 }
