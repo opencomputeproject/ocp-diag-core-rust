@@ -10,13 +10,11 @@ use std::sync::Arc;
 
 #[cfg(feature = "boxed-scopes")]
 use futures::future::BoxFuture;
-use maplit::{btreemap, convert_args};
 
 use crate::output as tv;
+use crate::output::trait_ext::{MapExt, VecExt};
 use crate::spec;
 use tv::{dut, step, Ident};
-
-use super::trait_ext::VecExt;
 
 /// The measurement series.
 /// A Measurement Series is a time-series list of measurements.
@@ -76,7 +74,7 @@ impl MeasurementSeries {
                 .as_ref()
                 .map(dut::DutHardwareInfo::to_spec),
             subcomponent: info.subcomponent.as_ref().map(dut::Subcomponent::to_spec),
-            metadata: info.metadata.clone(),
+            metadata: info.metadata.option(),
         };
 
         self.emitter
@@ -236,7 +234,7 @@ impl StartedMeasurementSeries {
                 .timestamp
                 .unwrap_or(self.parent.emitter.timestamp_provider().now()),
             series_id: self.parent.id.clone(),
-            metadata: details.metadata,
+            metadata: details.metadata.option(),
         };
 
         self.parent
@@ -256,7 +254,7 @@ pub struct MeasurementSeriesElemDetails {
     value: tv::Value,
     timestamp: Option<chrono::DateTime<chrono_tz::Tz>>,
 
-    metadata: Option<BTreeMap<String, tv::Value>>,
+    metadata: BTreeMap<String, tv::Value>,
 }
 
 impl MeasurementSeriesElemDetails {
@@ -271,7 +269,7 @@ pub struct MeasurementSeriesElemDetailsBuilder {
     value: tv::Value,
     timestamp: Option<chrono::DateTime<chrono_tz::Tz>>,
 
-    metadata: Option<BTreeMap<String, tv::Value>>,
+    metadata: BTreeMap<String, tv::Value>,
 }
 
 impl MeasurementSeriesElemDetailsBuilder {
@@ -288,15 +286,7 @@ impl MeasurementSeriesElemDetailsBuilder {
     }
 
     pub fn add_metadata(mut self, key: &str, value: tv::Value) -> Self {
-        self.metadata = match self.metadata {
-            Some(mut metadata) => {
-                metadata.insert(key.to_string(), value);
-                Some(metadata)
-            }
-            None => Some(convert_args!(btreemap!(
-                key => value,
-            ))),
-        };
+        self.metadata.insert(key.to_string(), value);
         self
     }
 
@@ -315,7 +305,7 @@ pub struct Validator {
     name: Option<String>,
     validator_type: spec::ValidatorType,
     value: tv::Value,
-    metadata: Option<BTreeMap<String, tv::Value>>,
+    metadata: BTreeMap<String, tv::Value>,
 }
 
 impl Validator {
@@ -327,7 +317,7 @@ impl Validator {
             name: self.name.clone(),
             validator_type: self.validator_type.clone(),
             value: self.value.clone(),
-            metadata: self.metadata.clone(),
+            metadata: self.metadata.option(),
         }
     }
 }
@@ -338,7 +328,8 @@ pub struct ValidatorBuilder {
     name: Option<String>,
     validator_type: spec::ValidatorType,
     value: tv::Value,
-    metadata: Option<BTreeMap<String, tv::Value>>,
+
+    metadata: BTreeMap<String, tv::Value>,
 }
 
 impl ValidatorBuilder {
@@ -347,7 +338,7 @@ impl ValidatorBuilder {
             validator_type,
             value: value.clone(),
             name: None,
-            metadata: None,
+            metadata: BTreeMap::new(),
         }
     }
     pub fn name(mut self, value: &str) -> ValidatorBuilder {
@@ -355,15 +346,7 @@ impl ValidatorBuilder {
         self
     }
     pub fn add_metadata(mut self, key: &str, value: tv::Value) -> ValidatorBuilder {
-        self.metadata = match self.metadata {
-            Some(mut metadata) => {
-                metadata.insert(key.to_string(), value.clone());
-                Some(metadata)
-            }
-            None => Some(convert_args!(btreemap!(
-                key => value,
-            ))),
-        };
+        self.metadata.insert(key.to_string(), value.clone());
         self
     }
 
@@ -403,6 +386,7 @@ impl ValidatorBuilder {
 ///     .subcomponent(&Subcomponent::builder("name").build())
 ///     .build();
 /// ```
+#[derive(Default)]
 pub struct Measurement {
     name: String,
 
@@ -413,7 +397,7 @@ pub struct Measurement {
     hardware_info: Option<dut::DutHardwareInfo>,
     subcomponent: Option<dut::Subcomponent>,
 
-    metadata: Option<BTreeMap<String, tv::Value>>,
+    metadata: BTreeMap<String, tv::Value>,
 }
 
 impl Measurement {
@@ -429,11 +413,7 @@ impl Measurement {
         Measurement {
             name: name.to_string(),
             value: value.clone(),
-            unit: None,
-            validators: None,
-            hardware_info: None,
-            subcomponent: None,
-            metadata: None,
+            ..Default::default()
         }
     }
 
@@ -484,7 +464,7 @@ impl Measurement {
                 .subcomponent
                 .as_ref()
                 .map(|subcomponent| subcomponent.to_spec()),
-            metadata: self.metadata.clone(),
+            metadata: self.metadata.option(),
         }
     }
 }
@@ -505,6 +485,7 @@ impl Measurement {
 ///     .subcomponent(&Subcomponent::builder("name").build());
 /// let measurement = builder.build();
 /// ```
+#[derive(Default)]
 pub struct MeasurementBuilder {
     name: String,
 
@@ -515,7 +496,7 @@ pub struct MeasurementBuilder {
     hardware_info: Option<dut::DutHardwareInfo>,
     subcomponent: Option<dut::Subcomponent>,
 
-    metadata: Option<BTreeMap<String, tv::Value>>,
+    metadata: BTreeMap<String, tv::Value>,
 }
 
 impl MeasurementBuilder {
@@ -531,11 +512,7 @@ impl MeasurementBuilder {
         MeasurementBuilder {
             name: name.to_string(),
             value: value.clone(),
-            unit: None,
-            validators: None,
-            hardware_info: None,
-            subcomponent: None,
-            metadata: None,
+            ..Default::default()
         }
     }
 
@@ -600,16 +577,7 @@ impl MeasurementBuilder {
     ///     MeasurementBuilder::new("name", 50.into()).add_metadata("key", "value".into());
     /// ```
     pub fn add_metadata(mut self, key: &str, value: tv::Value) -> MeasurementBuilder {
-        match self.metadata {
-            Some(ref mut metadata) => {
-                metadata.insert(key.to_string(), value.clone());
-            }
-            None => {
-                self.metadata = Some(convert_args!(btreemap!(
-                    key => value,
-                )));
-            }
-        };
+        self.metadata.insert(key.to_string(), value.clone());
         self
     }
 
@@ -663,7 +631,7 @@ pub struct MeasurementSeriesInfo {
     hardware_info: Option<dut::DutHardwareInfo>,
     subcomponent: Option<dut::Subcomponent>,
 
-    metadata: Option<BTreeMap<String, tv::Value>>,
+    metadata: BTreeMap<String, tv::Value>,
 }
 
 impl MeasurementSeriesInfo {
@@ -688,7 +656,7 @@ pub struct MeasurementSeriesInfoBuilder {
     hardware_info: Option<dut::DutHardwareInfo>,
     subcomponent: Option<dut::Subcomponent>,
 
-    metadata: Option<BTreeMap<String, tv::Value>>,
+    metadata: BTreeMap<String, tv::Value>,
 }
 
 impl MeasurementSeriesInfoBuilder {
@@ -732,15 +700,7 @@ impl MeasurementSeriesInfoBuilder {
     }
 
     pub fn add_metadata(mut self, key: &str, value: tv::Value) -> MeasurementSeriesInfoBuilder {
-        self.metadata = match self.metadata {
-            Some(mut metadata) => {
-                metadata.insert(key.to_string(), value.clone());
-                Some(metadata)
-            }
-            None => Some(convert_args!(btreemap!(
-                key => value
-            ))),
-        };
+        self.metadata.insert(key.to_string(), value.clone());
         self
     }
 
@@ -762,6 +722,7 @@ mod tests {
     use super::*;
     use crate::output as tv;
     use crate::spec;
+    use maplit::{btreemap, convert_args};
     use tv::dut::*;
     use tv::ValidatorType;
 

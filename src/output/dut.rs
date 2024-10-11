@@ -4,12 +4,11 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
-use maplit::{btreemap, convert_args};
 use std::collections::BTreeMap;
 
 use crate::output as tv;
+use crate::output::trait_ext::{MapExt, VecExt};
 use crate::spec;
-use tv::trait_ext::VecExt;
 
 /// TODO: docs
 #[derive(Clone, Debug, PartialEq, Default)]
@@ -29,7 +28,7 @@ pub struct DutInfo {
     software_infos: Vec<DutSoftwareInfo>,
     hardware_infos: Vec<DutHardwareInfo>,
 
-    metadata: Option<BTreeMap<String, tv::Value>>,
+    metadata: BTreeMap<String, tv::Value>,
 }
 
 impl DutInfo {
@@ -78,7 +77,7 @@ impl DutInfo {
             platform_infos: self.platform_infos.map_option(PlatformInfo::to_spec),
             software_infos: self.software_infos.map_option(DutSoftwareInfo::to_spec),
             hardware_infos: self.hardware_infos.map_option(DutHardwareInfo::to_spec),
-            metadata: self.metadata.clone(),
+            metadata: self.metadata.option(),
         }
     }
 }
@@ -89,7 +88,7 @@ pub struct DutInfoBuilder {
     id: String,
     name: Option<String>,
     platform_infos: Vec<PlatformInfo>,
-    metadata: Option<BTreeMap<String, tv::Value>>,
+    metadata: BTreeMap<String, tv::Value>,
 }
 
 impl DutInfoBuilder {
@@ -111,15 +110,7 @@ impl DutInfoBuilder {
     }
 
     pub fn add_metadata(mut self, key: &str, value: tv::Value) -> DutInfoBuilder {
-        self.metadata = match self.metadata {
-            Some(mut metadata) => {
-                metadata.insert(key.to_string(), value.clone());
-                Some(metadata)
-            }
-            None => Some(convert_args!(btreemap!(
-                key => value
-            ))),
-        };
+        self.metadata.insert(key.to_string(), value.clone());
         self
     }
 

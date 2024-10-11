@@ -13,12 +13,12 @@ use std::sync::{
     Arc,
 };
 
-use maplit::{btreemap, convert_args};
-
 use crate::output as tv;
 use crate::spec;
 use tv::step::TestStep;
 use tv::{config, dut, emitter, error, log};
+
+use super::trait_ext::MapExt;
 
 /// The outcome of a TestRun.
 /// It's returned when the scope method of the [`TestRun`] object is used.
@@ -37,7 +37,7 @@ pub struct TestRun {
     version: String,
     parameters: BTreeMap<String, tv::Value>,
     command_line: String,
-    metadata: Option<BTreeMap<String, tv::Value>>,
+    metadata: BTreeMap<String, tv::Value>,
 
     emitter: Arc<emitter::JsonEmitter>,
 }
@@ -90,7 +90,7 @@ impl TestRun {
                 version: self.version.clone(),
                 command_line: self.command_line.clone(),
                 parameters: self.parameters.clone(),
-                metadata: self.metadata.clone(),
+                metadata: self.metadata.option(),
                 dut_info: dut.to_spec(),
             }),
         });
@@ -185,13 +185,15 @@ impl TestRun {
 }
 
 /// Builder for the [`TestRun`] object.
+#[derive(Default)]
 pub struct TestRunBuilder {
     name: String,
     version: String,
     parameters: BTreeMap<String, tv::Value>,
     command_line: String,
-    metadata: Option<BTreeMap<String, tv::Value>>,
+
     config: Option<config::Config>,
+    metadata: BTreeMap<String, tv::Value>,
 }
 
 impl TestRunBuilder {
@@ -201,8 +203,7 @@ impl TestRunBuilder {
             version: version.to_string(),
             parameters: BTreeMap::new(),
             command_line: env::args().collect::<Vec<_>>()[1..].join(" "),
-            metadata: None,
-            config: None,
+            ..Default::default()
         }
     }
 
@@ -264,15 +265,7 @@ impl TestRunBuilder {
     ///     .build();
     /// ```
     pub fn add_metadata(mut self, key: &str, value: tv::Value) -> TestRunBuilder {
-        self.metadata = match self.metadata {
-            Some(mut metadata) => {
-                metadata.insert(key.to_string(), value.clone());
-                Some(metadata)
-            }
-            None => Some(convert_args!(btreemap!(
-                key => value,
-            ))),
-        };
+        self.metadata.insert(key.to_string(), value.clone());
         self
     }
 
