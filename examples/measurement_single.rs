@@ -12,8 +12,8 @@ use tv::{TestResult, TestStatus};
 
 async fn run_measure_step(step: &tv::StartedTestStep) -> Result<TestStatus, tv::OcptvError> {
     step.add_measurement("temperature", 42.5.into()).await?;
-    step.add_measurement_with_details(
-        &tv::Measurement::builder("fan_speed", 1200.into())
+    step.add_measurement_detail(
+        tv::Measurement::builder("fan_speed", 1200.into())
             .unit("rpm")
             .build(),
     )

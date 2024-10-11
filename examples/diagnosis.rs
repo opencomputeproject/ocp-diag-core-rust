@@ -21,9 +21,11 @@ async fn run_diagnosis_step(step: &tv::StartedTestStep) -> Result<TestStatus, tv
     let fan_speed = get_fan_speed();
 
     if fan_speed >= 1600 {
-        step.diagnosis("fan_ok", tv::DiagnosisType::Pass).await?;
+        step.add_diagnosis("fan_ok", tv::DiagnosisType::Pass)
+            .await?;
     } else {
-        step.diagnosis("fan_low", tv::DiagnosisType::Fail).await?;
+        step.add_diagnosis("fan_low", tv::DiagnosisType::Fail)
+            .await?;
     }
 
     Ok(TestStatus::Complete)

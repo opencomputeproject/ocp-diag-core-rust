@@ -14,8 +14,8 @@ use tv::{TestResult, TestStatus};
 
 async fn step0_measurements(step: &tv::StartedTestStep) -> Result<TestStatus, tv::OcptvError> {
     let fan_speed = step
-        .add_measurement_series_with_details(
-            tv::MeasurementSeriesInfo::builder("fan_speed")
+        .add_measurement_series_detail(
+            tv::MeasurementSeriesDetail::builder("fan_speed")
                 .unit("rpm")
                 .build(),
         )
@@ -32,8 +32,8 @@ async fn step0_measurements(step: &tv::StartedTestStep) -> Result<TestStatus, tv
 
 #[cfg(feature = "boxed-scopes")]
 async fn step1_measurements(step: &tv::StartedTestStep) -> Result<TestStatus, tv::OcptvError> {
-    step.add_measurement_series_with_details(
-        tv::MeasurementSeriesInfo::builder("temp0")
+    step.add_measurement_series_detail(
+        tv::MeasurementSeriesDetail::builder("temp0")
             .unit("C")
             .build(),
     )
@@ -41,8 +41,8 @@ async fn step1_measurements(step: &tv::StartedTestStep) -> Result<TestStatus, tv
         async move {
             let two_seconds_ago =
                 chrono::Local::now().with_timezone(&chrono_tz::UTC) - Duration::seconds(2);
-            s.add_measurement_with_details(
-                tv::MeasurementSeriesElemDetails::builder(42.into())
+            s.add_measurement_detail(
+                tv::MeasurementElementDetail::builder(42.into())
                     .timestamp(two_seconds_ago)
                     .build(),
             )
@@ -60,8 +60,8 @@ async fn step1_measurements(step: &tv::StartedTestStep) -> Result<TestStatus, tv
 
 async fn step2_measurements(step: &tv::StartedTestStep) -> Result<TestStatus, tv::OcptvError> {
     let freq0 = step
-        .add_measurement_series_with_details(
-            tv::MeasurementSeriesInfo::builder("freq0")
+        .add_measurement_series_detail(
+            tv::MeasurementSeriesDetail::builder("freq0")
                 .unit("hz")
                 .build(),
         )
@@ -69,8 +69,8 @@ async fn step2_measurements(step: &tv::StartedTestStep) -> Result<TestStatus, tv
         .await?;
 
     let freq1 = step
-        .add_measurement_series_with_details(
-            tv::MeasurementSeriesInfo::builder("freq0")
+        .add_measurement_series_detail(
+            tv::MeasurementSeriesDetail::builder("freq0")
                 .unit("hz")
                 .build(),
         )

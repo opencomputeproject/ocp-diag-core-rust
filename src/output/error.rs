@@ -8,6 +8,8 @@ use crate::output as tv;
 use crate::spec;
 use tv::{dut, trait_ext::VecExt, DutSoftwareInfo};
 
+/// TODO: docs
+#[derive(Clone)]
 pub struct Error {
     symptom: String,
     message: Option<String>,
@@ -30,6 +32,7 @@ impl Error {
     }
 }
 
+/// TODO: docs
 #[derive(Debug, Default)]
 pub struct ErrorBuilder {
     symptom: String,
@@ -46,12 +49,12 @@ impl ErrorBuilder {
         }
     }
 
-    pub fn message(mut self, value: &str) -> ErrorBuilder {
+    pub fn message(mut self, value: &str) -> Self {
         self.message = Some(value.to_string());
         self
     }
 
-    pub fn source(mut self, file: &str, line: i32) -> ErrorBuilder {
+    pub fn source(mut self, file: &str, line: i32) -> Self {
         self.source_location = Some(spec::SourceLocation {
             file: file.to_string(),
             line,
@@ -59,7 +62,7 @@ impl ErrorBuilder {
         self
     }
 
-    pub fn add_software_info(mut self, software_info: &dut::DutSoftwareInfo) -> ErrorBuilder {
+    pub fn add_software_info(mut self, software_info: &dut::DutSoftwareInfo) -> Self {
         self.software_infos.push(software_info.clone());
         self
     }

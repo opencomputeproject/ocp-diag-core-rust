@@ -34,9 +34,9 @@ pub use error::{Error, ErrorBuilder};
 pub use file::{File, FileBuilder};
 pub use log::{Log, LogBuilder};
 pub use measure::{
-    Measurement, MeasurementBuilder, MeasurementSeries, MeasurementSeriesElemDetails,
-    MeasurementSeriesInfo, MeasurementSeriesInfoBuilder, StartedMeasurementSeries, Validator,
-    ValidatorBuilder,
+    Measurement, MeasurementBuilder, MeasurementElementDetail, MeasurementElementDetailBuilder,
+    MeasurementSeries, MeasurementSeriesDetail, MeasurementSeriesDetailBuilder,
+    StartedMeasurementSeries, Validator, ValidatorBuilder,
 };
 pub use run::{StartedTestRun, TestRun, TestRunBuilder, TestRunOutcome};
 pub use step::{StartedTestStep, TestStep};
@@ -46,6 +46,7 @@ pub use writer::{BufferWriter, FileWriter, StdoutWriter, Writer};
 pub use serde_json::Value;
 pub use url::Url as Uri;
 
+// TODO: docs
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
 pub enum OcptvError {

@@ -15,21 +15,21 @@ async fn run_measure_step(
     step: &tv::StartedTestStep,
     ram0: tv::DutHardwareInfo,
 ) -> Result<TestStatus, tv::OcptvError> {
-    step.add_measurement_with_details(
-        &tv::Measurement::builder("temp0", 100.5.into())
+    step.add_measurement_detail(
+        tv::Measurement::builder("temp0", 100.5.into())
             .unit("F")
             .hardware_info(&ram0)
-            .subcomponent(&tv::Subcomponent::builder("chip0").build())
+            .subcomponent(tv::Subcomponent::builder("chip0").build())
             .build(),
     )
     .await?;
 
-    let chip1_temp = step.add_measurement_series_with_details(
-        tv::MeasurementSeriesInfo::builder("temp1")
+    let chip1_temp = step.add_measurement_series_detail(
+        tv::MeasurementSeriesDetail::builder("temp1")
             .unit("C")
             .hardware_info(&ram0)
             .subcomponent(
-                &tv::Subcomponent::builder("chip1")
+                tv::Subcomponent::builder("chip1")
                     .location("U11")
                     .version("1")
                     .revision("1")
@@ -59,7 +59,7 @@ async fn run_measure_step(
 async fn main() -> Result<()> {
     let mut dut = tv::DutInfo::builder("dut0")
         .name("host0.example.com")
-        .add_platform_info(&tv::PlatformInfo::new("memory-optimized"))
+        .add_platform_info(tv::PlatformInfo::new("memory-optimized"))
         .build();
 
     dut.add_software_info(
