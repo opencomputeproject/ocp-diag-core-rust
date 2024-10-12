@@ -875,7 +875,7 @@ pub struct Diagnosis {
 #[derive(Debug, Serialize, PartialEq, Clone)]
 #[serde(rename = "file")]
 pub struct File {
-    #[serde(rename = "name")]
+    #[serde(rename = "displayName")]
     pub name: String,
 
     #[serde(rename = "uri")]

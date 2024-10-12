@@ -22,7 +22,7 @@ async fn test_step_with_file() -> Result<()> {
             "testStepArtifact": {
                 "testStepId": "step0",
                 "file": {
-                    "name": "name",
+                    "displayName": "name",
                     "uri": uri.clone().as_str().to_owned(),
                     "isSnapshot": false
                 }
@@ -53,7 +53,7 @@ async fn test_step_with_file_builder() -> Result<()> {
             "testStepArtifact": {
                 "testStepId": "step0",
                 "file": {
-                    "name": "name",
+                    "displayName": "name",
                     "uri": uri.clone().as_str().to_owned(),
                     "isSnapshot": false,
                     "contentType": "text/plain",
