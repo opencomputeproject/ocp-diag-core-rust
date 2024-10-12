@@ -8,7 +8,6 @@ use std::io;
 
 use anyhow::Result;
 use async_trait::async_trait;
-use futures::FutureExt;
 use tokio::sync::mpsc;
 
 use ocptv::ocptv_log_debug;
@@ -45,16 +44,13 @@ async fn main() -> Result<()> {
     tv::TestRun::builder("extensions", "1.0")
         .config(config)
         .build()
-        .scope(dut, |r| {
-            async move {
-                ocptv_log_debug!(r, "log debug").await?;
+        .scope(dut, |r| async move {
+            ocptv_log_debug!(r, "log debug").await?;
 
-                Ok(tv::TestRunOutcome {
-                    status: TestStatus::Complete,
-                    result: TestResult::Pass,
-                })
-            }
-            .boxed()
+            Ok(tv::TestRunOutcome {
+                status: TestStatus::Complete,
+                result: TestResult::Pass,
+            })
         })
         .await?;
 

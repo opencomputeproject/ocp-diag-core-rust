@@ -5,7 +5,6 @@
 // https://opensource.org/licenses/MIT.
 
 use anyhow::Result;
-use futures::FutureExt;
 
 use ocptv::output as tv;
 use tv::{TestResult, TestStatus};
@@ -26,7 +25,6 @@ async fn main() -> Result<()> {
                     result: TestResult::NotApplicable,
                 });
             }
-            .boxed()
         })
         .await?;
 

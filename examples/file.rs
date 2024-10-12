@@ -26,18 +26,15 @@ async fn main() -> Result<()> {
 
     tv::TestRun::builder("simple measurement", "1.0")
         .build()
-        .scope(dut, |r| {
-            async move {
-                r.add_step("step0")
-                    .scope(|s| run_file_step(s).boxed())
-                    .await?;
+        .scope(dut, |r| async move {
+            r.add_step("step0")
+                .scope(|s| run_file_step(s).boxed())
+                .await?;
 
-                Ok(tv::TestRunOutcome {
-                    status: TestStatus::Complete,
-                    result: TestResult::Pass,
-                })
-            }
-            .boxed()
+            Ok(tv::TestRunOutcome {
+                status: TestStatus::Complete,
+                result: TestResult::Pass,
+            })
         })
         .await?;
 

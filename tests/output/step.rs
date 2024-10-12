@@ -53,7 +53,7 @@ async fn test_testrun_step_scope_log() -> Result<()> {
     ];
 
     check_output_run(&expected, |r, _| {
-        async {
+        async move {
             r.add_step("first step")
                 .scope(|s| {
                     async move {

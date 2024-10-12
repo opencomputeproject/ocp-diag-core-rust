@@ -31,7 +31,7 @@ async fn test_testrun_with_log() -> Result<()> {
     ];
 
     check_output_run(&expected, |r, _| {
-        async {
+        async move {
             r.add_log(
                 LogSeverity::Info,
                 "This is a log message with INFO severity",
@@ -66,7 +66,7 @@ async fn test_testrun_with_log_with_details() -> Result<()> {
     ];
 
     check_output_run(&expected, |r, _| {
-        async {
+        async move {
             r.add_log_detail(
                 Log::builder("This is a log message with INFO severity")
                     .severity(LogSeverity::Info)

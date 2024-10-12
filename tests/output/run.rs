@@ -8,7 +8,6 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use assert_json_diff::assert_json_include;
-use futures::FutureExt;
 use serde_json::json;
 use tokio::sync::Mutex;
 
@@ -24,7 +23,7 @@ async fn test_testrun_start_and_end() -> Result<()> {
         json_run_pass(2),
     ];
 
-    check_output_run(&expected, |_, _| async { Ok(()) }.boxed()).await
+    check_output_run(&expected, |_, _| async { Ok(()) }).await
 }
 
 #[cfg(feature = "boxed-scopes")]
@@ -51,16 +50,13 @@ async fn test_testrun_with_scope() -> Result<()> {
     check_output(&expected, |run_builder, dut| async {
         let run = run_builder.build();
 
-        run.scope(dut, |r| {
-            async move {
-                r.add_log(LogSeverity::Info, "First message").await?;
+        run.scope(dut, |r| async move {
+            r.add_log(LogSeverity::Info, "First message").await?;
 
-                Ok(TestRunOutcome {
-                    status: TestStatus::Complete,
-                    result: TestResult::Pass,
-                })
-            }
-            .boxed()
+            Ok(TestRunOutcome {
+                status: TestStatus::Complete,
+                result: TestResult::Pass,
+            })
         })
         .await?;
 

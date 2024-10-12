@@ -5,7 +5,6 @@
 // https://opensource.org/licenses/MIT.
 
 use anyhow::Result;
-use futures::FutureExt;
 
 use ocptv::output as tv;
 use tv::{SoftwareType, TestResult, TestStatus};
@@ -24,21 +23,18 @@ async fn main() -> Result<()> {
     #[cfg(feature = "boxed-scopes")]
     tv::TestRun::builder("run error with dut", "1.0")
         .build()
-        .scope(dut, |r| {
-            async move {
-                r.add_error_detail(
-                    tv::Error::builder("power-fail")
-                        .add_software_info(&sw_info)
-                        .build(),
-                )
-                .await?;
+        .scope(dut, |r| async move {
+            r.add_error_detail(
+                tv::Error::builder("power-fail")
+                    .add_software_info(&sw_info)
+                    .build(),
+            )
+            .await?;
 
-                Ok(tv::TestRunOutcome {
-                    status: TestStatus::Complete,
-                    result: TestResult::Fail,
-                })
-            }
-            .boxed()
+            Ok(tv::TestRunOutcome {
+                status: TestStatus::Complete,
+                result: TestResult::Fail,
+            })
         })
         .await?;
 

@@ -4,14 +4,15 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
-#[cfg(feature = "boxed-scopes")]
-use futures::future::BoxFuture;
 use std::collections::BTreeMap;
 use std::env;
+use std::future::Future;
 use std::sync::{
     atomic::{self, Ordering},
     Arc,
 };
+
+use delegate::delegate;
 
 use crate::output as tv;
 use crate::spec;
@@ -128,14 +129,17 @@ impl TestRun {
     /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    #[cfg(feature = "boxed-scopes")]
-    pub async fn scope<F>(self, dut: dut::DutInfo, func: F) -> Result<(), tv::OcptvError>
+    pub async fn scope<F, R>(self, dut: dut::DutInfo, func: F) -> Result<(), tv::OcptvError>
     where
-        F: FnOnce(&StartedTestRun) -> BoxFuture<'_, Result<TestRunOutcome, tv::OcptvError>>,
+        R: Future<Output = Result<TestRunOutcome, tv::OcptvError>> + Send + 'static,
+        F: FnOnce(ScopedTestRun) -> R,
     {
-        let run = self.start(dut).await?;
-        let outcome = func(&run).await?;
-        run.end(outcome.status, outcome.result).await?;
+        let run = Arc::new(self.start(dut).await?);
+        let outcome = func(ScopedTestRun {
+            run: Arc::clone(&run),
+        })
+        .await?;
+        run.end_impl(outcome.status, outcome.result).await?;
 
         Ok(())
     }
@@ -302,6 +306,21 @@ impl StartedTestRun {
         }
     }
 
+    // note: keep the self-consuming method for crate api, but use this one internally,
+    // since `StartedTestRun::end` only needs to take ownership for syntactic reasons
+    async fn end_impl(
+        &self,
+        status: spec::TestStatus,
+        result: spec::TestResult,
+    ) -> Result<(), tv::OcptvError> {
+        let end = spec::RootImpl::TestRunArtifact(spec::TestRunArtifact {
+            artifact: spec::TestRunArtifactImpl::TestRunEnd(spec::TestRunEnd { status, result }),
+        });
+
+        self.run.emitter.emit(&end).await?;
+        Ok(())
+    }
+
     /// Ends the test run.
     ///
     /// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#testrunend>
@@ -323,12 +342,7 @@ impl StartedTestRun {
         status: spec::TestStatus,
         result: spec::TestResult,
     ) -> Result<(), tv::OcptvError> {
-        let end = spec::RootImpl::TestRunArtifact(spec::TestRunArtifact {
-            artifact: spec::TestRunArtifactImpl::TestRunEnd(spec::TestRunEnd { status, result }),
-        });
-
-        self.run.emitter.emit(&end).await?;
-        Ok(())
+        self.end_impl(status, result).await
     }
 
     /// Emits a Log message.
@@ -501,5 +515,23 @@ impl StartedTestRun {
     pub fn add_step(&self, name: &str) -> TestStep {
         let step_id = format!("step{}", self.step_seqno.fetch_add(1, Ordering::AcqRel));
         TestStep::new(&step_id, name, Arc::clone(&self.run.emitter))
+    }
+}
+
+/// TODO: docs
+pub struct ScopedTestRun {
+    run: Arc<StartedTestRun>,
+}
+
+impl ScopedTestRun {
+    delegate! {
+        to self.run {
+            pub async fn add_log(&self, severity: spec::LogSeverity, msg: &str) -> Result<(), tv::OcptvError>;
+            pub async fn add_log_detail(&self, log: log::Log) -> Result<(), tv::OcptvError>;
+            pub async fn add_error(&self, symptom: &str) -> Result<(), tv::OcptvError>;
+            pub async fn add_error_msg(&self, symptom: &str, msg: &str) -> Result<(), tv::OcptvError>;
+            pub async fn add_error_detail(&self, error: error::Error) -> Result<(), tv::OcptvError>;
+            pub fn add_step(&self, name: &str) -> TestStep;
+        }
     }
 }

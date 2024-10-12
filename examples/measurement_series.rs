@@ -97,27 +97,24 @@ async fn main() -> Result<()> {
 
     tv::TestRun::builder("simple measurement", "1.0")
         .build()
-        .scope(dut, |r| {
-            async move {
-                r.add_step("step0")
-                    .scope(|s| step0_measurements(s).boxed())
-                    .await?;
+        .scope(dut, |r| async move {
+            r.add_step("step0")
+                .scope(|s| step0_measurements(s).boxed())
+                .await?;
 
-                #[cfg(feature = "boxed-scopes")]
-                r.add_step("step1")
-                    .scope(|s| step1_measurements(s).boxed())
-                    .await?;
+            #[cfg(feature = "boxed-scopes")]
+            r.add_step("step1")
+                .scope(|s| step1_measurements(s).boxed())
+                .await?;
 
-                r.add_step("step2")
-                    .scope(|s| step2_measurements(s).boxed())
-                    .await?;
+            r.add_step("step2")
+                .scope(|s| step2_measurements(s).boxed())
+                .await?;
 
-                Ok(tv::TestRunOutcome {
-                    status: TestStatus::Complete,
-                    result: TestResult::Pass,
-                })
-            }
-            .boxed()
+            Ok(tv::TestRunOutcome {
+                status: TestStatus::Complete,
+                result: TestResult::Pass,
+            })
         })
         .await?;
 

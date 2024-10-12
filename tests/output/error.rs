@@ -30,7 +30,7 @@ async fn test_testrun_with_error() -> Result<()> {
     ];
 
     check_output_run(&expected, |r, _| {
-        async { r.add_error("symptom").await }.boxed()
+        async move { r.add_error("symptom").await }.boxed()
     })
     .await
 }
@@ -54,7 +54,7 @@ async fn test_testrun_with_error_with_message() -> Result<()> {
     ];
 
     check_output_run(&expected, |r, _| {
-        async { r.add_error_msg("symptom", "Error message").await }.boxed()
+        async move { r.add_error_msg("symptom", "Error message").await }.boxed()
     })
     .await
 }

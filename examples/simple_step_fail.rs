@@ -19,28 +19,25 @@ async fn main() -> Result<()> {
 
     tv::TestRun::builder("step fail", "1.0")
         .build()
-        .scope(dut, |r| {
-            async move {
-                r.add_step("step0")
-                    .scope(|s| {
-                        async move {
-                            ocptv_log_info!(s, "info log").await?;
-                            Ok(TestStatus::Complete)
-                        }
-                        .boxed()
-                    })
-                    .await?;
-
-                r.add_step("step1")
-                    .scope(|_s| async move { Ok(TestStatus::Error) }.boxed())
-                    .await?;
-
-                Ok(tv::TestRunOutcome {
-                    status: TestStatus::Complete,
-                    result: TestResult::Fail,
+        .scope(dut, |r| async move {
+            r.add_step("step0")
+                .scope(|s| {
+                    async move {
+                        ocptv_log_info!(s, "info log").await?;
+                        Ok(TestStatus::Complete)
+                    }
+                    .boxed()
                 })
-            }
-            .boxed()
+                .await?;
+
+            r.add_step("step1")
+                .scope(|_s| async move { Ok(TestStatus::Error) }.boxed())
+                .await?;
+
+            Ok(tv::TestRunOutcome {
+                status: TestStatus::Complete,
+                result: TestResult::Fail,
+            })
         })
         .await?;
 
