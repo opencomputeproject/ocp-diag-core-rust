@@ -74,7 +74,7 @@ async fn test_step_with_file_builder() -> Result<()> {
         let file = File::builder("name", uri)
             .content_type(mime::TEXT_PLAIN)
             .description("description")
-            .add_metadata("key", "value".into())
+            .add_metadata("key", "value")
             .build();
         s.add_file_detail(file).await?;
 

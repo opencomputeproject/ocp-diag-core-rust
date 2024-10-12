@@ -102,7 +102,7 @@ impl TestRun {
     }
 
     /// Builds a scope in the [`TestRun`] object, taking care of starting and
-    /// ending it. View [`TestRun::start`] and [`TestRun::end`] methods.
+    /// ending it. View [`TestRun::start`] and [`StartedTestRun::end`] methods.
     /// After the scope is constructed, additional objects may be added to it.
     /// This is the preferred usage for the [`TestRun`], since it guarantees
     /// all the messages are emitted between the start and end messages, the order
@@ -218,11 +218,11 @@ impl TestRunBuilder {
     /// ```rust
     /// # use ocptv::output::*;
     /// let run = TestRun::builder("run_name", "1.0")
-    ///     .add_parameter("param1", "value1".into())
+    ///     .add_parameter("param1", "value1")
     ///     .build();
     /// ```
-    pub fn add_parameter(mut self, key: &str, value: tv::Value) -> Self {
-        self.parameters.insert(key.to_string(), value);
+    pub fn add_parameter<V: Into<tv::Value>>(mut self, key: &str, value: V) -> Self {
+        self.parameters.insert(key.to_string(), value.into());
         self
     }
 
@@ -265,11 +265,11 @@ impl TestRunBuilder {
     /// # use ocptv::output::*;
     ///
     /// let run = TestRun::builder("run_name", "1.0")
-    ///     .add_metadata("meta1", "value1".into())
+    ///     .add_metadata("meta1", "value1")
     ///     .build();
     /// ```
-    pub fn add_metadata(mut self, key: &str, value: tv::Value) -> Self {
-        self.metadata.insert(key.to_string(), value);
+    pub fn add_metadata<V: Into<tv::Value>>(mut self, key: &str, value: V) -> Self {
+        self.metadata.insert(key.to_string(), value.into());
         self
     }
 

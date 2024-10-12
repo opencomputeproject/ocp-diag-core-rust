@@ -389,16 +389,16 @@ impl StartedTestStep {
     /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
     ///
     /// let step = run.add_step("step_name").start().await?;
-    /// step.add_measurement("name", 50.into()).await?;
+    /// step.add_measurement("name", 50).await?;
     /// step.end(TestStatus::Complete).await?;
     ///
     /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn add_measurement(
+    pub async fn add_measurement<V: Into<tv::Value>>(
         &self,
         name: &str,
-        value: tv::Value,
+        value: V,
     ) -> Result<(), tv::OcptvError> {
         let measurement = measure::Measurement::new(name, value);
 
@@ -427,9 +427,9 @@ impl StartedTestStep {
     /// let run = TestRun::builder("diagnostic_name", "1.0").build().start(dut).await?;
     /// let step = run.add_step("step_name").start().await?;
     ///
-    /// let measurement = Measurement::builder("name", 5000.into())
-    ///     .add_validator(Validator::builder(ValidatorType::Equal, 30.into()).build())
-    ///     .add_metadata("key", "value".into())
+    /// let measurement = Measurement::builder("name", 5000)
+    ///     .add_validator(Validator::builder(ValidatorType::Equal, 30).build())
+    ///     .add_metadata("key", "value")
     ///     .hardware_info(&hw_info)
     ///     .subcomponent(Subcomponent::builder("name").build())
     ///     .build();
@@ -642,7 +642,7 @@ impl StartedTestStep {
     /// let file = File::builder("name", uri)
     ///     .description("description")
     ///     .content_type(mime::TEXT_PLAIN)
-    ///     .add_metadata("key", "value".into())
+    ///     .add_metadata("key", "value")
     ///     .build();
     /// step.add_file_detail(file).await?;
     /// step.end(TestStatus::Complete).await?;
@@ -710,7 +710,7 @@ impl ScopedTestStep {
             pub async fn add_error_msg(&self, symptom: &str, msg: &str) -> Result<(), tv::OcptvError>;
             pub async fn add_error_detail(&self, error: error::Error) -> Result<(), tv::OcptvError>;
 
-            pub async fn add_measurement(&self, name: &str, value: tv::Value) -> Result<(), tv::OcptvError>;
+            pub async fn add_measurement<V: Into<tv::Value>>(&self, name: &str, value: V) -> Result<(), tv::OcptvError>;
             pub async fn add_measurement_detail(&self, detail: measure::Measurement) -> Result<(), tv::OcptvError>;
 
             pub fn add_measurement_series(&self, name: &str) -> tv::MeasurementSeries;

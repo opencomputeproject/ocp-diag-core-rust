@@ -122,7 +122,7 @@ async fn test_testrun_metadata() -> Result<()> {
 
     check_output(&expected, |run_builder, dut| async {
         let run = run_builder
-            .add_metadata("key", "value".into())
+            .add_metadata("key", "value")
             .build()
             .start(dut)
             .await?;
@@ -174,9 +174,9 @@ async fn test_testrun_builder() -> Result<()> {
 
     check_output(&expected, |run_builder, dut| async {
         let run = run_builder
-            .add_metadata("key", "value".into())
-            .add_metadata("key2", "value2".into())
-            .add_parameter("key", "value".into())
+            .add_metadata("key", "value")
+            .add_metadata("key2", "value2")
+            .add_parameter("key", "value")
             .command_line("cmd_line")
             .build()
             .start(dut)

@@ -12,9 +12,9 @@ use tv::{TestResult, TestStatus, ValidatorType};
 
 async fn run_measure_step(step: tv::ScopedTestStep) -> Result<TestStatus, tv::OcptvError> {
     step.add_measurement_detail(
-        tv::Measurement::builder("temp", 40.into())
+        tv::Measurement::builder("temp", 40)
             .add_validator(
-                tv::Validator::builder(ValidatorType::GreaterThan, 30.into())
+                tv::Validator::builder(ValidatorType::GreaterThan, 30)
                     .name("gt_30")
                     .build(),
             )
@@ -25,20 +25,18 @@ async fn run_measure_step(step: tv::ScopedTestStep) -> Result<TestStatus, tv::Oc
     step.add_measurement_series_detail(
         tv::MeasurementSeriesDetail::builder("fan_speed")
             .unit("rpm")
-            .add_validator(
-                tv::Validator::builder(ValidatorType::LessThanOrEqual, 3000.into()).build(),
-            )
+            .add_validator(tv::Validator::builder(ValidatorType::LessThanOrEqual, 3000).build())
             .build(),
     )
     .scope(|s| async move {
-        s.add_measurement(1000.into()).await?;
+        s.add_measurement(1000).await?;
 
         Ok(())
     })
     .await?;
 
     step.add_measurement_detail(
-        tv::Measurement::builder("fan_speed", 1200.into())
+        tv::Measurement::builder("fan_speed", 1200)
             .unit("rpm")
             .build(),
     )

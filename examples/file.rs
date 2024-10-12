@@ -26,9 +26,7 @@ async fn main() -> Result<()> {
     tv::TestRun::builder("simple measurement", "1.0")
         .build()
         .scope(dut, |r| async move {
-            r.add_step("step0")
-                .scope(run_file_step)
-                .await?;
+            r.add_step("step0").scope(run_file_step).await?;
 
             Ok(tv::TestRunOutcome {
                 status: TestStatus::Complete,

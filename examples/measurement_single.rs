@@ -10,9 +10,9 @@ use ocptv::output as tv;
 use tv::{TestResult, TestStatus};
 
 async fn run_measure_step(step: tv::ScopedTestStep) -> Result<TestStatus, tv::OcptvError> {
-    step.add_measurement("temperature", 42.5.into()).await?;
+    step.add_measurement("temperature", 42.5).await?;
     step.add_measurement_detail(
-        tv::Measurement::builder("fan_speed", 1200.into())
+        tv::Measurement::builder("fan_speed", 1200)
             .unit("rpm")
             .build(),
     )
@@ -29,9 +29,7 @@ async fn main() -> Result<()> {
     tv::TestRun::builder("simple measurement", "1.0")
         .build()
         .scope(dut, |r| async move {
-            r.add_step("step0")
-                .scope(run_measure_step)
-                .await?;
+            r.add_step("step0").scope(run_measure_step).await?;
 
             Ok(tv::TestRunOutcome {
                 status: TestStatus::Complete,
