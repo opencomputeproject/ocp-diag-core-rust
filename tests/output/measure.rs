@@ -5,7 +5,6 @@
 // https://opensource.org/licenses/MIT.
 
 use anyhow::Result;
-use futures::FutureExt;
 use serde_json::json;
 
 use ocptv::output::{
@@ -36,13 +35,10 @@ async fn test_step_with_measurement() -> Result<()> {
         json_run_pass(5),
     ];
 
-    check_output_step(&expected, |s, _| {
-        async {
-            s.add_measurement("name", 50.into()).await?;
+    check_output_step(&expected, |s, _| async move {
+        s.add_measurement("name", 50.into()).await?;
 
-            Ok(())
-        }
-        .boxed()
+        Ok(())
     })
     .await
 }
@@ -95,7 +91,6 @@ async fn test_step_with_measurement_builder() -> Result<()> {
 
             Ok(())
         }
-        .boxed()
     })
     .await
 }
@@ -132,14 +127,11 @@ async fn test_step_with_measurement_series() -> Result<()> {
         json_run_pass(6),
     ];
 
-    check_output_step(&expected, |s, _| {
-        async {
-            let series = s.add_measurement_series("name").start().await?;
-            series.end().await?;
+    check_output_step(&expected, |s, _| async move {
+        let series = s.add_measurement_series("name").start().await?;
+        series.end().await?;
 
-            Ok(())
-        }
-        .boxed()
+        Ok(())
     })
     .await
 }
@@ -198,17 +190,14 @@ async fn test_step_with_multiple_measurement_series() -> Result<()> {
         json_run_pass(8),
     ];
 
-    check_output_step(&expected, |s, _| {
-        async {
-            let series = s.add_measurement_series("name").start().await?;
-            series.end().await?;
+    check_output_step(&expected, |s, _| async move {
+        let series = s.add_measurement_series("name").start().await?;
+        series.end().await?;
 
-            let series_2 = s.add_measurement_series("name").start().await?;
-            series_2.end().await?;
+        let series_2 = s.add_measurement_series("name").start().await?;
+        series_2.end().await?;
 
-            Ok(())
-        }
-        .boxed()
+        Ok(())
     })
     .await
 }
@@ -280,7 +269,6 @@ async fn test_step_with_measurement_series_with_details() -> Result<()> {
 
             Ok(())
         }
-        .boxed()
     })
     .await
 }
@@ -330,15 +318,12 @@ async fn test_step_with_measurement_series_element() -> Result<()> {
         json_run_pass(7),
     ];
 
-    check_output_step(&expected, |s, _| {
-        async {
-            let series = s.add_measurement_series("name").start().await?;
-            series.add_measurement(60.into()).await?;
-            series.end().await?;
+    check_output_step(&expected, |s, _| async move {
+        let series = s.add_measurement_series("name").start().await?;
+        series.add_measurement(60.into()).await?;
+        series.end().await?;
 
-            Ok(())
-        }
-        .boxed()
+        Ok(())
     })
     .await
 }
@@ -415,7 +400,7 @@ async fn test_step_with_measurement_series_element_index_no() -> Result<()> {
     ];
 
     check_output_step(&expected, |s, _| {
-        async {
+        async move {
             let series = s.add_measurement_series("name").start().await?;
             // add more than one element to check the index increments correctly
             series.add_measurement(60.into()).await?;
@@ -425,7 +410,6 @@ async fn test_step_with_measurement_series_element_index_no() -> Result<()> {
 
             Ok(())
         }
-        .boxed()
     })
     .await
 }
@@ -479,11 +463,10 @@ async fn test_step_with_measurement_series_element_with_details() -> Result<()> 
         json_run_pass(7),
     ];
 
-    check_output_step(&expected, |s, _| {
-        async {
-            let series = s.add_measurement_series("name").start().await?;
-            series
-                .add_measurement_detail(
+    check_output_step(&expected, |s, _| async move {
+        s.add_measurement_series("name")
+            .scope(|s| async move {
+                s.add_measurement_detail(
                     MeasurementElementDetail::builder(60.into())
                         .timestamp(DATETIME.with_timezone(&chrono_tz::UTC))
                         .add_metadata("key", "value".into())
@@ -491,11 +474,12 @@ async fn test_step_with_measurement_series_element_with_details() -> Result<()> 
                         .build(),
                 )
                 .await?;
-            series.end().await?;
 
-            Ok(())
-        }
-        .boxed()
+                Ok(())
+            })
+            .await?;
+
+        Ok(())
     })
     .await
 }
@@ -575,7 +559,7 @@ async fn test_step_with_measurement_series_element_with_metadata_index_no() -> R
     ];
 
     check_output_step(&expected, |s, _| {
-        async {
+        async move {
             let series = s.add_measurement_series("name").start().await?;
             // add more than one element to check the index increments correctly
             series
@@ -603,12 +587,10 @@ async fn test_step_with_measurement_series_element_with_metadata_index_no() -> R
 
             Ok(())
         }
-        .boxed()
     })
     .await
 }
 
-#[cfg(feature = "boxed-scopes")]
 #[tokio::test]
 async fn test_step_with_measurement_series_scope() -> Result<()> {
     let expected = [
@@ -680,25 +662,19 @@ async fn test_step_with_measurement_series_scope() -> Result<()> {
         json_run_pass(9),
     ];
 
-    check_output_step(&expected, |s, _| {
-        async {
-            let series = s.add_measurement_series("name");
-            series
-                .scope(|s| {
-                    async move {
-                        s.add_measurement(60.into()).await?;
-                        s.add_measurement(70.into()).await?;
-                        s.add_measurement(80.into()).await?;
+    check_output_step(&expected, |s, _| async move {
+        let series = s.add_measurement_series("name");
+        series
+            .scope(|s| async move {
+                s.add_measurement(60.into()).await?;
+                s.add_measurement(70.into()).await?;
+                s.add_measurement(80.into()).await?;
 
-                        Ok(())
-                    }
-                    .boxed()
-                })
-                .await?;
+                Ok(())
+            })
+            .await?;
 
-            Ok(())
-        }
-        .boxed()
+        Ok(())
     })
     .await
 }

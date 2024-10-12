@@ -26,7 +26,6 @@ async fn test_testrun_start_and_end() -> Result<()> {
     check_output_run(&expected, |_, _| async { Ok(()) }).await
 }
 
-#[cfg(feature = "boxed-scopes")]
 #[tokio::test]
 async fn test_testrun_with_scope() -> Result<()> {
     use ocptv::output::{LogSeverity, TestResult, TestRunOutcome, TestStatus};

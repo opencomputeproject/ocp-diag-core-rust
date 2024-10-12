@@ -7,12 +7,11 @@
 use std::str::FromStr;
 
 use anyhow::Result;
-use futures::FutureExt;
 
 use ocptv::output as tv;
 use tv::{TestResult, TestStatus};
 
-async fn run_file_step(step: &tv::StartedTestStep) -> Result<TestStatus, tv::OcptvError> {
+async fn run_file_step(step: tv::ScopedTestStep) -> Result<TestStatus, tv::OcptvError> {
     let uri = tv::Uri::from_str("file:///root/mem_cfg_log").unwrap();
     step.add_file("mem_cfg_log", uri).await?;
 
@@ -28,7 +27,7 @@ async fn main() -> Result<()> {
         .build()
         .scope(dut, |r| async move {
             r.add_step("step0")
-                .scope(|s| run_file_step(s).boxed())
+                .scope(run_file_step)
                 .await?;
 
             Ok(tv::TestRunOutcome {

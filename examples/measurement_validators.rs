@@ -6,12 +6,11 @@
 // #![allow(warnings)]
 
 use anyhow::Result;
-use futures::FutureExt;
 
 use ocptv::output as tv;
 use tv::{TestResult, TestStatus, ValidatorType};
 
-async fn run_measure_step(step: &tv::StartedTestStep) -> Result<TestStatus, tv::OcptvError> {
+async fn run_measure_step(step: tv::ScopedTestStep) -> Result<TestStatus, tv::OcptvError> {
     step.add_measurement_detail(
         tv::Measurement::builder("temp", 40.into())
             .add_validator(
@@ -31,13 +30,10 @@ async fn run_measure_step(step: &tv::StartedTestStep) -> Result<TestStatus, tv::
             )
             .build(),
     )
-    .scope(|s| {
-        async move {
-            s.add_measurement(1000.into()).await?;
+    .scope(|s| async move {
+        s.add_measurement(1000.into()).await?;
 
-            Ok(())
-        }
-        .boxed()
+        Ok(())
     })
     .await?;
 
@@ -60,9 +56,7 @@ async fn main() -> Result<()> {
     tv::TestRun::builder("simple measurement", "1.0")
         .build()
         .scope(dut, |r| async move {
-            r.add_step("step0")
-                .scope(|s| run_measure_step(s).boxed())
-                .await?;
+            r.add_step("step0").scope(run_measure_step).await?;
 
             Ok(tv::TestRunOutcome {
                 status: TestStatus::Complete,

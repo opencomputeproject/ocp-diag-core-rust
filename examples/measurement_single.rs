@@ -5,12 +5,11 @@
 // https://opensource.org/licenses/MIT.
 
 use anyhow::Result;
-use futures::FutureExt;
 
 use ocptv::output as tv;
 use tv::{TestResult, TestStatus};
 
-async fn run_measure_step(step: &tv::StartedTestStep) -> Result<TestStatus, tv::OcptvError> {
+async fn run_measure_step(step: tv::ScopedTestStep) -> Result<TestStatus, tv::OcptvError> {
     step.add_measurement("temperature", 42.5.into()).await?;
     step.add_measurement_detail(
         tv::Measurement::builder("fan_speed", 1200.into())
@@ -31,7 +30,7 @@ async fn main() -> Result<()> {
         .build()
         .scope(dut, |r| async move {
             r.add_step("step0")
-                .scope(|s| run_measure_step(s).boxed())
+                .scope(run_measure_step)
                 .await?;
 
             Ok(tv::TestRunOutcome {

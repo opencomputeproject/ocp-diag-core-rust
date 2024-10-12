@@ -5,7 +5,6 @@
 // https://opensource.org/licenses/MIT.
 
 use anyhow::Result;
-use futures::FutureExt;
 use serde_json::json;
 
 use ocptv::output::{Diagnosis, DiagnosisType, Subcomponent};
@@ -33,13 +32,10 @@ async fn test_step_with_diagnosis() -> Result<()> {
         json_run_pass(5),
     ];
 
-    check_output_step(&expected, |s, _| {
-        async {
-            s.add_diagnosis("verdict", DiagnosisType::Pass).await?;
+    check_output_step(&expected, |s, _| async move {
+        s.add_diagnosis("verdict", DiagnosisType::Pass).await?;
 
-            Ok(())
-        }
-        .boxed()
+        Ok(())
     })
     .await
 }
@@ -81,7 +77,6 @@ async fn test_step_with_diagnosis_builder() -> Result<()> {
 
             Ok(())
         }
-        .boxed()
     })
     .await
 }

@@ -20,7 +20,6 @@ async fn main() -> Result<()> {
             .build(),
     );
 
-    #[cfg(feature = "boxed-scopes")]
     tv::TestRun::builder("run error with dut", "1.0")
         .build()
         .scope(dut, |r| async move {

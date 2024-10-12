@@ -7,12 +7,11 @@
 
 use anyhow::Result;
 
-use futures::FutureExt;
 use ocptv::output as tv;
 use tv::{SubcomponentType, TestResult, TestStatus};
 
 async fn run_measure_step(
-    step: &tv::StartedTestStep,
+    step: tv::ScopedTestStep,
     ram0: tv::DutHardwareInfo,
 ) -> Result<TestStatus, tv::OcptvError> {
     step.add_measurement_detail(
@@ -40,13 +39,10 @@ async fn run_measure_step(
     );
 
     chip1_temp
-        .scope(|s| {
-            async move {
-                s.add_measurement(79.into()).await?;
+        .scope(|s| async move {
+            s.add_measurement(79.into()).await?;
 
-                Ok(())
-            }
-            .boxed()
+            Ok(())
         })
         .await?;
 
@@ -90,7 +86,7 @@ async fn main() -> Result<()> {
         .build()
         .scope(dut, |r| async move {
             r.add_step("step0")
-                .scope(|s| run_measure_step(s, ram0).boxed())
+                .scope(|s| run_measure_step(s, ram0))
                 .await?;
 
             Ok(tv::TestRunOutcome {

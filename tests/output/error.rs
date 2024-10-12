@@ -5,7 +5,6 @@
 // https://opensource.org/licenses/MIT.
 
 use anyhow::Result;
-use futures::FutureExt;
 use serde_json::json;
 
 use ocptv::output::Error;
@@ -29,9 +28,10 @@ async fn test_testrun_with_error() -> Result<()> {
         json_run_pass(3),
     ];
 
-    check_output_run(&expected, |r, _| {
-        async move { r.add_error("symptom").await }.boxed()
-    })
+    check_output_run(
+        &expected,
+        |r, _| async move { r.add_error("symptom").await },
+    )
     .await
 }
 
@@ -53,8 +53,8 @@ async fn test_testrun_with_error_with_message() -> Result<()> {
         json_run_pass(3),
     ];
 
-    check_output_run(&expected, |r, _| {
-        async move { r.add_error_msg("symptom", "Error message").await }.boxed()
+    check_output_run(&expected, |r, _| async move {
+        r.add_error_msg("symptom", "Error message").await
     })
     .await
 }
@@ -95,7 +95,6 @@ async fn test_testrun_with_error_with_details() -> Result<()> {
             )
             .await
         }
-        .boxed()
     })
     .await
 }
@@ -115,14 +114,11 @@ async fn test_testrun_with_error_before_start() -> Result<()> {
         }),
     ];
 
-    check_output(&expected, |run_builder, _| {
-        async move {
-            let run = run_builder.build();
-            run.add_error("no-dut").await?;
+    check_output(&expected, |run_builder, _| async move {
+        let run = run_builder.build();
+        run.add_error("no-dut").await?;
 
-            Ok(())
-        }
-        .boxed()
+        Ok(())
     })
     .await
 }
@@ -143,14 +139,11 @@ async fn test_testrun_with_error_with_message_before_start() -> Result<()> {
         }),
     ];
 
-    check_output(&expected, |run_builder, _| {
-        async move {
-            let run = run_builder.build();
-            run.add_error_msg("no-dut", "failed to find dut").await?;
+    check_output(&expected, |run_builder, _| async move {
+        let run = run_builder.build();
+        run.add_error_msg("no-dut", "failed to find dut").await?;
 
-            Ok(())
-        }
-        .boxed()
+        Ok(())
     })
     .await
 }
@@ -175,20 +168,17 @@ async fn test_testrun_with_error_with_details_before_start() -> Result<()> {
         }),
     ];
 
-    check_output(&expected, |run_builder, _| {
-        async move {
-            let run = run_builder.build();
-            run.add_error_detail(
-                Error::builder("no-dut")
-                    .message("failed to find dut")
-                    .source("file", 1)
-                    .build(),
-            )
-            .await?;
+    check_output(&expected, |run_builder, _| async move {
+        let run = run_builder.build();
+        run.add_error_detail(
+            Error::builder("no-dut")
+                .message("failed to find dut")
+                .source("file", 1)
+                .build(),
+        )
+        .await?;
 
-            Ok(())
-        }
-        .boxed()
+        Ok(())
     })
     .await
 }
@@ -213,13 +203,10 @@ async fn test_testrun_step_error() -> Result<()> {
         json_run_pass(5),
     ];
 
-    check_output_step(&expected, |s, _| {
-        async {
-            s.add_error("symptom").await?;
+    check_output_step(&expected, |s, _| async move {
+        s.add_error("symptom").await?;
 
-            Ok(())
-        }
-        .boxed()
+        Ok(())
     })
     .await
 }
@@ -245,13 +232,10 @@ async fn test_testrun_step_error_with_message() -> Result<()> {
         json_run_pass(5),
     ];
 
-    check_output_step(&expected, |s, _| {
-        async {
-            s.add_error_msg("symptom", "Error message").await?;
+    check_output_step(&expected, |s, _| async move {
+        s.add_error_msg("symptom", "Error message").await?;
 
-            Ok(())
-        }
-        .boxed()
+        Ok(())
     })
     .await
 }
@@ -284,20 +268,17 @@ async fn test_testrun_step_error_with_details() -> Result<()> {
         json_run_pass(5),
     ];
 
-    check_output_step(&expected, |s, dut| {
-        async move {
-            s.add_error_detail(
-                Error::builder("symptom")
-                    .message("Error message")
-                    .source("file", 1)
-                    .add_software_info(dut.software_info("sw0").unwrap())
-                    .build(),
-            )
-            .await?;
+    check_output_step(&expected, |s, dut| async move {
+        s.add_error_detail(
+            Error::builder("symptom")
+                .message("Error message")
+                .source("file", 1)
+                .add_software_info(dut.software_info("sw0").unwrap())
+                .build(),
+        )
+        .await?;
 
-            Ok(())
-        }
-        .boxed()
+        Ok(())
     })
     .await
 }

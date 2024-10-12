@@ -5,11 +5,11 @@
 // https://opensource.org/licenses/MIT.
 
 use std::collections::BTreeMap;
+use std::future::Future;
 use std::sync::atomic::{self, Ordering};
 use std::sync::Arc;
 
-#[cfg(feature = "boxed-scopes")]
-use futures::future::BoxFuture;
+use delegate::delegate;
 
 use crate::output as tv;
 use crate::output::trait_ext::{MapExt, VecExt};
@@ -117,14 +117,17 @@ impl MeasurementSeries {
     /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    #[cfg(feature = "boxed-scopes")]
-    pub async fn scope<F>(self, func: F) -> Result<(), tv::OcptvError>
+    pub async fn scope<F, R>(self, func: F) -> Result<(), tv::OcptvError>
     where
-        F: FnOnce(&StartedMeasurementSeries) -> BoxFuture<'_, Result<(), tv::OcptvError>>,
+        R: Future<Output = Result<(), tv::OcptvError>> + Send + 'static,
+        F: FnOnce(ScopedMeasurementSeries) -> R + Send + 'static,
     {
-        let series = self.start().await?;
-        func(&series).await?;
-        series.end().await?;
+        let series = Arc::new(self.start().await?);
+        func(ScopedMeasurementSeries {
+            series: Arc::clone(&series),
+        })
+        .await?;
+        series.end_impl().await?;
 
         Ok(())
     }
@@ -140,6 +143,22 @@ pub struct StartedMeasurementSeries {
 impl StartedMeasurementSeries {
     fn incr_seqno(&self) -> u64 {
         self.seqno.fetch_add(1, Ordering::AcqRel)
+    }
+
+    // note: keep the self-consuming method for crate api, but use this one internally,
+    // since `StartedMeasurementSeries::end` only needs to take ownership for syntactic reasons
+    async fn end_impl(&self) -> Result<(), tv::OcptvError> {
+        let end = spec::MeasurementSeriesEnd {
+            series_id: self.parent.id.clone(),
+            total_count: self.seqno.load(Ordering::Acquire),
+        };
+
+        self.parent
+            .emitter
+            .emit(&spec::TestStepArtifactImpl::MeasurementSeriesEnd(end))
+            .await?;
+
+        Ok(())
     }
 
     /// Ends the measurement series.
@@ -162,17 +181,7 @@ impl StartedMeasurementSeries {
     /// # });
     /// ```
     pub async fn end(self) -> Result<(), tv::OcptvError> {
-        let end = spec::MeasurementSeriesEnd {
-            series_id: self.parent.id.clone(),
-            total_count: self.seqno.load(Ordering::Acquire),
-        };
-
-        self.parent
-            .emitter
-            .emit(&spec::TestStepArtifactImpl::MeasurementSeriesEnd(end))
-            .await?;
-
-        Ok(())
+        self.end_impl().await
     }
 
     /// Adds a measurement element to the measurement series.
@@ -245,6 +254,23 @@ impl StartedMeasurementSeries {
             .await?;
 
         Ok(())
+    }
+}
+
+/// TODO: docs
+pub struct ScopedMeasurementSeries {
+    series: Arc<StartedMeasurementSeries>,
+}
+
+impl ScopedMeasurementSeries {
+    delegate! {
+        to self.series {
+            pub async fn add_measurement(&self, value: tv::Value) -> Result<(), tv::OcptvError>;
+            pub async fn add_measurement_detail(
+                &self,
+                element: MeasurementElementDetail,
+            ) -> Result<(), tv::OcptvError>;
+        }
     }
 }
 

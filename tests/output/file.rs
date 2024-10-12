@@ -5,7 +5,6 @@
 // https://opensource.org/licenses/MIT.
 
 use anyhow::Result;
-use futures::FutureExt;
 use serde_json::json;
 
 use ocptv::output::{File, Uri};
@@ -35,13 +34,10 @@ async fn test_step_with_file() -> Result<()> {
         json_run_pass(5),
     ];
 
-    check_output_step(&expected, |s, _| {
-        async {
-            s.add_file("name", uri).await?;
+    check_output_step(&expected, |s, _| async move {
+        s.add_file("name", uri).await?;
 
-            Ok(())
-        }
-        .boxed()
+        Ok(())
     })
     .await
 }
@@ -74,18 +70,15 @@ async fn test_step_with_file_builder() -> Result<()> {
         json_run_pass(5),
     ];
 
-    check_output_step(&expected, |s, _| {
-        async {
-            let file = File::builder("name", uri)
-                .content_type(mime::TEXT_PLAIN)
-                .description("description")
-                .add_metadata("key", "value".into())
-                .build();
-            s.add_file_detail(file).await?;
+    check_output_step(&expected, |s, _| async move {
+        let file = File::builder("name", uri)
+            .content_type(mime::TEXT_PLAIN)
+            .description("description")
+            .add_metadata("key", "value".into())
+            .build();
+        s.add_file_detail(file).await?;
 
-            Ok(())
-        }
-        .boxed()
+        Ok(())
     })
     .await
 }

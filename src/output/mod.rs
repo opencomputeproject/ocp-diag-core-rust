@@ -39,7 +39,7 @@ pub use measure::{
     StartedMeasurementSeries, Validator, ValidatorBuilder,
 };
 pub use run::{ScopedTestRun, StartedTestRun, TestRun, TestRunBuilder, TestRunOutcome};
-pub use step::{StartedTestStep, TestStep};
+pub use step::{ScopedTestStep, StartedTestStep, TestStep};
 pub use writer::{BufferWriter, FileWriter, StdoutWriter, Writer};
 
 // re-export these as a public types we present

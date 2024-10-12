@@ -528,9 +528,11 @@ impl ScopedTestRun {
         to self.run {
             pub async fn add_log(&self, severity: spec::LogSeverity, msg: &str) -> Result<(), tv::OcptvError>;
             pub async fn add_log_detail(&self, log: log::Log) -> Result<(), tv::OcptvError>;
+
             pub async fn add_error(&self, symptom: &str) -> Result<(), tv::OcptvError>;
             pub async fn add_error_msg(&self, symptom: &str, msg: &str) -> Result<(), tv::OcptvError>;
             pub async fn add_error_detail(&self, error: error::Error) -> Result<(), tv::OcptvError>;
+
             pub fn add_step(&self, name: &str) -> TestStep;
         }
     }

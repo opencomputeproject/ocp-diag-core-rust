@@ -5,7 +5,6 @@
 // https://opensource.org/licenses/MIT.
 
 use anyhow::Result;
-use futures::FutureExt;
 
 use ocptv::ocptv_log_info;
 use ocptv::output as tv;
@@ -21,17 +20,14 @@ async fn main() -> Result<()> {
         .build()
         .scope(dut, |r| async move {
             r.add_step("step0")
-                .scope(|s| {
-                    async move {
-                        ocptv_log_info!(s, "info log").await?;
-                        Ok(TestStatus::Complete)
-                    }
-                    .boxed()
+                .scope(|s| async move {
+                    ocptv_log_info!(s, "info log").await?;
+                    Ok(TestStatus::Complete)
                 })
                 .await?;
 
             r.add_step("step1")
-                .scope(|_s| async move { Ok(TestStatus::Error) }.boxed())
+                .scope(|_s| async move { Ok(TestStatus::Error) })
                 .await?;
 
             Ok(tv::TestRunOutcome {

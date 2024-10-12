@@ -7,12 +7,11 @@
 
 use anyhow::Result;
 use chrono::Duration;
-use futures::FutureExt;
 
 use ocptv::output::{self as tv};
 use tv::{TestResult, TestStatus};
 
-async fn step0_measurements(step: &tv::StartedTestStep) -> Result<TestStatus, tv::OcptvError> {
+async fn step0_measurements(step: tv::ScopedTestStep) -> Result<TestStatus, tv::OcptvError> {
     let fan_speed = step
         .add_measurement_series_detail(
             tv::MeasurementSeriesDetail::builder("fan_speed")
@@ -30,8 +29,7 @@ async fn step0_measurements(step: &tv::StartedTestStep) -> Result<TestStatus, tv
     Ok(TestStatus::Complete)
 }
 
-#[cfg(feature = "boxed-scopes")]
-async fn step1_measurements(step: &tv::StartedTestStep) -> Result<TestStatus, tv::OcptvError> {
+async fn step1_measurements(step: tv::ScopedTestStep) -> Result<TestStatus, tv::OcptvError> {
     step.add_measurement_series_detail(
         tv::MeasurementSeriesDetail::builder("temp0")
             .unit("C")
@@ -51,14 +49,13 @@ async fn step1_measurements(step: &tv::StartedTestStep) -> Result<TestStatus, tv
             s.add_measurement(43.into()).await?;
             Ok(())
         }
-        .boxed()
     })
     .await?;
 
     Ok(TestStatus::Complete)
 }
 
-async fn step2_measurements(step: &tv::StartedTestStep) -> Result<TestStatus, tv::OcptvError> {
+async fn step2_measurements(step: tv::ScopedTestStep) -> Result<TestStatus, tv::OcptvError> {
     let freq0 = step
         .add_measurement_series_detail(
             tv::MeasurementSeriesDetail::builder("freq0")
@@ -99,16 +96,15 @@ async fn main() -> Result<()> {
         .build()
         .scope(dut, |r| async move {
             r.add_step("step0")
-                .scope(|s| step0_measurements(s).boxed())
+                .scope(step0_measurements)
                 .await?;
 
-            #[cfg(feature = "boxed-scopes")]
             r.add_step("step1")
-                .scope(|s| step1_measurements(s).boxed())
+                .scope(step1_measurements)
                 .await?;
 
             r.add_step("step2")
-                .scope(|s| step2_measurements(s).boxed())
+                .scope(step2_measurements)
                 .await?;
 
             Ok(tv::TestRunOutcome {
