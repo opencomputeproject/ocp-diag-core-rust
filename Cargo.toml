@@ -1,0 +1,45 @@
+[package]
+name = "ocptv"
+version = "0.1.1"
+description = "Strongly typed Rust API for OCPTV output"
+authors = ["OCP Test & Validation Project"]
+keywords = ["ocptv", "hardware", "validation"]
+repository = "https://github.com/opencomputeproject/ocp-diag-core-rust"
+license = "MIT"
+edition = "2021"
+
+[dependencies]
+async-trait = "0.1.83"
+chrono = "0.4.38"
+chrono-tz = "0.10.0"
+delegate = "0.13.1"
+maplit = "1.0.2"
+mime = "0.3.17"
+serde = { version = "1.0.210", features = ["derive"] }
+serde_json = "1.0.128"
+serde_with = "3.11.0"
+thiserror = "1.0.64"
+tokio = { version = "1.40.0", features = [
+    "rt",
+    "rt-multi-thread",
+    "macros",
+    "io-util",
+    "fs",
+    "sync",
+] }
+unwrap-infallible = "0.1.5"
+url = "2.5.2"
+
+[dev-dependencies]
+anyhow = "1.0.89"
+assert-json-diff = "2.0.2"
+assert_fs = "1.1.2"
+futures = "0.3.30"
+predicates = "3.1.2"
+tokio-test = "0.4.4"
+rand = "0.8.5"
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = [
+    'cfg(coverage,coverage_nightly)',
+] }
