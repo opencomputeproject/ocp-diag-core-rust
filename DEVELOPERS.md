@@ -37,5 +37,6 @@ $ cargo release tag --sign-tag --execute
 4. push with tags
 ```bash
 $ git checkout main
+$ git push
 $ git push --tags
 ```
