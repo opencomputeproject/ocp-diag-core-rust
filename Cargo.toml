@@ -1,6 +1,6 @@
 [package]
 name = "ocptv"
-version = "0.1.0"
+version = "0.1.1"
 description = "Strongly typed Rust API for OCPTV output"
 authors = ["OCP Test & Validation Project"]
 keywords = ["ocptv", "hardware", "validation"]
