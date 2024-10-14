@@ -68,3 +68,29 @@ jobs:
           fail_ci_if_error: true
           token: ${{ secrets.CODECOV_TOKEN }}
           env_vars: OS,RUSTVER
+
+  spec:
+    runs-on: ubuntu-latest
+    name: examples / spec validation
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install rust stable
+        uses: dtolnay/rust-toolchain@stable
+      - name: pull validator
+        run: git clone https://github.com/opencomputeproject/ocp-diag-core.git --depth=1
+      - name: Install go
+        uses: actions/setup-go@v2
+        with:
+          go-version: "1.17.6"
+      - name: run validator against examples
+        run: |
+          ROOT="$(pwd)"
+          cd ocp-diag-core/validators/spec_validator
+          cargo metadata --manifest-path $ROOT/Cargo.toml --format-version 1 |
+            jq -r '.["packages"][] | select(.name == "ocptv") | .targets[] | select(.kind[0] == "example") | .name' |
+            xargs -I{} bash -c "
+              echo validating output of example {}... &&
+              cargo run --manifest-path $ROOT/Cargo.toml --example {} |
+              tee /dev/stderr |
+              go run . -schema ../../json_spec/output/root.json -
+            "

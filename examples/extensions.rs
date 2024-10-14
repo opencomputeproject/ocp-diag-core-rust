@@ -16,7 +16,7 @@ enum ExtensionType {
 }
 
 #[derive(Serialize)]
-struct ComplexExtension {
+struct Extension {
     #[serde(rename = "@type")]
     ext_type: ExtensionType,
 
@@ -25,13 +25,11 @@ struct ComplexExtension {
 }
 
 async fn step0(s: tv::ScopedTestStep) -> Result<TestStatus, tv::OcptvError> {
-    s.add_extension("simple", "extension_identifier").await?;
-
     s.add_extension(
-        "complex",
-        ComplexExtension {
+        "ext0",
+        Extension {
             ext_type: ExtensionType::Example,
-            field: "demo".to_owned(),
+            field: "example".to_owned(),
             subtypes: vec![1, 42],
         },
     )

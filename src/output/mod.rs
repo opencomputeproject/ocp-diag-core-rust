@@ -55,4 +55,7 @@ pub enum OcptvError {
 
     #[error("failed to format input object")]
     Format(Box<dyn std::error::Error + Send + Sync + 'static>), // opaque type so we don't leak impl
+
+    #[error("other error")]
+    Other(Box<dyn std::error::Error + Send + Sync + 'static>),
 }
