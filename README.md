@@ -61,7 +61,7 @@ fn get_fan_speed() -> i32 {
     rng.gen_range(1500..1700)
 }
 
-async fn run_diagnosis_step(step: &tv::StartedTestStep) -> Result<TestStatus, tv::OcptvError> {
+async fn run_diagnosis_step(step: tv::ScopedTestStep) -> Result<TestStatus, tv::OcptvError> {
     let fan_speed = get_fan_speed();
 
     if fan_speed >= 1600 {
@@ -73,9 +73,7 @@ async fn run_diagnosis_step(step: &tv::StartedTestStep) -> Result<TestStatus, tv
     Ok(TestStatus::Complete)
 }
 
-async fn run_diagnosis_macros_step(
-    step: &tv::StartedTestStep,
-) -> Result<TestStatus, tv::OcptvError> {
+async fn run_diagnosis_macros_step(step: tv::ScopedTestStep) -> Result<TestStatus, tv::OcptvError> {
     let fan_speed = get_fan_speed();
 
     /// using the macro, the source location is filled automatically
@@ -161,7 +159,7 @@ Expected output (slightly reformatted for readability):
 
 ### Examples
 
-The examples in [examples folder](https://github.com/opencomputeproject/ocp-diag-core-rust/tree/dev/examples) could be run using cargo.
+The examples in [examples folder](https://github.com/opencomputeproject/ocp-diag-core-rust/tree/dev/examples) can be run using cargo.
 
 ```bash
 # run diagnosis example
@@ -177,7 +175,3 @@ If you would like to contribute, please head over to [developer notes](https://g
 Feel free to start a new [discussion](https://github.com/opencomputeproject/ocp-diag-core-rust/discussions), or otherwise post an [issue/request](https://github.com/opencomputeproject/ocp-diag-core-rust/issues).
 
 An email contact is also available at: ocp-test-validation@OCP-All.groups.io
-
-<!--
-due to https://github.com/pypa/readme_renderer/issues/163 we must use absolute links everywhere
--->
