@@ -5,7 +5,6 @@
 // https://opensource.org/licenses/MIT.
 
 use anyhow::Result;
-use futures::FutureExt;
 use serde::Serialize;
 
 use ocptv::output as tv;
@@ -25,7 +24,7 @@ struct ComplexExtension {
     subtypes: Vec<u32>,
 }
 
-async fn step0(s: &tv::StartedTestStep) -> Result<TestStatus, tv::OcptvError> {
+async fn step0(s: tv::ScopedTestStep) -> Result<TestStatus, tv::OcptvError> {
     s.add_extension("simple", "extension_identifier").await?;
 
     s.add_extension(
@@ -48,16 +47,13 @@ async fn main() -> Result<()> {
 
     tv::TestRun::builder("extensions", "1.0")
         .build()
-        .scope(dut, |r| {
-            async move {
-                r.add_step("step0").scope(|s| step0(s).boxed()).await?;
+        .scope(dut, |r| async move {
+            r.add_step("step0").scope(step0).await?;
 
-                Ok(tv::TestRunOutcome {
-                    status: TestStatus::Complete,
-                    result: TestResult::Pass,
-                })
-            }
-            .boxed()
+            Ok(tv::TestRunOutcome {
+                status: TestStatus::Complete,
+                result: TestResult::Pass,
+            })
         })
         .await?;
 

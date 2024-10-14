@@ -8,15 +8,14 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use assert_json_diff::assert_json_eq;
-use futures::future::BoxFuture;
 use futures::future::Future;
 use serde_json::json;
 use tokio::sync::Mutex;
 
 use ocptv::output::{
-    Config, DutInfo, HardwareInfo, Ident, OcptvError, SoftwareInfo, SoftwareType, StartedTestRun,
-    StartedTestStep, TestResult, TestRun, TestRunBuilder, TestStatus, TimestampProvider,
-    SPEC_VERSION,
+    Config, DutInfo, HardwareInfo, Ident, OcptvError, ScopedTestRun, ScopedTestStep, SoftwareInfo,
+    SoftwareType, TestResult, TestRun, TestRunBuilder, TestRunOutcome, TestStatus,
+    TimestampProvider, SPEC_VERSION,
 };
 
 pub const DATETIME: chrono::DateTime<chrono::offset::Utc> =
@@ -152,34 +151,41 @@ where
     Ok(())
 }
 
-pub async fn check_output_run<F>(expected: &[serde_json::Value], test_fn: F) -> Result<()>
+pub async fn check_output_run<F, R>(expected: &[serde_json::Value], test_fn: F) -> Result<()>
 where
-    F: for<'a> FnOnce(&'a StartedTestRun, DutInfo) -> BoxFuture<'a, Result<(), OcptvError>>,
+    R: Future<Output = Result<(), OcptvError>> + Send + 'static,
+    F: FnOnce(ScopedTestRun, DutInfo) -> R + Send + 'static,
 {
     check_output(expected, |run_builder, dut| async move {
-        let run = run_builder.build();
-
-        let run = run.start(dut.clone()).await?;
-        test_fn(&run, dut).await?;
-        run.end(TestStatus::Complete, TestResult::Pass).await?;
+        run_builder
+            .build()
+            .scope(dut.clone(), |run| async move {
+                test_fn(run, dut).await?;
+                Ok(TestRunOutcome {
+                    status: TestStatus::Complete,
+                    result: TestResult::Pass,
+                })
+            })
+            .await?;
 
         Ok(())
     })
     .await
 }
 
-pub async fn check_output_step<F>(expected: &[serde_json::Value], test_fn: F) -> Result<()>
+pub async fn check_output_step<F, R>(expected: &[serde_json::Value], test_fn: F) -> Result<()>
 where
-    F: for<'a> FnOnce(&'a StartedTestStep, DutInfo) -> BoxFuture<'a, Result<(), OcptvError>>,
+    R: Future<Output = Result<(), OcptvError>> + Send + 'static,
+    F: FnOnce(ScopedTestStep, DutInfo) -> R + Send + 'static,
 {
-    check_output(expected, |run_builder, dut| async move {
-        let run = run_builder.build().start(dut.clone()).await?;
+    check_output_run(expected, |run, dut| async move {
+        run.add_step("first step")
+            .scope(|step| async move {
+                test_fn(step, dut).await?;
 
-        let step = run.add_step("first step").start().await?;
-        test_fn(&step, dut).await?;
-        step.end(TestStatus::Complete).await?;
-
-        run.end(TestStatus::Complete, TestResult::Pass).await?;
+                Ok(TestStatus::Complete)
+            })
+            .await?;
 
         Ok(())
     })

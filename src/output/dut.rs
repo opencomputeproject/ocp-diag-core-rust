@@ -109,8 +109,8 @@ impl DutInfoBuilder {
         self
     }
 
-    pub fn add_metadata(mut self, key: &str, value: tv::Value) -> Self {
-        self.metadata.insert(key.to_string(), value);
+    pub fn add_metadata<V: Into<tv::Value>>(mut self, key: &str, value: V) -> Self {
+        self.metadata.insert(key.to_string(), value.into());
         self
     }
 
@@ -518,8 +518,8 @@ mod tests {
     fn test_dut_builder() -> Result<()> {
         let mut dut = DutInfo::builder("1234")
             .name("dut")
-            .add_metadata("key", "value".into())
-            .add_metadata("key2", "value2".into())
+            .add_metadata("key", "value")
+            .add_metadata("key2", "value2")
             .add_platform_info(PlatformInfo::builder("platform_info").build())
             .build();
 

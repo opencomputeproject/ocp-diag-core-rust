@@ -5,7 +5,6 @@
 // https://opensource.org/licenses/MIT.
 
 use anyhow::Result;
-use futures::FutureExt;
 
 use ocptv::output as tv;
 use ocptv::{ocptv_diagnosis_fail, ocptv_diagnosis_pass};
@@ -17,7 +16,7 @@ fn get_fan_speed() -> i32 {
     rng.gen_range(1500..1700)
 }
 
-async fn run_diagnosis_step(step: &tv::StartedTestStep) -> Result<TestStatus, tv::OcptvError> {
+async fn run_diagnosis_step(step: tv::ScopedTestStep) -> Result<TestStatus, tv::OcptvError> {
     let fan_speed = get_fan_speed();
 
     if fan_speed >= 1600 {
@@ -31,9 +30,7 @@ async fn run_diagnosis_step(step: &tv::StartedTestStep) -> Result<TestStatus, tv
     Ok(TestStatus::Complete)
 }
 
-async fn run_diagnosis_macros_step(
-    step: &tv::StartedTestStep,
-) -> Result<TestStatus, tv::OcptvError> {
+async fn run_diagnosis_macros_step(step: tv::ScopedTestStep) -> Result<TestStatus, tv::OcptvError> {
     let fan_speed = get_fan_speed();
 
     if fan_speed >= 1600 {
@@ -52,21 +49,14 @@ async fn main() -> Result<()> {
 
     tv::TestRun::builder("simple measurement", "1.0")
         .build()
-        .scope(dut, |r| {
-            async move {
-                r.add_step("step0")
-                    .scope(|s| run_diagnosis_step(s).boxed())
-                    .await?;
-                r.add_step("step1")
-                    .scope(|s| run_diagnosis_macros_step(s).boxed())
-                    .await?;
+        .scope(dut, |r| async move {
+            r.add_step("step0").scope(run_diagnosis_step).await?;
+            r.add_step("step1").scope(run_diagnosis_macros_step).await?;
 
-                Ok(tv::TestRunOutcome {
-                    status: TestStatus::Complete,
-                    result: TestResult::Pass,
-                })
-            }
-            .boxed()
+            Ok(tv::TestRunOutcome {
+                status: TestStatus::Complete,
+                result: TestResult::Pass,
+            })
         })
         .await?;
 

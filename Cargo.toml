@@ -8,14 +8,11 @@ repository = "https://github.com/opencomputeproject/ocp-diag-core-rust"
 license = "MIT"
 edition = "2021"
 
-[features]
-boxed-scopes = []
-
 [dependencies]
 async-trait = "0.1.83"
 chrono = "0.4.38"
 chrono-tz = "0.10.0"
-futures = "0.3.30"
+delegate = "0.13.1"
 maplit = "1.0.2"
 mime = "0.3.17"
 serde = { version = "1.0.210", features = ["derive"] }
@@ -46,47 +43,3 @@ rand = "0.8.5"
 unexpected_cfgs = { level = "warn", check-cfg = [
     'cfg(coverage,coverage_nightly)',
 ] }
-
-[[example]]
-name = "custom_writer"
-required-features = ["boxed-scopes"]
-
-[[example]]
-name = "error_with_dut"
-required-features = ["boxed-scopes"]
-
-[[example]]
-name = "extensions"
-required-features = ["boxed-scopes"]
-
-[[example]]
-name = "measurement_series"
-required-features = ["boxed-scopes"]
-
-[[example]]
-name = "measurement_single"
-required-features = ["boxed-scopes"]
-
-[[example]]
-name = "measurement_subcomponent"
-required-features = ["boxed-scopes"]
-
-[[example]]
-name = "measurement_validators"
-required-features = ["boxed-scopes"]
-
-[[example]]
-name = "simple_run_skip"
-required-features = ["boxed-scopes"]
-
-[[example]]
-name = "simple_step_fail"
-required-features = ["boxed-scopes"]
-
-[[example]]
-name = "diagnosis"
-required-features = ["boxed-scopes"]
-
-[[example]]
-name = "file"
-required-features = ["boxed-scopes"]

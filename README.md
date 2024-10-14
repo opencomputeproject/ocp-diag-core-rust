@@ -45,22 +45,11 @@ See [The Cargo Book](https://doc.rust-lang.org/cargo/index.html) for more detail
 
 The [specification](https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec) does not impose any particular level of usage. To be compliant, a diagnostic package just needs output the correct artifact messages in the correct format. However, any particular such diagnostic is free to choose what aspects it needs to use/output; eg. a simple validation test may not output any measurements, opting to just have a final Diagnosis outcome.
 
-This crate provides the "boxed-scopes" feature. It guarantees to emit the close message every time is needed (i.e. TestRun, TestStep, etc.). 
-To enable the feature in Cargo.toml:
-
-```toml
-    [dependencies]
-    ocptv = { version = "0.1.0", features = ["boxed-scopes"] }
-```
-
-If the feature is not used, is up to the user to close correctly all the API that need it.
-
 **Full API reference is available [here](https://docs.rs/ocptv).**
 
 A very simple starter example, which just outputs a diagnosis:
 ```rust
 use anyhow::Result;
-use futures::FutureExt;
 
 use ocptv::output as tv;
 use ocptv::{ocptv_diagnosis_fail, ocptv_diagnosis_pass};
@@ -89,6 +78,7 @@ async fn run_diagnosis_macros_step(
 ) -> Result<TestStatus, tv::OcptvError> {
     let fan_speed = get_fan_speed();
 
+    /// using the macro, the source location is filled automatically
     if fan_speed >= 1600 {
         ocptv_diagnosis_pass!(step, "fan_ok").await?;
     } else {
@@ -104,23 +94,19 @@ async fn main() -> Result<()> {
 
     tv::TestRun::builder("simple measurement", "1.0")
         .build()
-        .scope(dut, |r| {
-            async move {
-                /// add diagnosis without source location
-                r.add_step("step0")
-                    .scope(|s| run_diagnosis_step(s).boxed())
-                    .await?;
-                /// using the macro, the source location is filled automatically
-                r.add_step("step1")
-                    .scope(|s| run_diagnosis_macros_step(s).boxed())
-                    .await?;
+        .scope(dut, |r| async move {
+            r.add_step("step0")
+                .scope(run_diagnosis_step)
+                .await?;
 
-                Ok(tv::TestRunOutcome {
-                    status: TestStatus::Complete,
-                    result: TestResult::Pass,
-                })
-            }
-            .boxed()
+            r.add_step("step1")
+                .scope(run_diagnosis_macros_step)
+                .await?;
+
+            Ok(tv::TestRunOutcome {
+                status: TestStatus::Complete,
+                result: TestResult::Pass,
+            })
         })
         .await?;
 
@@ -179,7 +165,7 @@ The examples in [examples folder](https://github.com/opencomputeproject/ocp-diag
 
 ```bash
 # run diagnosis example
-$ cargo run --example diagnosis --features="boxed-scopes"
+$ cargo run --example diagnosis
 ```
 
 ### Developer notes

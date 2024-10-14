@@ -4,12 +4,12 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
+use std::future::Future;
 use std::io;
 use std::sync::atomic::{self, Ordering};
 use std::sync::Arc;
 
-#[cfg(feature = "boxed-scopes")]
-use futures::future::BoxFuture;
+use delegate::delegate;
 
 use crate::output as tv;
 use crate::spec::{self, TestStepArtifactImpl};
@@ -97,14 +97,17 @@ impl TestStep {
     /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    #[cfg(feature = "boxed-scopes")]
-    pub async fn scope<F>(self, func: F) -> Result<(), tv::OcptvError>
+    pub async fn scope<F, R>(self, func: F) -> Result<(), tv::OcptvError>
     where
-        F: FnOnce(&StartedTestStep) -> BoxFuture<'_, Result<tv::TestStatus, tv::OcptvError>>,
+        R: Future<Output = Result<tv::TestStatus, tv::OcptvError>> + Send + 'static,
+        F: FnOnce(ScopedTestStep) -> R + Send + 'static,
     {
-        let step = self.start().await?;
-        let status = func(&step).await?;
-        step.end(status).await?;
+        let step = Arc::new(self.start().await?);
+        let status = func(ScopedTestStep {
+            step: Arc::clone(&step),
+        })
+        .await?;
+        step.end_impl(status).await?;
 
         Ok(())
     }
@@ -117,6 +120,15 @@ pub struct StartedTestStep {
 }
 
 impl StartedTestStep {
+    // note: keep the self-consuming method for crate api, but use this one internally,
+    // since `StartedTestStep::end` only needs to take ownership for syntactic reasons
+    async fn end_impl(&self, status: tv::TestStatus) -> Result<(), tv::OcptvError> {
+        let end = TestStepArtifactImpl::TestStepEnd(spec::TestStepEnd { status });
+
+        self.step.emitter.emit(&end).await?;
+        Ok(())
+    }
+
     /// Ends the test step.
     ///
     /// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#teststepend>
@@ -135,11 +147,8 @@ impl StartedTestStep {
     /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn end(self, status: spec::TestStatus) -> Result<(), tv::OcptvError> {
-        let end = TestStepArtifactImpl::TestStepEnd(spec::TestStepEnd { status });
-
-        self.step.emitter.emit(&end).await?;
-        Ok(())
+    pub async fn end(self, status: tv::TestStatus) -> Result<(), tv::OcptvError> {
+        self.end_impl(status).await
     }
 
     /// Emits Log message.
@@ -367,41 +376,6 @@ impl StartedTestStep {
         Ok(())
     }
 
-    /// Emits an extension message;
-    ///
-    /// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#extension>
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # tokio_test::block_on(async {
-    /// # use ocptv::output::*;
-    /// let dut = DutInfo::new("my_dut");
-    /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
-    /// let step = run.add_step("step_name").start().await?;
-    ///
-    /// #[derive(serde::Serialize)]
-    /// struct Ext { i: u32 }
-    ///
-    /// step.add_extension("ext_name", Ext { i: 42 }).await?;
-    ///
-    /// # Ok::<(), OcptvError>(())
-    /// # });
-    /// ```
-    pub async fn add_extension<S: serde::Serialize>(
-        &self,
-        name: &str,
-        any: S,
-    ) -> Result<(), tv::OcptvError> {
-        let ext = TestStepArtifactImpl::Extension(spec::Extension {
-            name: name.to_owned(),
-            content: serde_json::to_value(&any).map_err(|e| OcptvError::Format(Box::new(e)))?,
-        });
-
-        self.step.emitter.emit(&ext).await?;
-        Ok(())
-    }
-
     /// Emits a Measurement message.
     ///
     /// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#measurement>
@@ -415,16 +389,16 @@ impl StartedTestStep {
     /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
     ///
     /// let step = run.add_step("step_name").start().await?;
-    /// step.add_measurement("name", 50.into()).await?;
+    /// step.add_measurement("name", 50).await?;
     /// step.end(TestStatus::Complete).await?;
     ///
     /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn add_measurement(
+    pub async fn add_measurement<V: Into<tv::Value>>(
         &self,
         name: &str,
-        value: tv::Value,
+        value: V,
     ) -> Result<(), tv::OcptvError> {
         let measurement = measure::Measurement::new(name, value);
 
@@ -453,9 +427,9 @@ impl StartedTestStep {
     /// let run = TestRun::builder("diagnostic_name", "1.0").build().start(dut).await?;
     /// let step = run.add_step("step_name").start().await?;
     ///
-    /// let measurement = Measurement::builder("name", 5000.into())
-    ///     .add_validator(Validator::builder(ValidatorType::Equal, 30.into()).build())
-    ///     .add_metadata("key", "value".into())
+    /// let measurement = Measurement::builder("name", 5000)
+    ///     .add_validator(Validator::builder(ValidatorType::Equal, 30).build())
+    ///     .add_metadata("key", "value")
     ///     .hardware_info(&hw_info)
     ///     .subcomponent(Subcomponent::builder("name").build())
     ///     .build();
@@ -668,7 +642,7 @@ impl StartedTestStep {
     /// let file = File::builder("name", uri)
     ///     .description("description")
     ///     .content_type(mime::TEXT_PLAIN)
-    ///     .add_metadata("key", "value".into())
+    ///     .add_metadata("key", "value")
     ///     .build();
     /// step.add_file_detail(file).await?;
     /// step.end(TestStatus::Complete).await?;
@@ -683,6 +657,80 @@ impl StartedTestStep {
             .await?;
 
         Ok(())
+    }
+
+    /// Emits an extension message;
+    ///
+    /// ref: <https://github.com/opencomputeproject/ocp-diag-core/tree/main/json_spec#extension>
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # tokio_test::block_on(async {
+    /// # use ocptv::output::*;
+    /// let dut = DutInfo::new("my_dut");
+    /// let run = TestRun::new("diagnostic_name", "1.0").start(dut).await?;
+    /// let step = run.add_step("step_name").start().await?;
+    ///
+    /// #[derive(serde::Serialize)]
+    /// struct Ext { i: u32 }
+    ///
+    /// step.add_extension("ext_name", Ext { i: 42 }).await?;
+    ///
+    /// # Ok::<(), OcptvError>(())
+    /// # });
+    /// ```
+    pub async fn add_extension<S: serde::Serialize>(
+        &self,
+        name: &str,
+        any: S,
+    ) -> Result<(), tv::OcptvError> {
+        let ext = TestStepArtifactImpl::Extension(spec::Extension {
+            name: name.to_owned(),
+            content: serde_json::to_value(&any).map_err(|e| OcptvError::Format(Box::new(e)))?,
+        });
+
+        self.step.emitter.emit(&ext).await?;
+        Ok(())
+    }
+}
+
+/// TODO: docs
+pub struct ScopedTestStep {
+    step: Arc<StartedTestStep>,
+}
+
+impl ScopedTestStep {
+    delegate! {
+        to self.step {
+            pub async fn add_log(&self, severity: spec::LogSeverity, msg: &str) -> Result<(), tv::OcptvError>;
+            pub async fn add_log_detail(&self, log: log::Log) -> Result<(), tv::OcptvError>;
+
+            pub async fn add_error(&self, symptom: &str) -> Result<(), tv::OcptvError>;
+            pub async fn add_error_msg(&self, symptom: &str, msg: &str) -> Result<(), tv::OcptvError>;
+            pub async fn add_error_detail(&self, error: error::Error) -> Result<(), tv::OcptvError>;
+
+            pub async fn add_measurement<V: Into<tv::Value>>(&self, name: &str, value: V) -> Result<(), tv::OcptvError>;
+            pub async fn add_measurement_detail(&self, detail: measure::Measurement) -> Result<(), tv::OcptvError>;
+
+            pub fn add_measurement_series(&self, name: &str) -> tv::MeasurementSeries;
+            pub fn add_measurement_series_detail(
+                &self,
+                detail: measure::MeasurementSeriesDetail,
+            ) -> tv::MeasurementSeries;
+
+            pub async fn add_diagnosis(
+                &self,
+                verdict: &str,
+                diagnosis_type: spec::DiagnosisType,
+            ) -> Result<(), tv::OcptvError>;
+            pub async fn add_diagnosis_detail(&self, diagnosis: diagnosis::Diagnosis) -> Result<(), tv::OcptvError>;
+
+            pub async fn add_file(&self, name: &str, uri: tv::Uri) -> Result<(), tv::OcptvError>;
+            pub async fn add_file_detail(&self, file: file::File) -> Result<(), tv::OcptvError>;
+
+            pub async fn add_extension<S: serde::Serialize>(&self, name: &str, any: S) -> Result<(), tv::OcptvError>;
+        }
     }
 }
 

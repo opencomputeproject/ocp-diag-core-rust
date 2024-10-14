@@ -35,7 +35,7 @@ use crate::spec;
 ///     .is_snapshot(true)
 ///     .description("description")
 ///     .content_type(mime::TEXT_PLAIN)
-///     .add_metadata("key", "value".into())
+///     .add_metadata("key", "value")
 ///     .build();
 /// ```
 pub struct File {
@@ -79,7 +79,7 @@ impl File {
     /// let file = File::builder("name", uri)
     ///     .description("description")
     ///     .content_type(mime::TEXT_PLAIN)
-    ///     .add_metadata("key", "value".into())
+    ///     .add_metadata("key", "value")
     ///     .build();
     /// ```
     pub fn builder(name: &str, uri: tv::Uri) -> FileBuilder {
@@ -119,7 +119,7 @@ impl File {
 /// let builder = File::builder("name", uri)
 ///     .description("description")
 ///     .content_type(mime::TEXT_PLAIN)
-///     .add_metadata("key", "value".into());
+///     .add_metadata("key", "value");
 /// let file = builder.build();
 /// ```
 pub struct FileBuilder {
@@ -199,10 +199,10 @@ impl FileBuilder {
     ///
     /// let uri = Uri::parse("file:///tmp/foo").unwrap();
     /// let builder = File::builder("name", uri)
-    ///     .add_metadata("key", "value".into());
+    ///     .add_metadata("key", "value");
     /// ```
-    pub fn add_metadata(mut self, key: &str, value: tv::Value) -> FileBuilder {
-        self.metadata.insert(key.to_string(), value);
+    pub fn add_metadata<V: Into<tv::Value>>(mut self, key: &str, value: V) -> FileBuilder {
+        self.metadata.insert(key.to_string(), value.into());
         self
     }
 

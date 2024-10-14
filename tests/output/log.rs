@@ -5,7 +5,6 @@
 // https://opensource.org/licenses/MIT.
 
 use anyhow::Result;
-use futures::FutureExt;
 use serde_json::json;
 
 use ocptv::output::{Log, LogSeverity};
@@ -30,15 +29,12 @@ async fn test_testrun_with_log() -> Result<()> {
         json_run_pass(3),
     ];
 
-    check_output_run(&expected, |r, _| {
-        async {
-            r.add_log(
-                LogSeverity::Info,
-                "This is a log message with INFO severity",
-            )
-            .await
-        }
-        .boxed()
+    check_output_run(&expected, |r, _| async move {
+        r.add_log(
+            LogSeverity::Info,
+            "This is a log message with INFO severity",
+        )
+        .await
     })
     .await
 }
@@ -65,17 +61,14 @@ async fn test_testrun_with_log_with_details() -> Result<()> {
         json_run_pass(3),
     ];
 
-    check_output_run(&expected, |r, _| {
-        async {
-            r.add_log_detail(
-                Log::builder("This is a log message with INFO severity")
-                    .severity(LogSeverity::Info)
-                    .source("file", 1)
-                    .build(),
-            )
-            .await
-        }
-        .boxed()
+    check_output_run(&expected, |r, _| async move {
+        r.add_log_detail(
+            Log::builder("This is a log message with INFO severity")
+                .severity(LogSeverity::Info)
+                .source("file", 1)
+                .build(),
+        )
+        .await
     })
     .await
 }
@@ -101,17 +94,14 @@ async fn test_testrun_step_log() -> Result<()> {
         json_run_pass(5),
     ];
 
-    check_output_step(&expected, |s, _| {
-        async {
-            s.add_log(
-                LogSeverity::Info,
-                "This is a log message with INFO severity",
-            )
-            .await?;
+    check_output_step(&expected, |s, _| async move {
+        s.add_log(
+            LogSeverity::Info,
+            "This is a log message with INFO severity",
+        )
+        .await?;
 
-            Ok(())
-        }
-        .boxed()
+        Ok(())
     })
     .await
 }
@@ -141,19 +131,16 @@ async fn test_testrun_step_log_with_details() -> Result<()> {
         json_run_pass(5),
     ];
 
-    check_output_step(&expected, |s, _| {
-        async {
-            s.add_log_detail(
-                Log::builder("This is a log message with INFO severity")
-                    .severity(LogSeverity::Info)
-                    .source("file", 1)
-                    .build(),
-            )
-            .await?;
+    check_output_step(&expected, |s, _| async move {
+        s.add_log_detail(
+            Log::builder("This is a log message with INFO severity")
+                .severity(LogSeverity::Info)
+                .source("file", 1)
+                .build(),
+        )
+        .await?;
 
-            Ok(())
-        }
-        .boxed()
+        Ok(())
     })
     .await
 }

@@ -8,7 +8,6 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use assert_json_diff::assert_json_include;
-use futures::FutureExt;
 use serde_json::json;
 use tokio::sync::Mutex;
 
@@ -24,10 +23,9 @@ async fn test_testrun_start_and_end() -> Result<()> {
         json_run_pass(2),
     ];
 
-    check_output_run(&expected, |_, _| async { Ok(()) }.boxed()).await
+    check_output_run(&expected, |_, _| async { Ok(()) }).await
 }
 
-#[cfg(feature = "boxed-scopes")]
 #[tokio::test]
 async fn test_testrun_with_scope() -> Result<()> {
     use ocptv::output::{LogSeverity, TestResult, TestRunOutcome, TestStatus};
@@ -51,16 +49,13 @@ async fn test_testrun_with_scope() -> Result<()> {
     check_output(&expected, |run_builder, dut| async {
         let run = run_builder.build();
 
-        run.scope(dut, |r| {
-            async move {
-                r.add_log(LogSeverity::Info, "First message").await?;
+        run.scope(dut, |r| async move {
+            r.add_log(LogSeverity::Info, "First message").await?;
 
-                Ok(TestRunOutcome {
-                    status: TestStatus::Complete,
-                    result: TestResult::Pass,
-                })
-            }
-            .boxed()
+            Ok(TestRunOutcome {
+                status: TestStatus::Complete,
+                result: TestResult::Pass,
+            })
         })
         .await?;
 
@@ -127,7 +122,7 @@ async fn test_testrun_metadata() -> Result<()> {
 
     check_output(&expected, |run_builder, dut| async {
         let run = run_builder
-            .add_metadata("key", "value".into())
+            .add_metadata("key", "value")
             .build()
             .start(dut)
             .await?;
@@ -179,9 +174,9 @@ async fn test_testrun_builder() -> Result<()> {
 
     check_output(&expected, |run_builder, dut| async {
         let run = run_builder
-            .add_metadata("key", "value".into())
-            .add_metadata("key2", "value2".into())
-            .add_parameter("key", "value".into())
+            .add_metadata("key", "value")
+            .add_metadata("key2", "value2")
+            .add_parameter("key", "value")
             .command_line("cmd_line")
             .build()
             .start(dut)

@@ -7,16 +7,15 @@
 
 use anyhow::Result;
 
-use futures::FutureExt;
 use ocptv::output as tv;
 use tv::{SubcomponentType, TestResult, TestStatus};
 
 async fn run_measure_step(
-    step: &tv::StartedTestStep,
+    step: tv::ScopedTestStep,
     ram0: tv::DutHardwareInfo,
 ) -> Result<TestStatus, tv::OcptvError> {
     step.add_measurement_detail(
-        tv::Measurement::builder("temp0", 100.5.into())
+        tv::Measurement::builder("temp0", 100.5)
             .unit("F")
             .hardware_info(&ram0)
             .subcomponent(tv::Subcomponent::builder("chip0").build())
@@ -40,13 +39,10 @@ async fn run_measure_step(
     );
 
     chip1_temp
-        .scope(|s| {
-            async move {
-                s.add_measurement(79.into()).await?;
+        .scope(|s| async move {
+            s.add_measurement(79).await?;
 
-                Ok(())
-            }
-            .boxed()
+            Ok(())
         })
         .await?;
 
@@ -88,18 +84,15 @@ async fn main() -> Result<()> {
 
     tv::TestRun::builder("simple measurement", "1.0")
         .build()
-        .scope(dut, |r| {
-            async move {
-                r.add_step("step0")
-                    .scope(|s| run_measure_step(s, ram0).boxed())
-                    .await?;
+        .scope(dut, |r| async move {
+            r.add_step("step0")
+                .scope(|s| run_measure_step(s, ram0))
+                .await?;
 
-                Ok(tv::TestRunOutcome {
-                    status: TestStatus::Complete,
-                    result: TestResult::Pass,
-                })
-            }
-            .boxed()
+            Ok(tv::TestRunOutcome {
+                status: TestStatus::Complete,
+                result: TestResult::Pass,
+            })
         })
         .await?;
 

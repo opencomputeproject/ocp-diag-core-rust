@@ -5,11 +5,11 @@
 // https://opensource.org/licenses/MIT.
 
 use std::collections::BTreeMap;
+use std::future::Future;
 use std::sync::atomic::{self, Ordering};
 use std::sync::Arc;
 
-#[cfg(feature = "boxed-scopes")]
-use futures::future::BoxFuture;
+use delegate::delegate;
 
 use crate::output as tv;
 use crate::output::trait_ext::{MapExt, VecExt};
@@ -107,9 +107,9 @@ impl MeasurementSeries {
     /// let series = step.add_measurement_series("name");
     /// series.scope(|s| {
     ///     async move {
-    ///         s.add_measurement(60.into()).await?;
-    ///         s.add_measurement(70.into()).await?;
-    ///         s.add_measurement(80.into()).await?;
+    ///         s.add_measurement(60).await?;
+    ///         s.add_measurement(70).await?;
+    ///         s.add_measurement(80).await?;
     ///         Ok(())
     ///     }.boxed()
     /// }).await?;
@@ -117,14 +117,17 @@ impl MeasurementSeries {
     /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    #[cfg(feature = "boxed-scopes")]
-    pub async fn scope<F>(self, func: F) -> Result<(), tv::OcptvError>
+    pub async fn scope<F, R>(self, func: F) -> Result<(), tv::OcptvError>
     where
-        F: FnOnce(&StartedMeasurementSeries) -> BoxFuture<'_, Result<(), tv::OcptvError>>,
+        R: Future<Output = Result<(), tv::OcptvError>> + Send + 'static,
+        F: FnOnce(ScopedMeasurementSeries) -> R + Send + 'static,
     {
-        let series = self.start().await?;
-        func(&series).await?;
-        series.end().await?;
+        let series = Arc::new(self.start().await?);
+        func(ScopedMeasurementSeries {
+            series: Arc::clone(&series),
+        })
+        .await?;
+        series.end_impl().await?;
 
         Ok(())
     }
@@ -140,6 +143,22 @@ pub struct StartedMeasurementSeries {
 impl StartedMeasurementSeries {
     fn incr_seqno(&self) -> u64 {
         self.seqno.fetch_add(1, Ordering::AcqRel)
+    }
+
+    // note: keep the self-consuming method for crate api, but use this one internally,
+    // since `StartedMeasurementSeries::end` only needs to take ownership for syntactic reasons
+    async fn end_impl(&self) -> Result<(), tv::OcptvError> {
+        let end = spec::MeasurementSeriesEnd {
+            series_id: self.parent.id.clone(),
+            total_count: self.seqno.load(Ordering::Acquire),
+        };
+
+        self.parent
+            .emitter
+            .emit(&spec::TestStepArtifactImpl::MeasurementSeriesEnd(end))
+            .await?;
+
+        Ok(())
     }
 
     /// Ends the measurement series.
@@ -162,17 +181,7 @@ impl StartedMeasurementSeries {
     /// # });
     /// ```
     pub async fn end(self) -> Result<(), tv::OcptvError> {
-        let end = spec::MeasurementSeriesEnd {
-            series_id: self.parent.id.clone(),
-            total_count: self.seqno.load(Ordering::Acquire),
-        };
-
-        self.parent
-            .emitter
-            .emit(&spec::TestStepArtifactImpl::MeasurementSeriesEnd(end))
-            .await?;
-
-        Ok(())
+        self.end_impl().await
     }
 
     /// Adds a measurement element to the measurement series.
@@ -189,14 +198,17 @@ impl StartedMeasurementSeries {
     /// let step = run.add_step("step_name").start().await?;
     ///
     /// let series = step.add_measurement_series("name").start().await?;
-    /// series.add_measurement(60.into()).await?;
+    /// series.add_measurement(60).await?;
     ///
     /// # Ok::<(), OcptvError>(())
     /// # });
     /// ```
-    pub async fn add_measurement(&self, value: tv::Value) -> Result<(), tv::OcptvError> {
+    pub async fn add_measurement<V: Into<tv::Value>>(
+        &self,
+        value: V,
+    ) -> Result<(), tv::OcptvError> {
         self.add_measurement_detail(MeasurementElementDetail {
-            value,
+            value: value.into(),
             ..Default::default()
         })
         .await
@@ -217,7 +229,7 @@ impl StartedMeasurementSeries {
     /// let step = run.add_step("step_name").start().await?;
     ///
     /// let series = step.add_measurement_series("name").start().await?;
-    /// let elem = MeasurementElementDetail::builder(60.into()).add_metadata("key", "value".into()).build();
+    /// let elem = MeasurementElementDetail::builder(60).add_metadata("key", "value").build();
     /// series.add_measurement_detail(elem).await?;
     ///
     /// # Ok::<(), OcptvError>(())
@@ -249,6 +261,23 @@ impl StartedMeasurementSeries {
 }
 
 /// TODO: docs
+pub struct ScopedMeasurementSeries {
+    series: Arc<StartedMeasurementSeries>,
+}
+
+impl ScopedMeasurementSeries {
+    delegate! {
+        to self.series {
+            pub async fn add_measurement<V: Into<tv::Value>>(&self, value: V) -> Result<(), tv::OcptvError>;
+            pub async fn add_measurement_detail(
+                &self,
+                element: MeasurementElementDetail,
+            ) -> Result<(), tv::OcptvError>;
+        }
+    }
+}
+
+/// TODO: docs
 #[derive(Default)]
 pub struct MeasurementElementDetail {
     value: tv::Value,
@@ -258,8 +287,8 @@ pub struct MeasurementElementDetail {
 }
 
 impl MeasurementElementDetail {
-    pub fn builder(value: tv::Value) -> MeasurementElementDetailBuilder {
-        MeasurementElementDetailBuilder::new(value)
+    pub fn builder<V: Into<tv::Value>>(value: V) -> MeasurementElementDetailBuilder {
+        MeasurementElementDetailBuilder::new(value.into())
     }
 }
 
@@ -285,8 +314,8 @@ impl MeasurementElementDetailBuilder {
         self
     }
 
-    pub fn add_metadata(mut self, key: &str, value: tv::Value) -> Self {
-        self.metadata.insert(key.to_string(), value);
+    pub fn add_metadata<V: Into<tv::Value>>(mut self, key: &str, value: V) -> Self {
+        self.metadata.insert(key.to_string(), value.into());
         self
     }
 
@@ -309,8 +338,11 @@ pub struct Validator {
 }
 
 impl Validator {
-    pub fn builder(validator_type: spec::ValidatorType, value: tv::Value) -> ValidatorBuilder {
-        ValidatorBuilder::new(validator_type, value)
+    pub fn builder<V: Into<tv::Value>>(
+        validator_type: spec::ValidatorType,
+        value: V,
+    ) -> ValidatorBuilder {
+        ValidatorBuilder::new(validator_type, value.into())
     }
 
     pub fn to_spec(&self) -> spec::Validator {
@@ -348,8 +380,8 @@ impl ValidatorBuilder {
         self
     }
 
-    pub fn add_metadata(mut self, key: &str, value: tv::Value) -> Self {
-        self.metadata.insert(key.to_string(), value);
+    pub fn add_metadata<V: Into<tv::Value>>(mut self, key: &str, value: V) -> Self {
+        self.metadata.insert(key.to_string(), value.into());
         self
     }
 
@@ -372,7 +404,7 @@ impl ValidatorBuilder {
 ///
 /// ```
 /// # use ocptv::output::*;
-/// let measurement = Measurement::new("name", 50.into());
+/// let measurement = Measurement::new("name", 50);
 /// ```
 ///
 /// ## Create a Measurement object with the `builder` method
@@ -382,9 +414,9 @@ impl ValidatorBuilder {
 /// let mut dut = DutInfo::new("dut0");
 /// let hw_info = dut.add_hardware_info(HardwareInfo::builder("name").build());
 ///
-/// let measurement = Measurement::builder("name", 50.into())
-///     .add_validator(Validator::builder(ValidatorType::Equal, 30.into()).build())
-///     .add_metadata("key", "value".into())
+/// let measurement = Measurement::builder("name", 50)
+///     .add_validator(Validator::builder(ValidatorType::Equal, 30).build())
+///     .add_metadata("key", "value")
 ///     .hardware_info(&hw_info)
 ///     .subcomponent(Subcomponent::builder("name").build())
 ///     .build();
@@ -410,12 +442,12 @@ impl Measurement {
     ///
     /// ```
     /// # use ocptv::output::*;
-    /// let measurement = Measurement::new("name", 50.into());
+    /// let measurement = Measurement::new("name", 50);
     /// ```
-    pub fn new(name: &str, value: tv::Value) -> Self {
+    pub fn new<V: Into<tv::Value>>(name: &str, value: V) -> Self {
         Measurement {
             name: name.to_string(),
-            value,
+            value: value.into(),
             ..Default::default()
         }
     }
@@ -430,15 +462,15 @@ impl Measurement {
     /// let mut dut = DutInfo::new("dut0");
     /// let hw_info = dut.add_hardware_info(HardwareInfo::builder("name").build());
     ///
-    /// let measurement = Measurement::builder("name", 50.into())
-    ///     .add_validator(Validator::builder(ValidatorType::Equal, 30.into()).build())
-    ///     .add_metadata("key", "value".into())
+    /// let measurement = Measurement::builder("name", 50)
+    ///     .add_validator(Validator::builder(ValidatorType::Equal, 30).build())
+    ///     .add_metadata("key", "value")
     ///     .hardware_info(&hw_info)
     ///     .subcomponent(Subcomponent::builder("name").build())
     ///     .build();
     /// ```
-    pub fn builder(name: &str, value: tv::Value) -> MeasurementBuilder {
-        MeasurementBuilder::new(name, value)
+    pub fn builder<V: Into<tv::Value>>(name: &str, value: V) -> MeasurementBuilder {
+        MeasurementBuilder::new(name, value.into())
     }
 
     /// Creates an artifact from a Measurement object.
@@ -447,7 +479,7 @@ impl Measurement {
     ///
     /// ```
     /// # use ocptv::output::*;
-    /// let measurement = Measurement::new("name", 50.into());
+    /// let measurement = Measurement::new("name", 50);
     /// let _ = measurement.to_artifact();
     /// ```
     pub fn to_artifact(&self) -> spec::Measurement {
@@ -478,9 +510,9 @@ impl Measurement {
 /// let mut dut = DutInfo::new("dut0");
 /// let hw_info = dut.add_hardware_info(HardwareInfo::builder("name").build());
 ///
-/// let builder = Measurement::builder("name", 50.into())
-///     .add_validator(Validator::builder(ValidatorType::Equal, 30.into()).build())
-///     .add_metadata("key", "value".into())
+/// let builder = Measurement::builder("name", 50)
+///     .add_validator(Validator::builder(ValidatorType::Equal, 30).build())
+///     .add_metadata("key", "value")
 ///     .hardware_info(&hw_info)
 ///     .subcomponent(Subcomponent::builder("name").build());
 /// let measurement = builder.build();
@@ -514,8 +546,8 @@ impl MeasurementBuilder {
     ///
     /// ```
     /// # use ocptv::output::*;
-    /// let builder = Measurement::builder("name", 50.into())
-    ///     .add_validator(Validator::builder(ValidatorType::Equal, 30.into()).build());
+    /// let builder = Measurement::builder("name", 50)
+    ///     .add_validator(Validator::builder(ValidatorType::Equal, 30).build());
     /// ```
     pub fn add_validator(mut self, validator: Validator) -> Self {
         self.validators.push(validator.clone());
@@ -531,7 +563,7 @@ impl MeasurementBuilder {
     /// let mut dut = DutInfo::new("dut0");
     /// let hw_info = dut.add_hardware_info(HardwareInfo::builder("name").build());
     ///
-    /// let builder = Measurement::builder("name", 50.into())
+    /// let builder = Measurement::builder("name", 50)
     ///     .hardware_info(&hw_info);
     /// ```
     pub fn hardware_info(mut self, hardware_info: &dut::DutHardwareInfo) -> Self {
@@ -545,7 +577,7 @@ impl MeasurementBuilder {
     ///
     /// ```
     /// # use ocptv::output::*;
-    /// let builder = Measurement::builder("name", 50.into())
+    /// let builder = Measurement::builder("name", 50)
     ///     .subcomponent(Subcomponent::builder("name").build());
     /// ```
     pub fn subcomponent(mut self, subcomponent: dut::Subcomponent) -> Self {
@@ -560,10 +592,10 @@ impl MeasurementBuilder {
     /// ```
     /// # use ocptv::output::*;
     /// let builder =
-    ///     Measurement::builder("name", 50.into()).add_metadata("key", "value".into());
+    ///     Measurement::builder("name", 50).add_metadata("key", "value");
     /// ```
-    pub fn add_metadata(mut self, key: &str, value: tv::Value) -> Self {
-        self.metadata.insert(key.to_string(), value);
+    pub fn add_metadata<V: Into<tv::Value>>(mut self, key: &str, value: V) -> Self {
+        self.metadata.insert(key.to_string(), value.into());
         self
     }
 
@@ -573,7 +605,7 @@ impl MeasurementBuilder {
     ///
     /// ```
     /// # use ocptv::output::*;
-    /// let builder = Measurement::builder("name", 50000.into()).unit("RPM");
+    /// let builder = Measurement::builder("name", 50000).unit("RPM");
     /// ```
     pub fn unit(mut self, unit: &str) -> MeasurementBuilder {
         self.unit = Some(unit.to_string());
@@ -586,7 +618,7 @@ impl MeasurementBuilder {
     ///
     /// ```
     /// # use ocptv::output::*;
-    /// let builder = Measurement::builder("name", 50.into());
+    /// let builder = Measurement::builder("name", 50);
     /// let measurement = builder.build();
     /// ```
     pub fn build(self) -> Measurement {
@@ -677,8 +709,8 @@ impl MeasurementSeriesDetailBuilder {
         self
     }
 
-    pub fn add_metadata(mut self, key: &str, value: tv::Value) -> Self {
-        self.metadata.insert(key.to_string(), value);
+    pub fn add_metadata<V: Into<tv::Value>>(mut self, key: &str, value: V) -> Self {
+        self.metadata.insert(key.to_string(), value.into());
         self
     }
 
@@ -736,7 +768,7 @@ mod tests {
         let name = "name".to_owned();
         let value = tv::Value::from(50000);
         let hw_info = dut.add_hardware_info(HardwareInfo::builder("name").build());
-        let validator = Validator::builder(spec::ValidatorType::Equal, 30.into()).build();
+        let validator = Validator::builder(spec::ValidatorType::Equal, 30).build();
 
         let meta_key = "key";
         let meta_value = tv::Value::from("value");
@@ -775,10 +807,10 @@ mod tests {
 
     #[test]
     fn test_validator() -> Result<()> {
-        let validator = Validator::builder(ValidatorType::Equal, 30.into())
+        let validator = Validator::builder(ValidatorType::Equal, 30)
             .name("validator")
-            .add_metadata("key", "value".into())
-            .add_metadata("key2", "value2".into())
+            .add_metadata("key", "value")
+            .add_metadata("key2", "value2")
             .build();
 
         let spec_validator = validator.to_spec();

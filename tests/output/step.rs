@@ -7,11 +7,10 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use futures::FutureExt;
 use serde_json::json;
 use tokio::sync::Mutex;
 
-use ocptv::output::{Config, DutInfo, OcptvError, TestRun};
+use ocptv::output::{Config, DutInfo, OcptvError, TestRun, TestStatus};
 
 use super::fixture::*;
 
@@ -20,15 +19,38 @@ async fn test_testrun_with_step() -> Result<()> {
     let expected = [
         json_schema_version(),
         json_run_default_start(),
-        json_step_default_start(),
-        json_step_complete(3),
+        json!({
+            "testStepArtifact": {
+                "testStepId": "step0",
+                "testStepStart": {
+                    "name": "first step"
+                }
+            },
+            "sequenceNumber": 2,
+            "timestamp": DATETIME_FORMATTED
+        }),
+        json!({
+            "testStepArtifact": {
+                "testStepId": "step0",
+                "testStepEnd": {
+                    "status": "COMPLETE"
+                }
+            },
+            "sequenceNumber": 3,
+            "timestamp": DATETIME_FORMATTED
+        }),
         json_run_pass(4),
     ];
 
-    check_output_step(&expected, |_, _| async { Ok(()) }.boxed()).await
+    check_output_run(&expected, |r, _| async move {
+        let step = r.add_step("first step").start().await?;
+        step.end(TestStatus::Complete).await?;
+
+        Ok(())
+    })
+    .await
 }
 
-#[cfg(feature = "boxed-scopes")]
 #[tokio::test]
 async fn test_testrun_step_scope_log() -> Result<()> {
     use ocptv::output::{LogSeverity, TestStatus};
@@ -52,24 +74,18 @@ async fn test_testrun_step_scope_log() -> Result<()> {
         json_run_pass(5),
     ];
 
-    check_output_run(&expected, |r, _| {
-        async {
-            r.add_step("first step")
-                .scope(|s| {
-                    async move {
-                        s.add_log(
-                            LogSeverity::Info,
-                            "This is a log message with INFO severity",
-                        )
-                        .await?;
+    check_output_run(&expected, |r, _| async move {
+        r.add_step("first step")
+            .scope(|s| async move {
+                s.add_log(
+                    LogSeverity::Info,
+                    "This is a log message with INFO severity",
+                )
+                .await?;
 
-                        Ok(TestStatus::Complete)
-                    }
-                    .boxed()
-                })
-                .await
-        }
-        .boxed()
+                Ok(TestStatus::Complete)
+            })
+            .await
     })
     .await
 }
@@ -109,21 +125,18 @@ async fn test_step_with_extension() -> Result<()> {
         number_field: u32,
     }
 
-    check_output_step(&expected, |s, _| {
-        async {
-            s.add_extension(
-                "extension",
-                Ext {
-                    r#type: "TestExtension".to_owned(),
-                    string_field: "string".to_owned(),
-                    number_field: 42,
-                },
-            )
-            .await?;
+    check_output_step(&expected, |s, _| async move {
+        s.add_extension(
+            "extension",
+            Ext {
+                r#type: "TestExtension".to_owned(),
+                string_field: "string".to_owned(),
+                number_field: 42,
+            },
+        )
+        .await?;
 
-            Ok(())
-        }
-        .boxed()
+        Ok(())
     })
     .await
 }
