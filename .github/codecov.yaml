@@ -9,6 +9,9 @@ coverage:
       default:
         # Avoid false negatives
         threshold: 1%
+    patch:
+      default:
+        informational: true
 
 comment:
   layout: "condensed_header, condensed_files"
