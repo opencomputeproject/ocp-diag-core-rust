@@ -29,7 +29,7 @@ For general usage, the following steps should be sufficient to get the latest st
     
     ```toml
     [dependencies]
-    ocptv = "0.1.0"
+    ocptv = "~0.1"
     ```
     
 To use the bleeding edge instead of the stable version, the dependecies section should be modified like this:
