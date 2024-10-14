@@ -49,6 +49,6 @@ jobs:
           cargo release \
             publish \
             --all-features \
-            --allow-branch HEAD \
+            --allow-branch main \
             --no-confirm \
             --execute
