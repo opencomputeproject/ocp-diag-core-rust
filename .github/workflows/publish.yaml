@@ -40,8 +40,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: release
+      - name: Install cargo-release
+        run: cargo install cargo-release
       - name: cargo login
         run: cargo login ${{ secrets.CRATES_IO_TOKEN }}
       - name: Publish
