@@ -1,6 +1,8 @@
 # ocp-diag-core-rust
 
+[![Crates.io Version](https://img.shields.io/crates/v/ocptv)](https://crates.io/crates/ocptv)
 [![codecov](https://codecov.io/github/opencomputeproject/ocp-diag-core-rust/graph/badge.svg?token=IJOG0T8XZ3)](https://codecov.io/github/opencomputeproject/ocp-diag-core-rust)
+[![GitHub License](https://img.shields.io/github/license/opencomputeproject/ocp-diag-core-rust)](https://github.com/opencomputeproject/ocp-diag-core-rust/blob/dev/LICENSE)
 
 The **OCP Test & Validation Initiative** is a collaboration between datacenter hyperscalers having the goal of standardizing aspects of the hardware validation/diagnosis space, along with providing necessary tooling to enable both diagnostic developers and executors to leverage these interfaces.
 
