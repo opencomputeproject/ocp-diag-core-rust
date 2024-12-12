@@ -338,7 +338,7 @@ impl StartedTestRun {
     /// # });
     /// ```
     pub async fn end(
-        self,
+        &self,
         status: spec::TestStatus,
         result: spec::TestResult,
     ) -> Result<(), tv::OcptvError> {
